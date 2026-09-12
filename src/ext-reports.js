@@ -76,27 +76,6 @@ function snippetManage(){
 
 /* ---- the photograph log follows the photo points ---- */
 const compassOf=r=>["N","NE","E","SE","S","SW","W","NW"][Math.round((((+r||0)%360)+360)%360/45)%8];
-function syncPhoto(sk,o){
-  if(!sk||!sk.incidentId||!o||o.t!=="photopoint")return 0;
-  const inc=incidentOf(sk.incidentId); if(!inc)return 0;
-  const f=S.forms.find(x=>x.name==="Photograph log"); if(!f)return 0;
-  const tbl=(f.fields||[]).find(x=>x.type==="table"); if(!tbl)return 0;
-  let rec=(S.fills||[]).find(x=>x.incidentId===inc.id&&x.formId===f.id&&!x.exported);
-  if(!rec){ rec=newFill(f); rec.incidentId=inc.id;
-    const put=(re,v)=>{const fd=(f.fields||[]).find(x=>re.test(x.label)); if(fd&&v)rec.values[fd.id]=v};
-    put(/case/i,inc.caseNo); put(/address|scene/i,inc.addr); put(/^date$/i,today()); put(/photographer/i,S.whoName||S.who||"") }
-  const rows=Array.isArray(rec.values[tbl.id])?rec.values[tbl.id]:[];
-  const num=String(o.n||"").trim(); if(!num)return 0;
-  const key=(tbl.cols||[])[0]||"No.";
-  let row=rows.find(r=>String((r||{})[key]||"").trim()===num);
-  if(!row){row={};row[key]=num;rows.push(row)}
-  if(o.label&&o.label.trim())row["What it shows"]=o.label.trim();
-  row["Facing"]=compassOf(o.r);
-  rec.values[tbl.id]=rows.filter(r=>Object.values(r||{}).some(v=>String(v||"").trim()));
-  saveLocal(); return 1;
-}
-incidents().forEach(i=>{ if(Array.isArray(i.plan)&&!i.plan.includes("photolog")){const k=i.plan.indexOf("evidence"); i.plan.splice(k>-1?k+1:i.plan.length,0,"photolog")} });
-
 /* ---- Word export ---- */
 let ZIPP=null;
 function zipLib(){
@@ -282,14 +261,6 @@ function helpSheet(){
 const isTablet=()=>Math.min(screen.width||innerWidth||0,screen.height||innerHeight||0)>=700;
 const isIPadLike=()=>/iPad/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
 function landscapeOnly(){ return S.landscapeOnly==null?isIPadLike():!!S.landscapeOnly }
-function applyRotLock(){
-  const on=landscapeOnly()&&isTablet();
-  document.body.classList.toggle("rotlock",on);
-  try{ if(on&&screen.orientation&&screen.orientation.lock)screen.orientation.lock("landscape").catch(()=>{}) }catch(e){}
-}
-window.addEventListener("resize",applyRotLock);
-window.addEventListener("orientationchange",applyRotLock);
-
 function appExtraClick10(e){
   const t=e.target;
   if(t.closest("[data-sidetog]")){ S.sideMin=!S.sideMin; saveLocal(); applyMode(); buildTabs(); fitHeader(); return true }

@@ -16,10 +16,6 @@ function whoIs(cb){
     S.who=v; save(); closeSheet(); cb(v)};
   setTimeout(()=>{const el=$("#whoask"); if(el)el.focus()},80);
 }
-function logAct(kind,text){
-  try{ S.activity=(S.activity||[]).slice(-499);
-    S.activity.push({t:new Date().toISOString(),who:S.who||"",k:kind,m:String(text).slice(0,200)}) }catch(_){}
-}
 function activityHTML(){
   const a=(S.activity||[]).slice(-40).reverse();
   if(!a.length)return `<p class="hint">Nothing yet. Sweeps, counts, verifications, exports and label scans are listed here with who did them.</p>`;

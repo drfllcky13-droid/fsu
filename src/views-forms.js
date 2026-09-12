@@ -106,41 +106,6 @@ Persons present | table | Name, Agency, In, Out</pre>
 let curFill=null, curInc=null;
 // forms and sketches that have not been exported yet are "open"
 // an incident is the record a scene's documents belong to
-const DOCPLAN=[
-  {key:"entrylog",  form:"Crime scene entry log",  label:"Entry log"},
-  {key:"evidence",  form:"Evidence log",           label:"Evidence log"},
-  {key:"photolog",  form:"Photograph log",         label:"Photo log"},
-  {key:"sketch",    form:null,                     label:"Sketch"},
-  {key:"report",    form:"Forensic services report",label:"Report"}
-];
-function newIncident(){
-  const inc={id:newId(),caseNo:"",offence:"",addr:"",
-    opened:new Date().toISOString(),closed:"",
-    plan:DOCPLAN.map(d=>d.key)};
-  (S.incidents=S.incidents||[]).push(inc); saveLocal(); return inc;
-}
-const incidents=()=>S.incidents||[];
-const openIncidents=()=>incidents().filter(i=>!i.closed);
-const closedIncidents=()=>incidents().filter(i=>i.closed)
-  .sort((a,b)=>String(b.closed).localeCompare(String(a.closed)));
-const incidentOf=id=>incidents().find(x=>x.id===id);
-// everything attached to one incident, whether exported or not
-function docsFor(incId){
-  const f=(S.fills||[]).filter(x=>x.incidentId===incId).map(x=>({
-    kind:"fill",id:x.id,rec:x,type:x.formName||"Form",exported:!!x.exported}));
-  const s=(S.sketches||[]).filter(x=>x.incidentId===incId).map(x=>({
-    kind:"sketch",id:x.id,rec:x,type:"Sketch",exported:!!x.exported}));
-  return [...f,...s];
-}
-// what the checklist shows for one planned document
-function planState(inc,key){
-  const d=DOCPLAN.find(x=>x.key===key); if(!d)return null;
-  const mine=docsFor(inc.id).filter(x=>
-    d.form? x.type===d.form : x.kind==="sketch");
-  if(!mine.length)return {d,state:"none",docs:[]};
-  if(mine.every(x=>x.exported||(x.rec&&x.rec.completed)))return {d,state:"done",docs:mine};
-  return {d,state:"open",docs:mine};
-}
 function openDocs(){
   const f=(S.fills||[]).filter(x=>!x.exported&&!x.incidentId).map(x=>({
     kind:"fill", id:x.id, when:x.started||"",

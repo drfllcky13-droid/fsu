@@ -1597,6 +1597,257 @@ function compState(code){
 const comps=()=>S.comps.slice().sort((a,b)=>String(a.code||"").localeCompare(String(b.code||""),undefined,{numeric:true}));
 
 
+/* ---------- the furniture both apps share ----------
+   the sheet and the confirm dialog, the photo store, handing the browser a file, theme and
+   display mode, the rotation gate, and the claim on persistent storage ---------- */
+// photographs live in IndexedDB, not localStorage — they would blow its 5 MB ceiling
+const PDB={name:"vanphotos",store:"p",_db:null};
+function photoDB(){
+  if(PDB._db)return Promise.resolve(PDB._db);
+  return new Promise((res,rej)=>{
+    const rq=indexedDB.open(PDB.name,1);
+    rq.onupgradeneeded=()=>{const db=rq.result;
+      if(!db.objectStoreNames.contains(PDB.store))db.createObjectStore(PDB.store)};
+    rq.onsuccess=()=>{PDB._db=rq.result;res(rq.result)};
+    rq.onerror=()=>rej(new Error("Could not open photo storage"));
+  });
+}
+function photoOp(mode,fn){
+  return photoDB().then(db=>new Promise((res,rej)=>{
+    const tx=db.transaction(PDB.store,mode), st=tx.objectStore(PDB.store);
+    const rq=fn(st);
+    rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error);
+  }));
+}
+const photoPut=(id,data)=>photoOp("readwrite",st=>st.put(data,id));
+const photoGet=id=>photoOp("readonly",st=>st.get(id));
+const photoDel=id=>photoOp("readwrite",st=>st.delete(id));
+const photoKeys=()=>photoOp("readonly",st=>st.getAllKeys());
+
+function dlBlob(blob,name){
+  const u=URL.createObjectURL(blob);const a=document.createElement("a");
+  a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),1500);
+}
+
+
+let storageState={asked:false,persisted:false,used:0,quota:0};
+async function claimStorage(){
+  try{
+    if(navigator.storage&&navigator.storage.persisted){
+      storageState.persisted=await navigator.storage.persisted();
+      if(!storageState.persisted&&navigator.storage.persist)
+        storageState.persisted=await navigator.storage.persist();
+    }
+    if(navigator.storage&&navigator.storage.estimate){
+      const e=await navigator.storage.estimate();
+      storageState.used=e.usage||0; storageState.quota=e.quota||0;
+    }
+  }catch(e){}
+  storageState.asked=true;
+  if(view==="data")renderData();
+}
+
+const SHEETABLE='button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
+const sheetStops=()=>[...$("#sheet").querySelectorAll(SHEETABLE)].filter(e=>!e.disabled&&e.offsetParent!==null);
+function openSheet(html){$("#sheetbody").innerHTML=html;$("#scrim").classList.add("on");
+  const f=()=>{if($("#scrim").classList.contains("on")){$("#sheet").classList.add("on");
+    const st=sheetStops(); if(st.length&&!$("#sheet").contains(document.activeElement))st[0].focus()}};
+  typeof requestAnimationFrame==="function"?requestAnimationFrame(f):setTimeout(f,16)}
+// while a sheet is up it is the only thing on screen, so the keyboard stays inside it
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Tab")return;
+  const sh=$("#sheet"); if(!sh||!sh.classList.contains("on"))return;
+  const st=sheetStops(); if(!st.length)return;
+  const first=st[0], last=st[st.length-1], here=document.activeElement;
+  if(!sh.contains(here)){e.preventDefault();(e.shiftKey?last:first).focus();return}
+  if(!e.shiftKey&&here===last){e.preventDefault();first.focus()}
+  else if(e.shiftKey&&here===first){e.preventDefault();last.focus()}
+});
+function askConfirm(title,body,label,danger,fn){
+  openSheet(`<h3>${esc(title)}</h3>
+    <p style="margin:0 0 16px;color:var(--ink2);font-size:14.5px;line-height:1.5">${esc(body)}</p>
+    <button class="btn${danger?" sec":""}" id="cfyes" style="max-width:none;margin:0${danger?";color:var(--red);border-color:var(--red)":""}">${esc(label)}</button>
+    <button class="btn sec" id="cfno" style="max-width:none">Cancel</button>`);
+  $("#cfno").onclick=closeSheet;
+  $("#cfyes").onclick=()=>{closeSheet();fn()};
+}
+function closeSheet(){$("#sheet").classList.remove("on");$("#scrim").classList.remove("on")}
+$("#scrim").onclick=closeSheet;
+
+function applyRotLock(){
+  const on=landscapeOnly()&&isTablet();
+  document.body.classList.toggle("rotlock",on);
+  try{ if(on&&screen.orientation&&screen.orientation.lock)screen.orientation.lock("landscape").catch(()=>{}) }catch(e){}
+}
+window.addEventListener("resize",applyRotLock);
+window.addEventListener("orientationchange",applyRotLock);
+
+
+const mq=q=>!!(window.matchMedia&&window.matchMedia(q).matches);
+function applyTheme(){
+  const t=S.theme||"auto";
+  const r=document.documentElement;
+  r.classList.toggle("theme-dark",t==="dark");
+  r.classList.toggle("theme-light",t==="light");
+}
+function applyMode(){
+  const m=S.mode||"auto";
+  const w1 = m==="desktop" || (m!=="phone" && mq("(min-width:820px)"));
+  const w2 = m==="desktop" || (m!=="phone" && mq("(min-width:1000px)"));
+  document.body.classList.toggle("wide",w1);
+  document.body.classList.toggle("xwide",w2);
+  applySideMin();
+}
+/* ---------- incidents, and what a sketch writes into one ----------
+   The main app runs the incident screens; the sketch app adds a marker or a photograph to the
+   evidence log of the incident its sketch belongs to. ---------- */
+function logAct(kind,text){
+  try{ S.activity=(S.activity||[]).slice(-499);
+    S.activity.push({t:new Date().toISOString(),who:S.who||"",k:kind,m:String(text).slice(0,200)}) }catch(_){}
+}
+
+const DOCPLAN=[
+  {key:"entrylog",  form:"Crime scene entry log",  label:"Entry log"},
+  {key:"evidence",  form:"Evidence log",           label:"Evidence log"},
+  {key:"photolog",  form:"Photograph log",         label:"Photo log"},
+  {key:"sketch",    form:null,                     label:"Sketch"},
+  {key:"report",    form:"Forensic services report",label:"Report"}
+];
+function newIncident(){
+  const inc={id:newId(),caseNo:"",offence:"",addr:"",
+    opened:new Date().toISOString(),closed:"",
+    plan:DOCPLAN.map(d=>d.key)};
+  (S.incidents=S.incidents||[]).push(inc); saveLocal(); return inc;
+}
+const incidents=()=>S.incidents||[];
+const openIncidents=()=>incidents().filter(i=>!i.closed);
+const closedIncidents=()=>incidents().filter(i=>i.closed)
+  .sort((a,b)=>String(b.closed).localeCompare(String(a.closed)));
+const incidentOf=id=>incidents().find(x=>x.id===id);
+// everything attached to one incident, whether exported or not
+function docsFor(incId){
+  const f=(S.fills||[]).filter(x=>x.incidentId===incId).map(x=>({
+    kind:"fill",id:x.id,rec:x,type:x.formName||"Form",exported:!!x.exported}));
+  const s=(S.sketches||[]).filter(x=>x.incidentId===incId).map(x=>({
+    kind:"sketch",id:x.id,rec:x,type:"Sketch",exported:!!x.exported}));
+  return [...f,...s];
+}
+// what the checklist shows for one planned document
+function planState(inc,key){
+  const d=DOCPLAN.find(x=>x.key===key); if(!d)return null;
+  const mine=docsFor(inc.id).filter(x=>
+    d.form? x.type===d.form : x.kind==="sketch");
+  if(!mine.length)return {d,state:"none",docs:[]};
+  if(mine.every(x=>x.exported||(x.rec&&x.rec.completed)))return {d,state:"done",docs:mine};
+  return {d,state:"open",docs:mine};
+}
+
+function syncPhoto(sk,o){
+  if(!sk||!sk.incidentId||!o||o.t!=="photopoint")return 0;
+  const inc=incidentOf(sk.incidentId); if(!inc)return 0;
+  const f=S.forms.find(x=>x.name==="Photograph log"); if(!f)return 0;
+  const tbl=(f.fields||[]).find(x=>x.type==="table"); if(!tbl)return 0;
+  let rec=(S.fills||[]).find(x=>x.incidentId===inc.id&&x.formId===f.id&&!x.exported);
+  if(!rec){ rec=newFill(f); rec.incidentId=inc.id;
+    const put=(re,v)=>{const fd=(f.fields||[]).find(x=>re.test(x.label)); if(fd&&v)rec.values[fd.id]=v};
+    put(/case/i,inc.caseNo); put(/address|scene/i,inc.addr); put(/^date$/i,today()); put(/photographer/i,S.whoName||S.who||"") }
+  const rows=Array.isArray(rec.values[tbl.id])?rec.values[tbl.id]:[];
+  const num=String(o.n||"").trim(); if(!num)return 0;
+  const key=(tbl.cols||[])[0]||"No.";
+  let row=rows.find(r=>String((r||{})[key]||"").trim()===num);
+  if(!row){row={};row[key]=num;rows.push(row)}
+  if(o.label&&o.label.trim())row["What it shows"]=o.label.trim();
+  row["Facing"]=compassOf(o.r);
+  rec.values[tbl.id]=rows.filter(r=>Object.values(r||{}).some(v=>String(v||"").trim()));
+  saveLocal(); return 1;
+}
+incidents().forEach(i=>{ if(Array.isArray(i.plan)&&!i.plan.includes("photolog")){const k=i.plan.indexOf("evidence"); i.plan.splice(k>-1?k+1:i.plan.length,0,"photolog")} });
+
+
+// a marker on an incident sketch writes itself into that incident's evidence log
+function syncMarker(sk,o){
+  if(!sk||!sk.incidentId||o.t!=="marker")return 0;
+  const inc=incidentOf(sk.incidentId); if(!inc)return 0;
+  const f=S.forms.find(x=>x.name==="Evidence log"); if(!f)return 0;
+  const tbl=(f.fields||[]).find(x=>x.type==="table"); if(!tbl)return 0;
+  let rec=(S.fills||[]).find(x=>x.incidentId===inc.id&&x.formId===f.id&&!x.exported);
+  if(!rec){
+    rec=newFill(f); rec.incidentId=inc.id;
+    const put=(re,v)=>{const fd=(f.fields||[]).find(x=>re.test(x.label)); if(fd&&v)rec.values[fd.id]=v};
+    put(/case/i,inc.caseNo); put(/address|scene/i,inc.addr);
+  }
+  const rows=Array.isArray(rec.values[tbl.id])?rec.values[tbl.id]:[];
+  const num=String(o.n||"").trim(); if(!num)return 0;
+  let row=rows.find(r=>String((r||{}).Marker||"").trim()===num);
+  if(!row){ row={}; row.Marker=num; rows.push(row) }
+  if(o.label&&o.label.trim())row.Item=o.label.trim();
+  rec.values[tbl.id]=rows.filter(r=>Object.values(r||{}).some(v=>String(v||"").trim()));
+  saveLocal();
+  return 1;
+}
+/* ---------- case packages, and saying so when a save is refused ----------
+   The main app bundles and restores a case; the sketch app saves one from the canvas. ---------- */
+/* ---- when saving fails, say so ---- */
+var SAVEFAIL=false;   // var, because the first save happens before this block runs
+function saveFailed(on){
+  try{
+  if(on===!!SAVEFAIL)return; SAVEFAIL=on;
+  let bar=document.getElementById("savefail");
+  if(!on){ if(bar)bar.remove(); toast("Saving works again"); return }
+  if(!bar){ bar=document.createElement("div"); bar.id="savefail"; document.body.prepend(bar) }
+  bar.innerHTML=`<span><b>Changes are not being saved.</b> This device's storage for the app is full or
+    blocked, and nothing entered since this appeared will survive a reload. Save a case package now,
+    then free space by deleting old sketches or photographs.</span>
+    <button id="sfcase">Save case package</button><button id="sfdata">Storage</button>`;
+  $("#sfcase").onclick=()=>exportCasePackage("all","fsu-all");
+  $("#sfdata").onclick=()=>go("data");
+  }catch(e){ console.error("save warning failed",e) }
+}
+
+
+/* ---- case packages: the only copy of case material that leaves the device ---- */
+async function casePackage(scope){
+  const all=scope==="all";
+  const incIds=new Set(); if(!all&&scope.incidentId)incIds.add(scope.incidentId);
+  const sketches=(S.sketches||[]).filter(s=>all||s.id===scope.sketchId||(scope.incidentId&&s.incidentId===scope.incidentId));
+  sketches.forEach(s=>{if(s.incidentId)incIds.add(s.incidentId)});
+  const incs=incidents().filter(i=>all||incIds.has(i.id));
+  const fills=(S.fills||[]).filter(f=>all||incIds.has(f.incidentId));
+  const photoIds=new Set();
+  sketches.forEach(s=>{ if(s.bg&&s.bg.imgId)photoIds.add(s.bg.imgId); (s.objs||[]).forEach(o=>{if(o.photoId)photoIds.add(o.photoId)}) });
+  const photos={};
+  for(const id of photoIds){ try{ const d=await photoGet(id); if(d)photos[id]=d }catch(e){} }
+  return {fsuCase:1,version:APP_VERSION,exported:new Date().toISOString(),unit:S.vanName||"",incidents:incs,fills,sketches,photos,forms:S.forms||[]};
+}
+async function exportCasePackage(scope,label){
+  toast("Gathering the case material…");
+  let pkg; try{ pkg=await casePackage(scope) }catch(e){ return toast("Could not gather it: "+(e.message||e)) }
+  const name=String(label||"case").replace(/[^a-z0-9]+/gi,"-").toLowerCase()+"-"+new Date().toISOString().slice(0,16).replace(/[:T]/g,"-")+".fsucase.json";
+  const blob=new Blob([JSON.stringify(pkg)],{type:"application/json"});
+  try{
+    const file=new File([blob],name,{type:"application/json"});
+    if(navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file],title:"FSU case package"});
+    else dlBlob(blob,name);
+  }catch(e){ if(e&&e.name==="AbortError")return; dlBlob(blob,name) }
+  const now=new Date().toISOString(); S.lastCase=now;
+  pkg.sketches.forEach(s=>{const sk=(S.sketches||[]).find(x=>x.id===s.id); if(sk)sk.packaged=now});
+  saveLocal(); if(view==="data")renderData(); else if(view==="sketch")renderSketch();
+  const np=Object.keys(pkg.photos).length;
+  logAct("case","Saved a case package"); toast("Case package saved — "+pkg.sketches.length+" sketch"+(pkg.sketches.length===1?"":"es")+", "+np+" photograph"+(np===1?"":"s")+". Put it in the case file.");
+}
+async function importCasePackage(text){
+  let pkg; try{pkg=JSON.parse(text)}catch(e){return toast("That isn't a case package")}
+  if(!pkg||pkg.fsuCase!==1)return toast("That isn't a case package");
+  let n=0;
+  const merge=key=>{ S[key]=S[key]||[]; (pkg[key]||[]).forEach(r=>{ if(!r||!r.id)return;
+    const i=S[key].findIndex(x=>x.id===r.id); if(i>-1)S[key][i]=r; else S[key].push(r); n++ }) };
+  merge("incidents"); merge("fills"); merge("sketches");
+  S.forms=S.forms||[]; (pkg.forms||[]).forEach(f=>{ if(f&&f.id&&!S.forms.some(x=>x.id===f.id))S.forms.push(f) });
+  let np=0; for(const id in (pkg.photos||{})){ try{ await photoPut(id,pkg.photos[id]); np++ }catch(e){} }
+  saveLocal(); render();
+  toast("Restored "+n+" record"+(n===1?"":"s")+" and "+np+" photograph"+(np===1?"":"s"));
+}
 /* ---------- sample van ---------- */
 const DEMO_COMPS=[
  ["D1","Camera case","Driver side",0,0,6,5],["D2","Photo accessories","Driver side",6,0,6,5],
@@ -1901,22 +2152,6 @@ const ghOn=()=>!!(S.gh.owner&&S.gh.repo&&S.gh.token);
 const ghURL=()=>`https://api.github.com/repos/${S.gh.owner}/${S.gh.repo}/contents/${S.gh.path||"data.json"}`;
 const ghHead=()=>({Authorization:"Bearer "+S.gh.token,Accept:"application/vnd.github+json",
   "X-GitHub-Api-Version":"2022-11-28"});
-let storageState={asked:false,persisted:false,used:0,quota:0};
-async function claimStorage(){
-  try{
-    if(navigator.storage&&navigator.storage.persisted){
-      storageState.persisted=await navigator.storage.persisted();
-      if(!storageState.persisted&&navigator.storage.persist)
-        storageState.persisted=await navigator.storage.persist();
-    }
-    if(navigator.storage&&navigator.storage.estimate){
-      const e=await navigator.storage.estimate();
-      storageState.used=e.usage||0; storageState.quota=e.quota||0;
-    }
-  }catch(e){}
-  storageState.asked=true;
-  if(view==="data")renderData();
-}
 const payload=()=>({v:2,lam:S.lam,items:joinWire("items"),comps:joinWire("comps"),
   forms:joinWire("forms").map(f=>{const c=Object.assign({},f);delete c.fills;return c}),
   walls:S.walls,wallsV:S.wallsV||0,wallsD:S.wallsD||"",demo:S.demo,
@@ -2510,32 +2745,6 @@ function renderCompDetail(){
 
 /* ---------- item detail ---------- */
 let curItem=null, curForm=null, prevView="home";
-const SHEETABLE='button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
-const sheetStops=()=>[...$("#sheet").querySelectorAll(SHEETABLE)].filter(e=>!e.disabled&&e.offsetParent!==null);
-function openSheet(html){$("#sheetbody").innerHTML=html;$("#scrim").classList.add("on");
-  const f=()=>{if($("#scrim").classList.contains("on")){$("#sheet").classList.add("on");
-    const st=sheetStops(); if(st.length&&!$("#sheet").contains(document.activeElement))st[0].focus()}};
-  typeof requestAnimationFrame==="function"?requestAnimationFrame(f):setTimeout(f,16)}
-// while a sheet is up it is the only thing on screen, so the keyboard stays inside it
-document.addEventListener("keydown",e=>{
-  if(e.key!=="Tab")return;
-  const sh=$("#sheet"); if(!sh||!sh.classList.contains("on"))return;
-  const st=sheetStops(); if(!st.length)return;
-  const first=st[0], last=st[st.length-1], here=document.activeElement;
-  if(!sh.contains(here)){e.preventDefault();(e.shiftKey?last:first).focus();return}
-  if(!e.shiftKey&&here===last){e.preventDefault();first.focus()}
-  else if(e.shiftKey&&here===first){e.preventDefault();last.focus()}
-});
-function askConfirm(title,body,label,danger,fn){
-  openSheet(`<h3>${esc(title)}</h3>
-    <p style="margin:0 0 16px;color:var(--ink2);font-size:14.5px;line-height:1.5">${esc(body)}</p>
-    <button class="btn${danger?" sec":""}" id="cfyes" style="max-width:none;margin:0${danger?";color:var(--red);border-color:var(--red)":""}">${esc(label)}</button>
-    <button class="btn sec" id="cfno" style="max-width:none">Cancel</button>`);
-  $("#cfno").onclick=closeSheet;
-  $("#cfyes").onclick=()=>{closeSheet();fn()};
-}
-function closeSheet(){$("#sheet").classList.remove("on");$("#scrim").classList.remove("on")}
-$("#scrim").onclick=closeSheet;
 const today=()=>localISO(new Date());
 
 function itemStatus(i){
@@ -3533,41 +3742,6 @@ Persons present | table | Name, Agency, In, Out</pre>
 let curFill=null, curInc=null;
 // forms and sketches that have not been exported yet are "open"
 // an incident is the record a scene's documents belong to
-const DOCPLAN=[
-  {key:"entrylog",  form:"Crime scene entry log",  label:"Entry log"},
-  {key:"evidence",  form:"Evidence log",           label:"Evidence log"},
-  {key:"photolog",  form:"Photograph log",         label:"Photo log"},
-  {key:"sketch",    form:null,                     label:"Sketch"},
-  {key:"report",    form:"Forensic services report",label:"Report"}
-];
-function newIncident(){
-  const inc={id:newId(),caseNo:"",offence:"",addr:"",
-    opened:new Date().toISOString(),closed:"",
-    plan:DOCPLAN.map(d=>d.key)};
-  (S.incidents=S.incidents||[]).push(inc); saveLocal(); return inc;
-}
-const incidents=()=>S.incidents||[];
-const openIncidents=()=>incidents().filter(i=>!i.closed);
-const closedIncidents=()=>incidents().filter(i=>i.closed)
-  .sort((a,b)=>String(b.closed).localeCompare(String(a.closed)));
-const incidentOf=id=>incidents().find(x=>x.id===id);
-// everything attached to one incident, whether exported or not
-function docsFor(incId){
-  const f=(S.fills||[]).filter(x=>x.incidentId===incId).map(x=>({
-    kind:"fill",id:x.id,rec:x,type:x.formName||"Form",exported:!!x.exported}));
-  const s=(S.sketches||[]).filter(x=>x.incidentId===incId).map(x=>({
-    kind:"sketch",id:x.id,rec:x,type:"Sketch",exported:!!x.exported}));
-  return [...f,...s];
-}
-// what the checklist shows for one planned document
-function planState(inc,key){
-  const d=DOCPLAN.find(x=>x.key===key); if(!d)return null;
-  const mine=docsFor(inc.id).filter(x=>
-    d.form? x.type===d.form : x.kind==="sketch");
-  if(!mine.length)return {d,state:"none",docs:[]};
-  if(mine.every(x=>x.exported||(x.rec&&x.rec.completed)))return {d,state:"done",docs:mine};
-  return {d,state:"open",docs:mine};
-}
 function openDocs(){
   const f=(S.fills||[]).filter(x=>!x.exported&&!x.incidentId).map(x=>({
     kind:"fill", id:x.id, when:x.started||"",
@@ -4219,29 +4393,6 @@ const GLYPH={
  gap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/></svg>',
  ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.7 2.7L16 9.5"/></svg>'};
 let curSketch=null, selObj=null, curLayer=null, showSet=false, palCat=0, palQ="", skFull=false, skTools=true;
-// photographs live in IndexedDB, not localStorage — they would blow its 5 MB ceiling
-const PDB={name:"vanphotos",store:"p",_db:null};
-function photoDB(){
-  if(PDB._db)return Promise.resolve(PDB._db);
-  return new Promise((res,rej)=>{
-    const rq=indexedDB.open(PDB.name,1);
-    rq.onupgradeneeded=()=>{const db=rq.result;
-      if(!db.objectStoreNames.contains(PDB.store))db.createObjectStore(PDB.store)};
-    rq.onsuccess=()=>{PDB._db=rq.result;res(rq.result)};
-    rq.onerror=()=>rej(new Error("Could not open photo storage"));
-  });
-}
-function photoOp(mode,fn){
-  return photoDB().then(db=>new Promise((res,rej)=>{
-    const tx=db.transaction(PDB.store,mode), st=tx.objectStore(PDB.store);
-    const rq=fn(st);
-    rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error);
-  }));
-}
-const photoPut=(id,data)=>photoOp("readwrite",st=>st.put(data,id));
-const photoGet=id=>photoOp("readonly",st=>st.get(id));
-const photoDel=id=>photoOp("readwrite",st=>st.delete(id));
-const photoKeys=()=>photoOp("readonly",st=>st.getAllKeys());
 // shrink on the way in: a reference thumbnail, never the evidential copy
 function shrinkPhoto(file,max=1400,q=0.72){
   return new Promise((res,rej)=>{
@@ -5255,27 +5406,6 @@ function sketchMetaSheet(sk){
     saveLocal();closeSheet();renderSketch();
     toast(moved?"Saved \u2014 "+moved+" object"+(moved===1?"":"s")+" moved clear of the block":"Saved");
     if(!sk.incidentId&&sk.caseNo)offerIncident(sk)};
-}
-// a marker on an incident sketch writes itself into that incident's evidence log
-function syncMarker(sk,o){
-  if(!sk||!sk.incidentId||o.t!=="marker")return 0;
-  const inc=incidentOf(sk.incidentId); if(!inc)return 0;
-  const f=S.forms.find(x=>x.name==="Evidence log"); if(!f)return 0;
-  const tbl=(f.fields||[]).find(x=>x.type==="table"); if(!tbl)return 0;
-  let rec=(S.fills||[]).find(x=>x.incidentId===inc.id&&x.formId===f.id&&!x.exported);
-  if(!rec){
-    rec=newFill(f); rec.incidentId=inc.id;
-    const put=(re,v)=>{const fd=(f.fields||[]).find(x=>re.test(x.label)); if(fd&&v)rec.values[fd.id]=v};
-    put(/case/i,inc.caseNo); put(/address|scene/i,inc.addr);
-  }
-  const rows=Array.isArray(rec.values[tbl.id])?rec.values[tbl.id]:[];
-  const num=String(o.n||"").trim(); if(!num)return 0;
-  let row=rows.find(r=>String((r||{}).Marker||"").trim()===num);
-  if(!row){ row={}; row.Marker=num; rows.push(row) }
-  if(o.label&&o.label.trim())row.Item=o.label.trim();
-  rec.values[tbl.id]=rows.filter(r=>Object.values(r||{}).some(v=>String(v||"").trim()));
-  saveLocal();
-  return 1;
 }
 function photoSheet(o){
   openSheet(`<h3>Photograph ${esc(o.n||"")}</h3>
@@ -6820,21 +6950,6 @@ document.addEventListener("visibilitychange",()=>{
 window.addEventListener("orientationchange",()=>setTimeout(fitHeader,200));
 
 const DETAILS=[];   // every page is the main screen; the split pane is retired
-const mq=q=>!!(window.matchMedia&&window.matchMedia(q).matches);
-function applyTheme(){
-  const t=S.theme||"auto";
-  const r=document.documentElement;
-  r.classList.toggle("theme-dark",t==="dark");
-  r.classList.toggle("theme-light",t==="light");
-}
-function applyMode(){
-  const m=S.mode||"auto";
-  const w1 = m==="desktop" || (m!=="phone" && mq("(min-width:820px)"));
-  const w2 = m==="desktop" || (m!=="phone" && mq("(min-width:1000px)"));
-  document.body.classList.toggle("wide",w1);
-  document.body.classList.toggle("xwide",w2);
-  applySideMin();
-}
 const wideNow=()=>document.body.classList.contains("xwide");
 // the side bar is an icon rail when asked, and always while sketching on a screen under 1241px
 function applySideMin(){
@@ -6978,12 +7093,6 @@ function targetLayer(sk){
   for(let i=ls.length-1;i>=0;i--)if(!ls[i].locked)return ls[i].id;
   return null;                       // every layer is locked
 }
-function dlBlob(blob,name){
-  const u=URL.createObjectURL(blob);const a=document.createElement("a");
-  a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(u),1500);
-}
-
 /* ---- measurement entry ---- */
 const CORNERS={nw:[0,0],ne:[1,0],se:[1,1],sw:[0,1],a:[0,.5],b:[1,.5],c:[.5,.5]};
 const STRUCT=new Set(["wall","room","building","rect","area","concretearea","tilearea"]);
@@ -7923,23 +8032,6 @@ function layerMoveBar(){
     <button data-laymovex="1">Done</button></div>`;
 }
 
-/* ---- when saving fails, say so ---- */
-var SAVEFAIL=false;   // var, because the first save happens before this block runs
-function saveFailed(on){
-  try{
-  if(on===!!SAVEFAIL)return; SAVEFAIL=on;
-  let bar=document.getElementById("savefail");
-  if(!on){ if(bar)bar.remove(); toast("Saving works again"); return }
-  if(!bar){ bar=document.createElement("div"); bar.id="savefail"; document.body.prepend(bar) }
-  bar.innerHTML=`<span><b>Changes are not being saved.</b> This device's storage for the app is full or
-    blocked, and nothing entered since this appeared will survive a reload. Save a case package now,
-    then free space by deleting old sketches or photographs.</span>
-    <button id="sfcase">Save case package</button><button id="sfdata">Storage</button>`;
-  $("#sfcase").onclick=()=>exportCasePackage("all","fsu-all");
-  $("#sfdata").onclick=()=>go("data");
-  }catch(e){ console.error("save warning failed",e) }
-}
-
 /* ---- a bad object must not blank the sketch ---- */
 function objSVG(o,sel){
   try{ const s=objSVGRaw(o,sel); return (multi&&multi.ids.has(o.id))?s.replace(/<\/g>\s*$/,`<rect width="${o.w}" height="${o.h}" class="k-msel"/></g>`):s }
@@ -7988,48 +8080,6 @@ function repairSketch(sk){
   return fixed;
 }
 
-/* ---- case packages: the only copy of case material that leaves the device ---- */
-async function casePackage(scope){
-  const all=scope==="all";
-  const incIds=new Set(); if(!all&&scope.incidentId)incIds.add(scope.incidentId);
-  const sketches=(S.sketches||[]).filter(s=>all||s.id===scope.sketchId||(scope.incidentId&&s.incidentId===scope.incidentId));
-  sketches.forEach(s=>{if(s.incidentId)incIds.add(s.incidentId)});
-  const incs=incidents().filter(i=>all||incIds.has(i.id));
-  const fills=(S.fills||[]).filter(f=>all||incIds.has(f.incidentId));
-  const photoIds=new Set();
-  sketches.forEach(s=>{ if(s.bg&&s.bg.imgId)photoIds.add(s.bg.imgId); (s.objs||[]).forEach(o=>{if(o.photoId)photoIds.add(o.photoId)}) });
-  const photos={};
-  for(const id of photoIds){ try{ const d=await photoGet(id); if(d)photos[id]=d }catch(e){} }
-  return {fsuCase:1,version:APP_VERSION,exported:new Date().toISOString(),unit:S.vanName||"",incidents:incs,fills,sketches,photos,forms:S.forms||[]};
-}
-async function exportCasePackage(scope,label){
-  toast("Gathering the case material…");
-  let pkg; try{ pkg=await casePackage(scope) }catch(e){ return toast("Could not gather it: "+(e.message||e)) }
-  const name=String(label||"case").replace(/[^a-z0-9]+/gi,"-").toLowerCase()+"-"+new Date().toISOString().slice(0,16).replace(/[:T]/g,"-")+".fsucase.json";
-  const blob=new Blob([JSON.stringify(pkg)],{type:"application/json"});
-  try{
-    const file=new File([blob],name,{type:"application/json"});
-    if(navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file],title:"FSU case package"});
-    else dlBlob(blob,name);
-  }catch(e){ if(e&&e.name==="AbortError")return; dlBlob(blob,name) }
-  const now=new Date().toISOString(); S.lastCase=now;
-  pkg.sketches.forEach(s=>{const sk=(S.sketches||[]).find(x=>x.id===s.id); if(sk)sk.packaged=now});
-  saveLocal(); if(view==="data")renderData(); else if(view==="sketch")renderSketch();
-  const np=Object.keys(pkg.photos).length;
-  logAct("case","Saved a case package"); toast("Case package saved — "+pkg.sketches.length+" sketch"+(pkg.sketches.length===1?"":"es")+", "+np+" photograph"+(np===1?"":"s")+". Put it in the case file.");
-}
-async function importCasePackage(text){
-  let pkg; try{pkg=JSON.parse(text)}catch(e){return toast("That isn't a case package")}
-  if(!pkg||pkg.fsuCase!==1)return toast("That isn't a case package");
-  let n=0;
-  const merge=key=>{ S[key]=S[key]||[]; (pkg[key]||[]).forEach(r=>{ if(!r||!r.id)return;
-    const i=S[key].findIndex(x=>x.id===r.id); if(i>-1)S[key][i]=r; else S[key].push(r); n++ }) };
-  merge("incidents"); merge("fills"); merge("sketches");
-  S.forms=S.forms||[]; (pkg.forms||[]).forEach(f=>{ if(f&&f.id&&!S.forms.some(x=>x.id===f.id))S.forms.push(f) });
-  let np=0; for(const id in (pkg.photos||{})){ try{ await photoPut(id,pkg.photos[id]); np++ }catch(e){} }
-  saveLocal(); render();
-  toast("Restored "+n+" record"+(n===1?"":"s")+" and "+np+" photograph"+(np===1?"":"s"));
-}
 function caseNag(sk){
   if(!sk.updated||!(sk.objs||[]).length)return "";
   if(sk.packaged&&sk.packaged>=sk.updated)return "";
@@ -8368,10 +8418,6 @@ function whoIs(cb){
   $("#whook").onclick=()=>{const v=$("#whoask").value.trim().toUpperCase().slice(0,6); if(!v)return toast("Initials are needed");
     S.who=v; save(); closeSheet(); cb(v)};
   setTimeout(()=>{const el=$("#whoask"); if(el)el.focus()},80);
-}
-function logAct(kind,text){
-  try{ S.activity=(S.activity||[]).slice(-499);
-    S.activity.push({t:new Date().toISOString(),who:S.who||"",k:kind,m:String(text).slice(0,200)}) }catch(_){}
 }
 function activityHTML(){
   const a=(S.activity||[]).slice(-40).reverse();
@@ -8878,27 +8924,6 @@ function snippetManage(){
 
 /* ---- the photograph log follows the photo points ---- */
 const compassOf=r=>["N","NE","E","SE","S","SW","W","NW"][Math.round((((+r||0)%360)+360)%360/45)%8];
-function syncPhoto(sk,o){
-  if(!sk||!sk.incidentId||!o||o.t!=="photopoint")return 0;
-  const inc=incidentOf(sk.incidentId); if(!inc)return 0;
-  const f=S.forms.find(x=>x.name==="Photograph log"); if(!f)return 0;
-  const tbl=(f.fields||[]).find(x=>x.type==="table"); if(!tbl)return 0;
-  let rec=(S.fills||[]).find(x=>x.incidentId===inc.id&&x.formId===f.id&&!x.exported);
-  if(!rec){ rec=newFill(f); rec.incidentId=inc.id;
-    const put=(re,v)=>{const fd=(f.fields||[]).find(x=>re.test(x.label)); if(fd&&v)rec.values[fd.id]=v};
-    put(/case/i,inc.caseNo); put(/address|scene/i,inc.addr); put(/^date$/i,today()); put(/photographer/i,S.whoName||S.who||"") }
-  const rows=Array.isArray(rec.values[tbl.id])?rec.values[tbl.id]:[];
-  const num=String(o.n||"").trim(); if(!num)return 0;
-  const key=(tbl.cols||[])[0]||"No.";
-  let row=rows.find(r=>String((r||{})[key]||"").trim()===num);
-  if(!row){row={};row[key]=num;rows.push(row)}
-  if(o.label&&o.label.trim())row["What it shows"]=o.label.trim();
-  row["Facing"]=compassOf(o.r);
-  rec.values[tbl.id]=rows.filter(r=>Object.values(r||{}).some(v=>String(v||"").trim()));
-  saveLocal(); return 1;
-}
-incidents().forEach(i=>{ if(Array.isArray(i.plan)&&!i.plan.includes("photolog")){const k=i.plan.indexOf("evidence"); i.plan.splice(k>-1?k+1:i.plan.length,0,"photolog")} });
-
 /* ---- Word export ---- */
 let ZIPP=null;
 function zipLib(){
@@ -9084,14 +9109,6 @@ function helpSheet(){
 const isTablet=()=>Math.min(screen.width||innerWidth||0,screen.height||innerHeight||0)>=700;
 const isIPadLike=()=>/iPad/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
 function landscapeOnly(){ return S.landscapeOnly==null?isIPadLike():!!S.landscapeOnly }
-function applyRotLock(){
-  const on=landscapeOnly()&&isTablet();
-  document.body.classList.toggle("rotlock",on);
-  try{ if(on&&screen.orientation&&screen.orientation.lock)screen.orientation.lock("landscape").catch(()=>{}) }catch(e){}
-}
-window.addEventListener("resize",applyRotLock);
-window.addEventListener("orientationchange",applyRotLock);
-
 function appExtraClick10(e){
   const t=e.target;
   if(t.closest("[data-sidetog]")){ S.sideMin=!S.sideMin; saveLocal(); applyMode(); buildTabs(); fitHeader(); return true }

@@ -2,7 +2,7 @@
 // or `node build.js --check` (CI) to fail if index.html is out of date.
 const fs=require("fs"),path=require("path");
 const ORDER=["head.html","app.css","body.html",
-  "data-van.js","core.js","demo.js","sync.js","nav.js","views-van.js",
+  "data-van.js","core.js","chrome.js","incidents.js","case-package.js","demo.js","sync.js","nav.js","views-van.js",
   "sketch-objects.js","views-forms.js","pdf.js","sketch-canvas.js",
   "views-items.js","events.js",
   "ext-sketch-1.js","ext-sketch-2.js","ext-sketch-3.js","ext-van.js","ext-tabs.js","ext-reports.js",

@@ -152,22 +152,6 @@ const ghOn=()=>!!(S.gh.owner&&S.gh.repo&&S.gh.token);
 const ghURL=()=>`https://api.github.com/repos/${S.gh.owner}/${S.gh.repo}/contents/${S.gh.path||"data.json"}`;
 const ghHead=()=>({Authorization:"Bearer "+S.gh.token,Accept:"application/vnd.github+json",
   "X-GitHub-Api-Version":"2022-11-28"});
-let storageState={asked:false,persisted:false,used:0,quota:0};
-async function claimStorage(){
-  try{
-    if(navigator.storage&&navigator.storage.persisted){
-      storageState.persisted=await navigator.storage.persisted();
-      if(!storageState.persisted&&navigator.storage.persist)
-        storageState.persisted=await navigator.storage.persist();
-    }
-    if(navigator.storage&&navigator.storage.estimate){
-      const e=await navigator.storage.estimate();
-      storageState.used=e.usage||0; storageState.quota=e.quota||0;
-    }
-  }catch(e){}
-  storageState.asked=true;
-  if(view==="data")renderData();
-}
 const payload=()=>({v:2,lam:S.lam,items:joinWire("items"),comps:joinWire("comps"),
   forms:joinWire("forms").map(f=>{const c=Object.assign({},f);delete c.fills;return c}),
   walls:S.walls,wallsV:S.wallsV||0,wallsD:S.wallsD||"",demo:S.demo,

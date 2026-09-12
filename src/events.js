@@ -687,21 +687,6 @@ document.addEventListener("visibilitychange",()=>{
 window.addEventListener("orientationchange",()=>setTimeout(fitHeader,200));
 
 const DETAILS=[];   // every page is the main screen; the split pane is retired
-const mq=q=>!!(window.matchMedia&&window.matchMedia(q).matches);
-function applyTheme(){
-  const t=S.theme||"auto";
-  const r=document.documentElement;
-  r.classList.toggle("theme-dark",t==="dark");
-  r.classList.toggle("theme-light",t==="light");
-}
-function applyMode(){
-  const m=S.mode||"auto";
-  const w1 = m==="desktop" || (m!=="phone" && mq("(min-width:820px)"));
-  const w2 = m==="desktop" || (m!=="phone" && mq("(min-width:1000px)"));
-  document.body.classList.toggle("wide",w1);
-  document.body.classList.toggle("xwide",w2);
-  applySideMin();
-}
 const wideNow=()=>document.body.classList.contains("xwide");
 // the side bar is an icon rail when asked, and always while sketching on a screen under 1241px
 function applySideMin(){

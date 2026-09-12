@@ -67,12 +67,6 @@ function targetLayer(sk){
   for(let i=ls.length-1;i>=0;i--)if(!ls[i].locked)return ls[i].id;
   return null;                       // every layer is locked
 }
-function dlBlob(blob,name){
-  const u=URL.createObjectURL(blob);const a=document.createElement("a");
-  a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(u),1500);
-}
-
 /* ---- measurement entry ---- */
 const CORNERS={nw:[0,0],ne:[1,0],se:[1,1],sw:[0,1],a:[0,.5],b:[1,.5],c:[.5,.5]};
 const STRUCT=new Set(["wall","room","building","rect","area","concretearea","tilearea"]);

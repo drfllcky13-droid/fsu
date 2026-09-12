@@ -5,29 +5,6 @@ const GLYPH={
  gap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/></svg>',
  ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.7 2.7L16 9.5"/></svg>'};
 let curSketch=null, selObj=null, curLayer=null, showSet=false, palCat=0, palQ="", skFull=false, skTools=true;
-// photographs live in IndexedDB, not localStorage — they would blow its 5 MB ceiling
-const PDB={name:"vanphotos",store:"p",_db:null};
-function photoDB(){
-  if(PDB._db)return Promise.resolve(PDB._db);
-  return new Promise((res,rej)=>{
-    const rq=indexedDB.open(PDB.name,1);
-    rq.onupgradeneeded=()=>{const db=rq.result;
-      if(!db.objectStoreNames.contains(PDB.store))db.createObjectStore(PDB.store)};
-    rq.onsuccess=()=>{PDB._db=rq.result;res(rq.result)};
-    rq.onerror=()=>rej(new Error("Could not open photo storage"));
-  });
-}
-function photoOp(mode,fn){
-  return photoDB().then(db=>new Promise((res,rej)=>{
-    const tx=db.transaction(PDB.store,mode), st=tx.objectStore(PDB.store);
-    const rq=fn(st);
-    rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error);
-  }));
-}
-const photoPut=(id,data)=>photoOp("readwrite",st=>st.put(data,id));
-const photoGet=id=>photoOp("readonly",st=>st.get(id));
-const photoDel=id=>photoOp("readwrite",st=>st.delete(id));
-const photoKeys=()=>photoOp("readonly",st=>st.getAllKeys());
 // shrink on the way in: a reference thumbnail, never the evidential copy
 function shrinkPhoto(file,max=1400,q=0.72){
   return new Promise((res,rej)=>{
@@ -1041,27 +1018,6 @@ function sketchMetaSheet(sk){
     saveLocal();closeSheet();renderSketch();
     toast(moved?"Saved \u2014 "+moved+" object"+(moved===1?"":"s")+" moved clear of the block":"Saved");
     if(!sk.incidentId&&sk.caseNo)offerIncident(sk)};
-}
-// a marker on an incident sketch writes itself into that incident's evidence log
-function syncMarker(sk,o){
-  if(!sk||!sk.incidentId||o.t!=="marker")return 0;
-  const inc=incidentOf(sk.incidentId); if(!inc)return 0;
-  const f=S.forms.find(x=>x.name==="Evidence log"); if(!f)return 0;
-  const tbl=(f.fields||[]).find(x=>x.type==="table"); if(!tbl)return 0;
-  let rec=(S.fills||[]).find(x=>x.incidentId===inc.id&&x.formId===f.id&&!x.exported);
-  if(!rec){
-    rec=newFill(f); rec.incidentId=inc.id;
-    const put=(re,v)=>{const fd=(f.fields||[]).find(x=>re.test(x.label)); if(fd&&v)rec.values[fd.id]=v};
-    put(/case/i,inc.caseNo); put(/address|scene/i,inc.addr);
-  }
-  const rows=Array.isArray(rec.values[tbl.id])?rec.values[tbl.id]:[];
-  const num=String(o.n||"").trim(); if(!num)return 0;
-  let row=rows.find(r=>String((r||{}).Marker||"").trim()===num);
-  if(!row){ row={}; row.Marker=num; rows.push(row) }
-  if(o.label&&o.label.trim())row.Item=o.label.trim();
-  rec.values[tbl.id]=rows.filter(r=>Object.values(r||{}).some(v=>String(v||"").trim()));
-  saveLocal();
-  return 1;
 }
 function photoSheet(o){
   openSheet(`<h3>Photograph ${esc(o.n||"")}</h3>
