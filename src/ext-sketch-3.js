@@ -63,7 +63,7 @@ function inkFinish(pts,col){
   const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]);
   const x0=Math.min(...xs), y0=Math.min(...ys);
   const w=Math.max(8,Math.max(...xs)-x0), h=Math.max(8,Math.max(...ys)-y0);
-  const ls=layersOf(sk), target=(curLayer&&ls.some(l=>l.id===curLayer))?curLayer:ls[ls.length-1].id;
+  const target=targetLayer(sk); if(!target)return toast("Every layer is locked — unlock one first");
   pushUndo(sk);
   sk.objs.push({id:newId(),t:"ink",lay:target,x:Math.round(x0),y:Math.round(y0),w:Math.round(w),h:Math.round(h),r:0,
     label:"",ar:w/h,ink:col||"",pts:pts.map(p=>[+((p[0]-x0)/w).toFixed(4),+((p[1]-y0)/h).toFixed(4)])});
@@ -77,7 +77,7 @@ SHAPES.ink=(w,hh,o)=>{
 /* 9. live distances while a measured object moves, and the record follows where it is dropped */
 function measGeom(sk,o){
   const m=o.meas||{}, A=refPt(sk,m.a), B=refPt(sk,m.b); if(!A)return m;
-  const P=objPt(o,.5,.5), u=(sk.scale&&sk.scale.unit)||"ft";
+  const P=objAnchor(o), u=(sk.scale&&sk.scale.unit)||"ft";
   const rnd=v=>u==="ft"?Math.round(v*12)/12:Math.round(v*100)/100;
   const g=Object.assign({},m);
   if(m.m==="polar"){ g.da=rnd(pxReal(sk,Math.hypot(P.x-A.x,P.y-A.y)));
@@ -89,10 +89,10 @@ function measGeom(sk,o){
   const along=(P.x-A.x)*ux+(P.y-A.y)*uy, out=(P.x-A.x)*uy-(P.y-A.y)*ux;
   g.da=rnd(pxReal(sk,along)); g.db=rnd(pxReal(sk,Math.abs(out))); g.side=out>0?"l":"r"; return g;
 }
-function measFromGeometry(sk,o){
+function measFromGeometry(sk,o,quiet){
   if(!o.meas||!scaleOf(sk))return;
   const g=measGeom(sk,o); if(g===o.meas)return;
-  o.meas=g; toast("Measurement updated to where it sits now — Undo puts it back");
+  o.meas=g; if(!quiet)toast("Measurement updated to where it sits now — Undo puts it back");
 }
 
 /* 10. select several: tap to add, drag across the page, then move, recolour, duplicate or delete */
@@ -106,10 +106,15 @@ function multiBar(){
     <button data-mdup="1">Duplicate</button><button data-mdel="1">Delete</button>`:""}
     <button data-multix="1">Done</button></div>`;
 }
-function multiObjs(sk){ return (sk.objs||[]).filter(q=>multi&&multi.ids.has(q.id)) }
+function multiObjs(sk){ return (sk.objs||[]).filter(q=>multi&&multi.ids.has(q.id)&&!layerLocked(sk,q)) }
 function multiDelete(){ const sk=curSk(); if(!sk||!multi||!multi.ids.size)return;
-  pushUndo(sk); const n=multi.ids.size; sk.objs=sk.objs.filter(q=>!multi.ids.has(q.id)); multi.ids.clear();
-  saveLocal(); renderSketch(); toast(n+" removed — Undo brings them back") }
+  const gone=(sk.objs||[]).filter(q=>multi.ids.has(q.id)&&!layerLocked(sk,q));
+  const kept=multi.ids.size-gone.length;
+  if(!gone.length)return toast("Everything selected is on a locked layer");
+  pushUndo(sk); const ids=new Set(gone.map(q=>q.id));
+  sk.objs=sk.objs.filter(q=>!ids.has(q.id)); multi.ids.clear();
+  saveLocal(); renderSketch();
+  toast(gone.length+" removed"+(kept?", "+kept+" left on a locked layer":"")+" — Undo brings them back") }
 
 /* 11. a quiet tick when a save lands */
 var TICKT=null;
@@ -150,7 +155,7 @@ function sketchExtraClick3(e,skc){
   const ip=t.closest("[data-inkpen]"); if(ip){ if(inkDraw)inkDraw.pen=ip.dataset.inkpen==="1"; keepScroll(()=>renderSketch()); return true }
   const ic=t.closest("[data-inkcol]"); if(ic){ if(inkDraw)inkDraw.col=ic.dataset.inkcol; keepScroll(()=>renderSketch()); return true }
   if(!skc)return false;
-  const rl=t.closest("[data-orotlock]"); if(rl){ const o=objAt(rl.dataset.orotlock); if(o){ o.lockR=!o.lockR; saveLocal(); keepScroll(()=>renderSketch()); toast(o.lockR?"Rotation locked":"Rotation unlocked") } return true }
+  const rl=t.closest("[data-orotlock]"); if(rl){ const o=objAt(rl.dataset.orotlock); if(o){ pushUndo(skc); o.lockR=!o.lockR; saveLocal(); keepScroll(()=>renderSketch()); toast(o.lockR?"Rotation locked":"Rotation unlocked") } return true }
   const ad=t.closest("[data-add]");
   if(ad&&ad.dataset.add==="ink"){ inkStart(); return true }
   // any other tool ends freehand, so the next tap places rather than draws
@@ -162,8 +167,7 @@ function sketchExtraClick3(e,skc){
   const mk=t.closest("[data-mink]");
   if(mk&&multi){ const objs=multiObjs(skc); if(objs.length){pushUndo(skc); objs.forEach(q=>q.ink=mk.dataset.mink); saveLocal(); keepScroll(()=>renderSketch())} return true }
   if(t.closest("[data-mdup]")&&multi){ const objs=multiObjs(skc); if(!objs.length)return true; pushUndo(skc);
-    const ids=new Set(); objs.forEach(q=>{const c=Object.assign({},q,{id:newId(),x:q.x+24,y:q.y+24}); delete c.meas; delete c.photoId;
-      if(c.t==="marker")c.n=String(nextMarkerNo(skc)); if(c.t==="photopoint")c.n=String(nextPhotoNo(skc)); skc.objs.push(c); ids.add(c.id)});
+    const ids=new Set(); objs.forEach(q=>{const c=dupObj(skc,q); skc.objs.push(c); ids.add(c.id)});
     multi.ids=ids; saveLocal(); keepScroll(()=>renderSketch()); toast(objs.length+" duplicated — the copies are selected"); return true }
   if(t.closest("[data-mdel]")&&multi){ multiDelete(); return true }
   return false;

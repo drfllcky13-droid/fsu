@@ -25,6 +25,48 @@ function objPt(o,fx,fy){
   const a=(o.r||0)*Math.PI/180, c=Math.cos(a), s=Math.sin(a);
   return {x:cx+lx*c-ly*s, y:cy+lx*s+ly*c};
 }
+/* The point a measurement refers to. A marker is a tent card with a spike at the bottom, and
+   the spike is what points at the item, so that is where the tape was pulled to — not the
+   middle of the card. Everything else is measured at its centre. Tapping to place already put
+   the spike on the tap point; this makes measuring agree with it. */
+const ANCHOR={marker:[.5,.96]};
+const objAnchor=o=>{const a=ANCHOR[o.t]||[.5,.5]; return objPt(o,a[0],a[1])};
+/* move o so its anchor lands on p, whatever its rotation */
+function placeAnchor(o,p){
+  const q=objAnchor(o);
+  o.x=Math.round(o.x+p.x-q.x); o.y=Math.round(o.y+p.y-q.y);
+}
+/* the stored tape distances are the record: put the drawing back where they say.
+   Returns how many objects moved. */
+function resolveMeas(sk){
+  if(!scaleOf(sk))return 0;
+  let n=0;
+  // ponytail: three passes, so a point measured from a point measured from a point still
+  // settles. A deeper chain than that would need a dependency sort.
+  for(let pass=0;pass<3;pass++)(sk.objs||[]).forEach(o=>{
+    if(!o.meas)return;
+    const p=solveMeas(sk,o.meas); if(!p)return;
+    const q=objAnchor(o);
+    if(Math.abs(p.x-q.x)<.5&&Math.abs(p.y-q.y)<.5)return;
+    placeAnchor(o,p); if(pass===0)n++;
+  });
+  return n;
+}
+/* a copy is not where the tape said it was, and must not share the original's photograph */
+function dupObj(sk,o){
+  const c=Object.assign({},o,{id:newId(),x:o.x+24,y:o.y+24});
+  delete c.meas; delete c.photoId;
+  if(c.t==="marker")c.n=String(nextMarkerNo(sk));
+  if(c.t==="photopoint")c.n=String(nextPhotoNo(sk));
+  return c;
+}
+/* where a new object goes: the chosen layer, but never a locked one */
+function targetLayer(sk){
+  const ls=layersOf(sk);
+  if(curLayer&&ls.some(l=>l.id===curLayer&&!l.locked))return curLayer;
+  for(let i=ls.length-1;i>=0;i--)if(!ls[i].locked)return ls[i].id;
+  return null;                       // every layer is locked
+}
 function dlBlob(blob,name){
   const u=URL.createObjectURL(blob);const a=document.createElement("a");
   a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
@@ -53,7 +95,8 @@ function refPoints(sk,excludeId){
 function refPt(sk,key){
   const [id,w]=String(key||"").split(":");
   const o=(sk.objs||[]).find(x=>x.id===id); if(!o)return null;
-  const f=CORNERS[w]||CORNERS.c; return objPt(o,f[0],f[1]);
+  const f=CORNERS[w]; if(!f||w==="c")return objAnchor(o);
+  return objPt(o,f[0],f[1]);
 }
 function refName(sk,key){ const r=refPoints(sk).find(x=>x.key===key); return r?r.name:"a removed point" }
 function solveMeas(sk,m){
@@ -135,10 +178,12 @@ function measSheet(sk,o){
         +fmtLen(sk,Math.hypot(refPt(sk,a).x-refPt(sk,b).x,refPt(sk,a).y-refPt(sk,b).y))+" apart");
       pushUndo(sk);
       o.meas={m:mode,a,b,da,db,side,ang};
-      o.x=Math.round(p.x-o.w/2); o.y=Math.round(p.y-o.h/2);
+      placeAnchor(o,p);
       sk.showMeas=true;
       saveLocal();closeSheet();renderSketch();
-      toast("Placed — "+fmtLen(sk,realPx(sk,da))+(mode==="polar"?" on a bearing of "+ang+"°":" and "+fmtLen(sk,realPx(sk,db))))};
+      const off=p.x<0||p.y<0||p.x>pageW(sk)||p.y>pageH(sk);
+      toast("Placed — "+fmtLen(sk,realPx(sk,da))+(mode==="polar"?" on a bearing of "+ang+"°":" and "+fmtLen(sk,realPx(sk,db)))
+        +(off?". That lands off the page — check the distances, or set a smaller scale.":""))};
   };
   draw();
 }
@@ -152,7 +197,7 @@ function measSVG(sk,liveId){
   (sk.objs||[]).forEach(o=>{
     if(!o.meas)return;
     const A=refPt(sk,o.meas.a), B=refPt(sk,o.meas.b); if(!A||!B)return;
-    const P=objPt(o,.5,.5), g=(o.id===liveId)?measGeom(sk,o):o.meas;
+    const P=objAnchor(o), g=(o.id===liveId)?measGeom(sk,o):o.meas;
     if(o.meas.m==="tri"){
       s+=seg(A,P,fmtLen(sk,realPx(sk,g.da)))+seg(B,P,fmtLen(sk,realPx(sk,g.db)));
     }else{
@@ -196,21 +241,28 @@ function buildWalls(segs,thick,head,start){
 function wallSheet(sk){
   const u=(sk.scale&&sk.scale.unit)||"ft";
   const st={tab:"room",rw:u==="ft"?"16":"5",rd:u==="ft"?"12":"4",head:"E",
-    thick:u==="ft"?"6 in":u==="m"?"0.15":u==="cm"?"15":"6",segs:[{len:"",turn:"S"},{len:"",turn:"R"}]};
+    thick:u==="ft"?"6 in":u==="m"?"0.15":u==="cm"?"15":"6",mt:"in",segs:[{len:"",turn:"S"},{len:"",turn:"R"}]};
   const grab=()=>{ ["rw","rd","thick"].forEach(k=>{const el=$("#w"+k); if(el)st[k]=el.value});
+    const mt=$("#wmt"); if(mt)st.mt=mt.value;
     const hd=$("#whead"); if(hd)st.head=hd.value;
     $$("[data-wlen]").forEach(el=>{st.segs[+el.dataset.wlen].len=el.value});
     $$("[data-wturn]").forEach(el=>{st.segs[+el.dataset.wturn].turn=el.value}) };
   const draw=()=>{
     openSheet(`<h3>Walls by dimension</h3>
-    ${scaleOf(sk)?`<p class="hint" style="margin:0 0 12px">Type the lengths off the tape. Corners meet cleanly on their own.</p>`
+    ${scaleOf(sk)?`<p class="hint" style="margin:0 0 12px">Type the lengths off the tape. Corners meet cleanly on their own.${
+        st.tab==="run"?" A run is measured down the middle of each wall.":""}</p>`
       :`<p class="hint" style="margin:0 0 12px">No scale is set yet. One is chosen so the walls fit the page, and the sketch becomes to scale from then on.</p>`}
     <div class="seg" style="margin-bottom:12px">
       <button id="wtroom"${st.tab==="room"?' class="on"':''}>Room</button>
       <button id="wtrun"${st.tab==="run"?' class="on"':''}>Run of walls</button></div>
     ${st.tab==="room"?`<div class="two">
       <label class="fld"><span>Width, left to right (${u})</span><input type="text" id="wrw" inputmode="decimal" value="${esc(st.rw)}"></label>
-      <label class="fld"><span>Depth, top to bottom (${u})</span><input type="text" id="wrd" inputmode="decimal" value="${esc(st.rd)}"></label></div>`
+      <label class="fld"><span>Depth, top to bottom (${u})</span><input type="text" id="wrd" inputmode="decimal" value="${esc(st.rd)}"></label></div>
+      <label class="fld"><span>Those lengths are measured</span><select id="wmt">
+        ${[["in","Inside the room, face to face — what a tape gives you"],
+           ["c","Down the middle of the walls"],
+           ["out","Outside, corner to corner"]]
+          .map(([k,n])=>`<option value="${k}"${st.mt===k?" selected":""}>${n}</option>`).join("")}</select></label>`
     :`<label class="fld"><span>The first wall runs</span><select id="whead">${[["N","North, up the page"],["E","East, to the right"],["S","South, down the page"],["W","West, to the left"]]
         .map(([k,n])=>`<option value="${k}"${k===st.head?" selected":""}>${n}</option>`).join("")}</select></label>
       <div class="wallrows">${st.segs.map((sg,i)=>`<div class="wallrow">
@@ -235,8 +287,13 @@ function wallSheet(sk){
       if(!(thick>0))return toast("Wall thickness needs a number");
       let segs;
       if(st.tab==="room"){
-        const w=parseLen(st.rw,u), d=parseLen(st.rd,u);
+        let w=parseLen(st.rw,u), d=parseLen(st.rd,u);
         if(!(w>0)||!(d>0))return toast("Width and depth both need a number");
+        // buildWalls works off the centreline, so a tape reading has to be converted first.
+        // Inside face to inside face is one wall thickness short of centre to centre.
+        const adj=st.mt==="in"?thick:st.mt==="out"?-thick:0;
+        w+=adj; d+=adj;
+        if(!(w>0)||!(d>0))return toast("Those walls are thicker than the room is wide");
         segs=[{len:w,turn:"S"},{len:d,turn:"R"},{len:w,turn:"R"},{len:d,turn:"R"}]; st.head="E";
       }else{
         segs=st.segs.map(s=>({len:parseLen(s.len,u),turn:s.turn}));
@@ -261,7 +318,7 @@ function wallSheet(sk){
       const y0=Math.min(...objs.map(o=>o.y)), y1=Math.max(...objs.map(o=>o.y+o.h));
       const top=hasHeader(sk)?HEADER_H+2:0;
       const dx=Math.round(pageW(sk)/2-(x0+x1)/2), dy=Math.round(top+(pageH(sk)-top)/2-(y0+y1)/2);
-      const ls=layersOf(sk), target=(curLayer&&ls.some(l=>l.id===curLayer))?curLayer:ls[ls.length-1].id;
+      const target=targetLayer(sk); if(!target)return toast("Every layer is locked — unlock one first");
       pushUndo(sk);
       objs.forEach(o=>{o.x+=dx;o.y+=dy;o.lay=target;sk.objs.push(o)});
       selObj=null; noteRecent("wall"); saveLocal(); closeSheet(); renderSketch();
@@ -299,6 +356,7 @@ function sizeRow(sel,sk){
 let STYLECLIP=null;
 function applyTypedSize(id,val){
   const sk=curSk(), o=objAt(selObj); if(!sk||!o)return;
+  if(layerLocked(sk,o))return toast((layerOf(sk,o)||{}).name+" is locked");
   const sc=scaleOf(sk);
   const toPx=s=>{const n=sc?parseLen(s,sc.unit||"ft"):parseFloat(s); return isNaN(n)?NaN:(sc?realPx(sk,n):n)};
   if(id==="osrot"){const r=parseFloat(val); if(isNaN(r))return toast("Rotation needs a number");
@@ -378,7 +436,7 @@ function polyFinish(){
   const P=polyDraw.pts;
   const x0=Math.min(...P.map(p=>p.x)), y0=Math.min(...P.map(p=>p.y));
   const w=Math.max(16,Math.max(...P.map(p=>p.x))-x0), h=Math.max(16,Math.max(...P.map(p=>p.y))-y0);
-  const ls=layersOf(sk), target=(curLayer&&ls.some(l=>l.id===curLayer))?curLayer:ls[ls.length-1].id;
+  const target=targetLayer(sk); if(!target)return toast("Every layer is locked — unlock one first");
   pushUndo(sk);
   const o={id:newId(),t:"poly",lay:target,x:Math.round(x0),y:Math.round(y0),w:Math.round(w),h:Math.round(h),r:0,
     label:"",ar:w/h,fp:"hatch",pts:P.map(p=>[+((p.x-x0)/w).toFixed(4),+((p.y-y0)/h).toFixed(4)])};
@@ -545,7 +603,7 @@ function tplBuiltin(){
 }
 const sktpls=()=>(S.sktpl=S.sktpl||[]);
 function applyTemplate(sk,objs,name){
-  const ls=layersOf(sk), target=(curLayer&&ls.some(l=>l.id===curLayer))?curLayer:ls[ls.length-1].id;
+  const target=targetLayer(sk); if(!target)return toast("Every layer is locked — unlock one first");
   pushUndo(sk);
   objs.forEach(o=>{const c=Object.assign({},o,{id:newId(),lay:target,label:o.label||"",r:o.r||0});
     delete c.photoId; delete c.meas; c.ar=c.ar||(c.w/c.h);
@@ -670,7 +728,7 @@ function exportDXF(sk){
   });
   objs.forEach(o=>{ if(!o.meas)return;
     const A=refPt(sk,o.meas.a), B=refPt(sk,o.meas.b); if(!A||!B)return;
-    const P=objPt(o,.5,.5), a=tx(A.x,A.y), b=tx(B.x,B.y), p=tx(P.x,P.y);
+    const P=objAnchor(o), a=tx(A.x,A.y), b=tx(B.x,B.y), p=tx(P.x,P.y);
     if(o.meas.m==="tri"){line("MEASUREMENTS",a,p);line("MEASUREMENTS",b,p);
       text("MEASUREMENTS",[(a[0]+p[0])/2,(a[1]+p[1])/2],7*k,fmtLen(sk,realPx(sk,o.meas.da)),0,true);
       text("MEASUREMENTS",[(b[0]+p[0])/2,(b[1]+p[1])/2],7*k,fmtLen(sk,realPx(sk,o.meas.db)),0,true)}
@@ -715,7 +773,8 @@ function sketchExtraClick(e,skc){
     if(!o){ addObj("marker"); o=objAt(selObj); if(!o)return true; showSet=true }
     measSheet(skc,o); return true }
   const om=t.closest("[data-omeas]");
-  if(om){ const o=objAt(om.dataset.omeas); if(o)measSheet(skc,o); return true }
+  if(om){ const o=objAt(om.dataset.omeas);
+    if(o&&layerLocked(skc,o))toast((layerOf(skc,o)||{}).name+" is locked"); else if(o)measSheet(skc,o); return true }
   const oc=t.closest("[data-ocopy]");
   if(oc){ const o=objAt(oc.dataset.ocopy); if(o){STYLECLIP={ink:o.ink||"",fp:o.fp,t:o.t};
       keepScroll(()=>renderSketch()); toast("Style copied — select another object and paste")} return true }

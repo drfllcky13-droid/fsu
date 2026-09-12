@@ -1,5 +1,23 @@
 # FSU change log
 
+## 2026.09.12.5
+Measuring to or from an evidence marker used the middle of its card instead of the spike at the
+bottom, so every such measurement was out by about half the marker height — roughly 2 ft 7 in at
+100 units to 10 feet, always in the same direction. Measurements now use the spike, which is where
+the tape is pulled to and where tapping already placed it. An existing sketch is put back onto its
+recorded tape distances the first time it opens; the recorded distances themselves are never
+changed. A sketch exported before this will not match one exported after it.
+
+Changing the scale, or flipping to portrait, left measured objects drawn where they were while the
+table printed the old distances. Duplicating an object copied its measurement and shared its
+photograph, so deleting one copy's photograph destroyed the other's. Walls typed by dimension took
+the lengths as centrelines when a tape reads the inside face; there is now a choice, set to inside.
+A real length typed as 12 feet 6 inches in the scale sheet became 12.
+
+Undo covers the whole sketch now, not just its objects: deleting a layer and undoing it brings the
+layer back with its name, and scale, portrait and rotation lock are undoable. Arrow-key nudges are
+undone as one gesture instead of not at all. Nothing can be dropped into a locked layer any more.
+
 ## Unreleased — sync merges instead of choosing a side
 Two devices that changed different things no longer fight. Saving to GitHub now reads the
 shared file, merges it into this device item by item, and writes the result, so two people

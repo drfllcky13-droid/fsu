@@ -1,0 +1,225 @@
+SKETCH SECTION — SURVEY AND PLAN
+2026-09-12
+
+Read first: renderSketch, SHAPES/SYM/PALETTE and the sketch keydown handler in src/app.js;
+all of src/ext-sketch-1.js (parseLen, solveMeas, buildWalls, DXF), ext-sketch-2.js (zoom,
+place, repairSketch) and ext-sketch-3.js (ink, multi, undo persistence).
+
+Ordered by what it costs the technician. Geometry first, because a measurement that is
+subtly wrong is the one failure this tool cannot recover from once the sketch is in a file.
+
+
+=====================================================================
+A. GEOMETRY AND MEASUREMENT — WRONG NUMBERS, FIX FIRST
+=====================================================================
+
+A1. THE MARKER'S ANCHOR IS ITS CENTRE, BUT ITS TIP IS WHAT POINTS AT THE ITEM.
+    SHAPES.marker draws a tent card with a downward spike at (0.50, 0.96) of its box.
+    placeAt() already honours that: tapping puts the SPIKE on the tap point.
+    Everything measured does not:
+      - refPoints() offers a marker as "<id>:c", and refPt() resolves :c to CORNERS.c
+        = (.5,.5). So measuring FROM a marker measures from a point 46% of the marker's
+        height above the spike.
+      - measSheet() places a measured object with o.x = p.x - o.w/2, o.y = p.y - o.h/2 —
+        it puts the CENTRE on the solved point, so the spike ends up 0.46*h below it.
+      - measGeom(), measSVG() and the DXF measurement block all use objPt(o,.5,.5).
+    Default marker box is 48x56 page units, so the error is 25.8 page units. At the common
+    100 units = 10 ft that is 2 ft 7 in, in an exhibit that will be read off in court, and
+    it is systematic: every marker, every measurement, always in the same direction.
+    FIX: one anchor function, objAnchor(o) — (.5,.96) for a marker, (.5,.5) for everything
+    else — used by refPt, measSheet's placement, measGeom, measSVG and the DXF block.
+    Tap-place and measure-place then agree on what a marker means, which they do not today.
+    MIGRATION: SKETCH_V 2 -> 3. On first open of an older sketch, every object carrying a
+    .meas is re-solved from its stored tape distances, which are the record; the drawing
+    follows the tape, not the other way round. An older build opening a migrated sketch
+    draws the marker where the new build drew it and reports centre-based distances — i.e.
+    exactly as wrong as it is today, no worse, and the .meas values are untouched.
+
+A2. CHANGING THE SCALE DOES NOT MOVE ANYTHING THAT WAS PLACED BY MEASUREMENT.
+    .meas stores real-world distances; positions are page units. scaleSheet writes
+    sk.scale and re-renders. After that, measSVG still prints the stored "12 ft" against a
+    line that is no longer 12 ft long, and the measurement table under the PDF disagrees
+    with the drawing. Setting the scale late (which the guide actively encourages: draw
+    first, set the scale from a dimension) is the normal way into this.
+    FIX: after a scale change, re-solve every object with a .meas. Report how many moved.
+
+A3. ARROW-KEY NUDGE IS THE LEAST-GUARDED MUTATION IN THE SKETCH.
+    nudge() writes o.x/o.y, saveLocal(), renderSketch() and nothing else. It therefore:
+      - does not push undo (see B3 for the decision);
+      - does not call measFromGeometry, so nudging a measured object desynchronises the
+        drawing from its measurement — the same failure as A2, one keystroke wide;
+      - does not check layerLocked, so a locked layer is not locked against the keyboard;
+      - does not clamp to the page, so an object can be walked off the sheet.
+
+A4. DUPLICATE CARRIES THE ORIGINAL'S MEASUREMENT AND PHOTOGRAPH.
+    Both the D shortcut and the panel's [data-odup] do
+      Object.assign({},o,{id:newId(),x:o.x+24,y:o.y+24})
+    and renumber markers only. So the copy, sitting 24 units away:
+      - keeps .meas, and therefore claims a tape measurement that is not its own;
+      - keeps .photoId, so the two objects share one photograph and deleting either one's
+        photograph (photoDel) destroys it for both;
+      - keeps a photopoint's number, producing two "P3" in the photograph log.
+    The multi-select duplicate in ext-sketch-3 already strips both and renumbers both. The
+    two single-object paths are the odd ones out.
+
+A5. WALLS BY DIMENSION MEASURES TO THE CENTRELINE, AND DOES NOT SAY SO.
+    buildWalls treats each typed length as the centreline and extends each rectangle by
+    thick/2 at both ends so corners mitre. A technician taping a room reads the INSIDE
+    face. Typing 16 x 12 for a room with 6 in walls therefore draws an inside dimension of
+    15 ft 6 in by 11 ft 6 in — a 3 in systematic error on every wall, which then propagates
+    into anything measured off a wall corner (refPoints offers named wall corners as fixed
+    points, so it propagates into the measurement record, not just the picture).
+    FIX: a "Measured to" choice on the Room tab — inside face (default, it is what a tape
+    gives you), centreline, outside face — converting to the centreline before building.
+    Run-of-walls keeps the centreline, since a run has no consistent inside.
+
+A6. THE SCALE SHEET'S "REAL LENGTH" FIELD USES parseFloat, NOT parseLen.
+    Typing 12'6" to declare a scale silently sets 12. Every length in the sketch then
+    carries a 4% error. parseLen exists and is used everywhere else.
+
+A7. measure() FORMATS A NEGATIVE FEET VALUE WRONG.
+    Math.floor(-1.5) = -2, then the remainder rounds to 6 in, printing -2' 6" for -1' 6".
+    Only reachable through a negative dimension, but it is one line.
+
+
+=====================================================================
+B. THE UNDO STACK MUST NOT LIE
+=====================================================================
+
+B1. THE SNAPSHOT IS sk.objs AND NOTHING ELSE.
+    snapOf() is JSON.stringify(sk.objs). So none of this can be undone: adding a layer,
+    renaming one, locking one, deleting one, setting or clearing the scale, flipping the
+    page to portrait, toggling measurement lines. Worse, deleting a layer DOES push undo,
+    so the button lights up and the user presses it: the objects get their old .lay back,
+    the layer itself does not come back, layerOf() silently falls through to layers[0], and
+    the layer's name is gone for good. The undo stack claims to have restored something it
+    has not. That is the failure mode the brief names.
+    FIX: snapshot {objs, layers, scale, portrait, showMeas}. Keep reading the old
+    array-shaped snapshots out of localStorage so a reload mid-shift does not lose history.
+
+B2. UNDO COVERAGE AUDIT — every path that mutates a sketch.
+    Has undo, correct:   panel delete, panel duplicate, Delete key, D key, ink finish,
+                         poly finish, add object, template, walls, measurement place and
+                         clear, typed size/rotation/fill, ink colour, rotate buttons,
+                         renumber, layer move drag, object move/resize/rotate drag, vertex
+                         drag, add/remove vertex, style paste, multi colour/duplicate/
+                         delete, reorder (forward/back/up/down), move to layer.
+    NO undo, mutates the record:
+        arrow-key nudge                   -> B3
+        layer rename                      -> B1 covers it once layers are in the snapshot
+        layer lock/unlock                 -> B1
+        scale set / "not to scale"        -> B1 + A2
+        portrait/landscape flip           -> B1
+        rotation lock toggle ([data-orotlock])  -> B1 (it is an object field; add pushUndo)
+        backdrop add/move/fit/brightness  -> left alone, see NOT DOING
+    Wrong shape of undo: the duplicate paths (A4) push undo and then write a bad copy.
+
+B3. WHAT TO DO ABOUT THE NUDGE. The current answer (no undo, because 40 taps would flush a
+    40-deep history) trades one real problem for a worse one: the arrow keys are the only
+    way to mutate the drawing that undo cannot reach, and they are exactly what a technician
+    uses on the desktop machine to tidy a sketch before export. The right answer is not "no
+    undo" or "undo per keystroke" but COALESCE: the first nudge of a run pushes one
+    snapshot, and subsequent nudges of the same object within 1.2 s of the last one do not.
+    A run of 40 taps then costs one entry and undoes as one gesture, which is what the user
+    means by "undo that". Cheap: one module-level {id,t} and a timestamp compare.
+
+
+=====================================================================
+C. LAYERS
+=====================================================================
+
+C1. NEW OBJECTS GO INTO A LOCKED LAYER WITHOUT COMPLAINT.
+    Five call sites compute the same target layer:
+      target = (curLayer && ls.some(l=>l.id===curLayer)) ? curLayer : ls[ls.length-1].id
+    (addObj, wallSheet, polyFinish, applyTemplate, inkFinish). None checks .locked. Lock a
+    layer, place a marker: it lands, gets selected, and then refuses to move — "Layer is
+    locked" — with no way to tell why it went there. One shared targetLayer(sk) that skips
+    locked layers, and says so when every layer is locked.
+
+C2. multiDelete IGNORES LOCKS. The marquee excludes locked objects and tap-to-add checks
+    the lock, but if a layer is locked AFTER objects are in the selection, Delete removes
+    them anyway. Filter in multiDelete.
+
+C3. LAYER DELETE re-homes objects into ls.find(x=>x.id!==L.id) — the first other layer,
+    which may not be the one next to it, and the count shown in the button ("3 objects move
+    out") does not say where they go. Say where.
+
+
+=====================================================================
+D. NOT DOING, AND WHY
+=====================================================================
+
+- NOT restructuring the three ext-sketch files into a module. They are append-only patches
+  over app.js with a hook convention (sketchExtraClick/extraPointerDown chains) that works
+  and is tested. RECOMMENDATION, not a change: the pointer-handler chain
+  (extraPointerDown3 || extraPointerDown2 || extraPointerDown) is the one place where the
+  ordering is load-bearing and invisible; if a fourth tool is ever added it should become a
+  registered list with named priorities rather than a fourth || term.
+- NOT changing the photopoint's anchor. Its symbol is a camera on a tripod; unlike a
+  marker it denotes a viewpoint, not a point on the ground, and moving its anchor would
+  migrate every photograph-log position for no gain in the record.
+- NOT making snapEdges rotation-aware. It snaps unrotated bounding boxes, so a rotated wall
+  snaps to the wrong edges. Alt already disables it and the grid covers the common case;
+  doing it properly means separating-axis work on every object every pointermove, which is
+  the wrong trade on an iPad.
+- NOT touching the sync layer, the PDF vector path, or the backdrop editor's undo. The
+  backdrop is not part of the measured record and its editor is live-preview by design.
+- NOT doing large-sketch performance work. renderSketch rebuilds the whole SVG string on
+  every change and patchSketchView diffs innerHTML; a 300-object sketch redraws in a few
+  ms and the drag paths already bypass it by patching single <g> elements. Measured before
+  guessed: nothing here is slow enough to justify the risk. RECOMMENDATION if it ever is:
+  the drag paths are already the right pattern, extend it to the nudge and colour paths.
+- NOT adding new tools (curved walls, area calculation, bearings from magnetic north).
+  Missing features cost less than wrong ones.
+
+
+=====================================================================
+E. ORDER OF WORK
+=====================================================================
+  1. A1 marker anchor + migration          (worst number, systematic)
+  2. A4 duplicate strips meas/photoId      (worst number, silent, shared photo is data loss)
+  3. B1 snapshot covers layers and scale   (undo stops lying)
+  4. A2 + A3 re-solve on scale change and nudge; nudge undo/lock/clamp
+  5. C1 + C2 locked-layer targeting and delete
+  6. A5 wall measured-to; A6 parseLen in the scale sheet; A7 negative feet
+  7. C3 wording, off-page measurement warning
+Each step leaves `cd fsu-tests && npx playwright test` green; geometry gets tests in
+fsu-tests/tests/sketch-geom.spec.js.
+
+
+=====================================================================
+F. WHAT WAS DONE  (2026-09-12, this pass)
+=====================================================================
+DONE  A1 marker anchor + v2->v3 migration      objAnchor / placeAnchor / resolveMeas
+DONE  A2 re-solve on a scale change (and on a portrait flip, which clamps positions)
+DONE  A3 nudge: undo, locked layer, page clamp, measurement kept in step
+DONE  A4 one dupObj() for all three duplicate paths — no shared .meas, no shared .photoId,
+         photopoints renumbered
+DONE  A5 room "Those lengths are measured" — inside face (default) / centre / outside
+DONE  A6 parseLen in the scale sheet's real-length field
+DONE  A7 negative feet
+DONE  B1 snapshot = {objs, layers, scale, portrait}, old array snapshots still apply
+DONE  B2 pushUndo added: layer rename, layer lock, scale set/clear, portrait flip,
+         rotation lock. Locked-layer guard added: nudge, D, panel delete, panel duplicate,
+         typed size/rotation/fill, place-by-measurement, multi delete and multi recolour.
+DONE  B3 nudge coalescing, 1.2 s window, one undo entry per run
+DONE  C1 targetLayer() shared by addObj, walls, poly, ink, templates
+DONE  C2 multiObjs/multiDelete exclude locked objects
+DONE  C3 layer delete says where the objects went and that undo brings the layer back
+DONE  off-page warning when a measurement solves outside the sheet
+
+Tests: fsu-tests/tests/sketch-geom.spec.js, 16 checks. Full suite 189 (was 173), green.
+Visual baselines unchanged — no view changed shape, only sheets gained a field.
+
+STILL OPEN, NOT FIXED
+- model.spec.js still skips markers, photopoints, moves, resizes and layer operations. The
+  setTimeout in addObj (syncMarker/syncPhoto write to other records a tick later) is why;
+  the model would need to await a frame after every add. sketch-geom.spec.js now covers
+  those paths directly instead, which is the cheaper half of the job, but the random-action
+  model is the one that finds what nobody thought of and it should be extended.
+- The backdrop editor (position, fit, brightness, saturation, opacity) mutates the sketch
+  with no undo at all. Out of scope here: it is not part of the measured record.
+- snapEdges is not rotation-aware (D).
+- DXF writes $INSUNITS into an AC1009 (R12) header, where it is not a defined variable.
+  Every reader tried ignores it rather than failing, and the drawing is in real units
+  regardless, so it is noise rather than a fault.

@@ -219,7 +219,7 @@ function objSVG(o,sel){
       <text x="4" y="${h/2+4}" class="k-brokent">Could not draw ${esc(SHAPENAME(o.t||"object"))}</text></g>`;
   }
 }
-const SKETCH_V=2;
+const SKETCH_V=3;
 function repairSketch(sk){
   let fixed=0; const num=(v,d)=>(typeof v==="number"&&isFinite(v))?v:d;
   if(!Array.isArray(sk.objs)){sk.objs=[];fixed++}
@@ -235,7 +235,14 @@ function repairSketch(sk){
     if((o.t==="poly"||o.t==="ink")&&(!Array.isArray(o.pts)||o.pts.length<(o.t==="ink"?2:3)||o.pts.some(p=>!Array.isArray(p)||!isFinite(+p[0])||!isFinite(+p[1])))){o.pts=o.t==="ink"?[[0,0],[1,1]]:[[0,0],[1,0],[1,1],[0,1]];fixed++}
     if(o.meas&&(!o.meas.a||!isFinite(+o.meas.da))){delete o.meas;fixed++}
   });
-  layersOf(sk); if(sk.v!==SKETCH_V)sk.v=SKETCH_V;
+  layersOf(sk);
+  if(sk.v!==SKETCH_V){
+    // v3: a marker's measurement refers to its spike, not the middle of its card. The tape
+    // distances are the record, so the drawing is put back where they say — which for a
+    // marker moves it by about half its height. Nothing in .meas is touched.
+    if(!(sk.v>=3)&&resolveMeas(sk))saveLocal();
+    sk.v=SKETCH_V;
+  }
   return fixed;
 }
 

@@ -1614,8 +1614,8 @@ function measure(sk,px){
   const s=scaleOf(sk); if(!s)return null;
   const v=px*unitsPer(sk);
   const u=s.unit||"ft";
-  if(u==="ft"){const ft=Math.floor(v),inch=Math.round((v-ft)*12);
-    return inch===12?(ft+1)+"\u2032":(inch?ft+"\u2032 "+inch+"\u2033":ft+"\u2032")}
+  if(u==="ft"){const sg=v<0?"-":"", a=Math.abs(v), ft=Math.floor(a), inch=Math.round((a-ft)*12);
+    return sg+(inch===12?(ft+1)+"\u2032":(inch?ft+"\u2032 "+inch+"\u2033":ft+"\u2032"))}
   return (Math.round(v*100)/100)+" "+u;
 }
 const dimLen=o=>Math.sqrt(o.w*o.w+o.h*o.h);
@@ -3675,10 +3675,14 @@ function palPreview(t){
   return `<svg viewBox="${-pad} ${-pad} ${w+pad*2} ${hh+pad*2}" class="pvs"
     preserveAspectRatio="xMidYMid meet">${(SHAPES[t]||SHAPES.rect)(w,hh)}</svg>`;
 }
-// undo history, one stack per sketch, objects only
+// undo history, one stack per sketch
 const UNDO={}, REDO={};
 const UNDOMAX=40;
-function snapOf(sk){ return JSON.stringify(sk.objs||[]) }
+const NUDGE={id:null,t:0};      // a run of arrow-key nudges is one undo entry
+// The snapshot is the drawn record: the objects, the layers they belong to, the scale their
+// measurements are read against, and the page shape. Layers used to be left out, so undoing a
+// deleted layer put the objects back pointing at a layer that no longer existed.
+function snapOf(sk){ return JSON.stringify({o:sk.objs||[],l:layersOf(sk),s:sk.scale||null,p:!!sk.portrait}) }
 function pushUndo(sk){
   if(!sk)return;
   sk.updated=new Date().toISOString();
@@ -3688,8 +3692,19 @@ function pushUndo(sk){
   REDO[sk.id]=[];                      // a new change abandons the redo branch
 }
 function applySnap(sk,json){
-  sk.objs=JSON.parse(json); persistUndo(sk);
+  const d=JSON.parse(json);
+  if(Array.isArray(d))sk.objs=d;                 // a snapshot written before layers were covered
+  else{
+    sk.objs=d.o||[];
+    if(Array.isArray(d.l)&&d.l.length)sk.layers=d.l;
+    if(d.s)sk.scale=d.s; else delete sk.scale;
+    sk.portrait=!!d.p;
+  }
+  persistUndo(sk);
   if(!sk.objs.some(o=>o.id===selObj))selObj=null;
+  if(!layersOf(sk).some(l=>l.id===curLayer))curLayer=null;
+  if(multi)multi.ids.forEach(id=>{if(!sk.objs.some(o=>o.id===id))multi.ids.delete(id)});
+  NUDGE.id=null;
   saveLocal(); renderSketch();
 }
 function doUndo(){
@@ -3708,11 +3723,11 @@ const canUndo=sk=>!!(sk&&UNDO[sk.id]&&UNDO[sk.id].length);
 const canRedo=sk=>!!(sk&&REDO[sk.id]&&REDO[sk.id].length);
 function addObj(t){
   const sk=S.sketches.find(x=>x.id===curSketch); if(!sk)return;
+  const target=targetLayer(sk);
+  if(!target)return toast("Every layer is locked — unlock one first");
   pushUndo(sk);
   const[w,hh]=DEFSIZE[t]||[120,80];
   const top=hasHeader(sk)?HEADER_H:0;
-  const ls=layersOf(sk);
-  const target=(curLayer&&ls.some(l=>l.id===curLayer))?curLayer:ls[ls.length-1].id;
   const o={id:newId(),t,lay:target,x:Math.round(pageW(sk)/2-w/2),
     y:Math.round(top+(pageH(sk)-top)/2-hh/2),w,h:hh,r:0,label:"",ar:w/hh};
   if(t==="marker"){o.n=String(nextMarkerNo(sk)); setTimeout(()=>syncMarker(sk,o),0)}
@@ -3840,12 +3855,19 @@ function scaleSheet(sk){
     if(!o||o.t!=="dim")return toast("Select a dimension first");
     $("#scpx").value=Math.round(dimLen(o))};
   const cl=$("#scclear");
-  if(cl)cl.onclick=()=>{delete sk.scale;saveLocal();closeSheet();renderSketch();toast("No longer to scale")};
+  if(cl)cl.onclick=()=>{pushUndo(sk);delete sk.scale;saveLocal();closeSheet();renderSketch();toast("No longer to scale")};
   $("#scsave").onclick=()=>{
-    const px=parseFloat($("#scpx").value), real=parseFloat($("#screal").value);
-    if(!(px>0)||!(real>0))return toast("Both lengths need a number");
-    sk.scale={px,real,unit:$("#scunit").value};
-    saveLocal();closeSheet();renderSketch();toast("Scale set")};
+    const unit=$("#scunit").value;
+    const px=parseFloat($("#scpx").value), real=parseLen($("#screal").value,unit);
+    if(!(px>0))return toast("The drawn length needs a number");
+    if(!(real>0))return toast(unit==="ft"?"The real length needs a number, like 12 or 12' 6\"":"The real length needs a number");
+    pushUndo(sk);
+    sk.scale={px,real,unit};
+    // .meas holds real-world tape distances, so a new scale means everything placed by
+    // measurement is now drawn in the wrong place. The tape is the record: follow it.
+    const moved=resolveMeas(sk);
+    saveLocal();closeSheet();renderSketch();
+    toast("Scale set"+(moved?" — "+moved+" measured object"+(moved===1?"":"s")+" moved to match the tape":""))};
 }
 function sketchMetaSheet(sk){
   const now=new Date().toISOString().slice(0,16);
@@ -4869,13 +4891,17 @@ document.addEventListener("click",e=>{
     const sk=S.sketches.find(x=>x.id===curSketch); if(sk)bgSheet(sk); return }
   if(e.target.closest("[data-skrot]")){
     const sk=curSk(); if(!sk)return;
+    pushUndo(sk);
     sk.portrait=!sk.portrait;
     const W=pageW(sk),H=pageH(sk);
     (sk.objs||[]).forEach(o=>{
       o.w=Math.min(o.w,W); o.h=Math.min(o.h,H);
       o.x=Math.max(0,Math.min(W-o.w,o.x));
       o.y=Math.max(hasHeader(sk)?HEADER_H+2:0,Math.min(H-o.h,o.y))});
-    saveLocal();renderSketch();return}
+    const off=resolveMeas(sk);   // the clamp above would otherwise silently break measurements
+    saveLocal();renderSketch();
+    if(off)toast(off+" measured object"+(off===1?"":"s")+" put back where the tape says — some may now sit off the page");
+    return}
   if(e.target.closest("#syncnow")){
     if(conflict||tokenBad||badFile){openSettings("sync");return}
     syncErr="";retries=0;renderSyncBar();toast("Retrying");ghPush(false);return}
@@ -5010,9 +5036,11 @@ document.addEventListener("click",e=>{
   const orr=e.target.closest("[data-orot]");
   if(orr){const o=objAt(orr.dataset.orot);if(o){if(o.lockR)return toast("Rotation is locked");pushUndo(skc);o.r=((o.r||0)+15)%360;saveLocal();renderSketch()}return}
   const od=e.target.closest("[data-odup]");
-  if(od){const o=objAt(od.dataset.odup);if(o&&skc){pushUndo(skc);const c=Object.assign({},o,{id:newId(),x:o.x+24,y:o.y+24});
-    if(c.t==="marker")c.n=String(nextMarkerNo(skc));
-    skc.objs.push(c);selObj=c.id;saveLocal();renderSketch()}return}
+  if(od){const o=objAt(od.dataset.odup);if(o&&skc){
+    if(layerLocked(skc,o))return toast((layerOf(skc,o)||{}).name+" is locked");
+    pushUndo(skc);const c=dupObj(skc,o);
+    skc.objs.push(c);selObj=c.id;saveLocal();renderSketch();
+    if(o.meas)toast("Copied. The copy has no measurement — measure it where it actually is")}return}
   if(e.target.closest("#newlay")){
     if(!skc)return; pushUndo(skc); const L=addLayer(skc); curLayer=L.id;
     keepScroll(()=>renderSketch()); return toast(L.name+" added \u2014 new objects go here")}
@@ -5022,7 +5050,7 @@ document.addEventListener("click",e=>{
     return toast("Drawing into "+(L?L.name:"layer"))}
   const llk=e.target.closest("[data-laylock]");
   if(llk&&skc){const L=layersOf(skc).find(x=>x.id===llk.dataset.laylock);
-    if(L){L.locked=!L.locked;
+    if(L){pushUndo(skc);L.locked=!L.locked;
       if(L.locked){ showSet=false;
         const o=selObj?objAt(selObj):null;
         if(o&&(o.lay||layersOf(skc)[0].id)===L.id)selObj=null }
@@ -5078,19 +5106,22 @@ document.addEventListener("click",e=>{
             count?" ("+count+" object"+(count===1?"":"s")+" move out)":""}</button>`:""}
         <button class="btn sec" id="lnx" style="max-width:none">Cancel</button></div>`);
     $("#lnx").onclick=closeSheet;
-    $("#lnsave").onclick=()=>{L.name=$("#lnv").value.trim()||L.name;saveLocal();closeSheet();
-      keepScroll(()=>renderSketch());toast("Saved")};
+    $("#lnsave").onclick=()=>{const nm=$("#lnv").value.trim();
+      if(nm&&nm!==L.name){pushUndo(sk2);L.name=nm}
+      saveLocal();closeSheet();keepScroll(()=>renderSketch());toast("Saved")};
     $("#lndraw").onclick=()=>{curLayer=L.id;closeSheet();keepScroll(()=>renderSketch());
       toast("Drawing into "+L.name)};
     $("#lnmove").onclick=()=>layerMoveStart(sk2,L);
     const dl=$("#lndel");
     if(dl)dl.onclick=()=>{
-      const other=ls.find(x=>x.id!==L.id);
+      const other=ls.find(x=>x.id!==L.id&&!x.locked)||ls.find(x=>x.id!==L.id);
       pushUndo(sk2);
       (sk2.objs||[]).forEach(o=>{if((o.lay||ls[0].id)===L.id)o.lay=other.id});
       sk2.layers=ls.filter(x=>x.id!==L.id);
       if(curLayer===L.id)curLayer=other.id;
-      saveLocal();closeSheet();keepScroll(()=>renderSketch());toast("Layer deleted")};
+      saveLocal();closeSheet();keepScroll(()=>renderSketch());
+      toast(count?count+" object"+(count===1?"":"s")+" moved to "+other.name+" — Undo brings the layer back"
+        :"Layer deleted — Undo brings it back")};
     return}
   const ost=e.target.closest("[data-oset]");
   if(ost){selObj=ost.dataset.oset; showSet=true; keepScroll(()=>renderSketch()); return}
@@ -5107,6 +5138,7 @@ document.addEventListener("click",e=>{
     if(i>-1){skc.objs.push(skc.objs.splice(i,1)[0]);saveLocal();keepScroll(()=>renderSketch())}return}
   const oz=e.target.closest("[data-odel]");
   if(oz&&skc){const o=objAt(oz.dataset.odel);if(!o)return;
+    if(layerLocked(skc,o))return toast((layerOf(skc,o)||{}).name+" is locked");
     // no confirmation: undo covers a mistake, and a sheet was getting in the way on iPad
     pushUndo(skc);skc.objs=skc.objs.filter(x=>x.id!==o.id);selObj=null;saveLocal();
     keepScroll(()=>renderSketch());
@@ -5404,7 +5436,20 @@ document.addEventListener("keydown",e=>{
   if(view!=="sketch"||!selObj)return;
   const o=objAt(selObj); if(!o)return;
   const step=e.shiftKey?10:1;
-  const nudge=(dx,dy)=>{o.x+=dx;o.y+=dy;saveLocal();renderSketch();e.preventDefault()};
+  // One undo entry per run of nudges, not one per keystroke: 40 taps would otherwise flush the
+  // whole history, and undoing a tidy-up one pixel at a time is not what anyone means by undo.
+  const nudge=(dx,dy)=>{
+    e.preventDefault();
+    const sk=S.sketches.find(x=>x.id===curSketch); if(!sk)return;
+    if(layerLocked(sk,o))return toast((layerOf(sk,o)||{}).name+" is locked");
+    const now=Date.now();
+    if(NUDGE.id!==o.id||now-NUDGE.t>1200)pushUndo(sk); else sk.updated=new Date().toISOString();
+    NUDGE.id=o.id; NUDGE.t=now;
+    const W=pageW(sk), H=pageH(sk), top=hasHeader(sk)?HEADER_H+2:0;
+    o.x=Math.max(-o.w*.4,Math.min(W-o.w*.6,o.x+dx));
+    o.y=Math.max(Math.min(top,o.y),Math.min(H-o.h*.6,o.y+dy));
+    if(o.meas)measFromGeometry(sk,o,true);  // the drawing and the measurement stay in step
+    saveLocal();renderSketch()};
   if(e.key==="ArrowLeft")return nudge(-step,0);
   if(e.key==="ArrowRight")return nudge(step,0);
   if(e.key==="ArrowUp")return nudge(0,-step);
@@ -5417,10 +5462,11 @@ document.addEventListener("keydown",e=>{
     e.preventDefault();return}
   if(e.key==="d"||e.key==="D"){
     const sk=S.sketches.find(x=>x.id===curSketch); if(!sk)return;
+    if(layerLocked(sk,o))return toast((layerOf(sk,o)||{}).name+" is locked");
     pushUndo(sk);
-    const c=Object.assign({},o,{id:newId(),x:o.x+24,y:o.y+24});
-    if(c.t==="marker")c.n=String(nextMarkerNo(sk));
-    sk.objs.push(c);selObj=c.id;saveLocal();renderSketch()}
+    const c=dupObj(sk,o);
+    sk.objs.push(c);selObj=c.id;saveLocal();renderSketch();
+    if(o.meas)toast("Copied. The copy has no measurement — measure it where it actually is")}
 });
 window.addEventListener("online",()=>{if(ghOn()&&(dirty||syncErr)){syncErr="";renderSyncBar();ghPush(false)}});
 window.addEventListener("offline",()=>renderSyncBar());
