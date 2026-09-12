@@ -1877,9 +1877,9 @@ const SHAPES={
  road:      (w,hh)=>{const dash=Math.max(10,hh*.30), gap=dash*.8;
  return `<path d="M0 ${hh*.06} L${w} ${hh*.06} M0 ${hh*.94} L${w} ${hh*.94}" class="k-stroke"/>
  <path d="M0 ${hh*.5} L${w} ${hh*.5}" class="k-stroke" stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}"/>`},
- marker:    (w,hh)=>`<path d="M${w*.06} ${hh*.04} L${w*.94} ${hh*.04} L${w*.94} ${hh*.70}
-   L${w*.56} ${hh*.70} L${w*.50} ${hh*.96} L${w*.44} ${hh*.70} L${w*.06} ${hh*.70} Z"
-   class="k-stroke" fill="var(--bg,#fff)"/>`,
+ marker:    (w,hh)=>`<path d="M${w*.04} ${hh*.02} L${w*.96} ${hh*.02} L${w*.96} ${hh*.55}
+   L${w*.50} ${hh*.98} L${w*.04} ${hh*.55} Z" class="k-stroke" fill="var(--bg,#fff)"/>
+   <path d="M${w*.04} ${hh*.55} L${w*.96} ${hh*.55}" class="k-stroke"/>`,
  pistol:    (w,hh)=>`${(()=>{const a=WPN.pistol;return `<g transform="scale(${w/a[3]},${hh/a[4]}) translate(${-a[1]},${-a[2]})" class="k-fill" fill-rule="evenodd">${a[0]}</g>`})()}`,
  revolver:  (w,hh)=>`${(()=>{const a=WPN.revolver;return `<g transform="scale(${w/a[3]},${hh/a[4]}) translate(${-a[1]},${-a[2]})" class="k-fill" fill-rule="evenodd">${a[0]}</g>`})()}`,
  rifle:(w,hh)=>`${(()=>{const a=WPN.rifle;return `<g transform="scale(${w/a[3]},${hh/a[4]}) translate(${-a[1]},${-a[2]})" class="k-fill" fill-rule="evenodd">${a[0]}</g>`})()}`,
@@ -2058,7 +2058,7 @@ const DEFSIZE={ink:[120,60],centreline:[220,16],doubleline:[220,16],passzone:[22
  table:[160,106],roundtable:[130,101],chair:[60,61],sofa:[170,79],bed:[150,136],desk:[160,105],cabinet:[140,72],
  counter:[190,115],fridge:[78,69],stove:[92,76],sink:[92,64],toilet:[66,58],bath:[160,76],tv:[110,51],
  car:[180,83],truck:[190,82],motorcycle:[130,60],bicycle:[120,59],tree:[92,85],bush:[80,55],fence:[220,30],
- pole:[30,30],dumpster:[118,101],road:[420,110],marker:[48,56],body:[96,168],
+ pole:[30,30],dumpster:[118,101],road:[420,110],marker:[48,92],body:[96,168],
  north:[52,53],legend:[300,190],dim:[200,0],arrow:[130,40],line:[160,20],rect:[150,110],circle:[110,110],text:[160,34],
  pistol:[96,59],revolver:[96,63],rifle:[150,53],magazine:[30,58],cartridge:[16,50],casing:[18,46],
  bullethole:[44,50],knife:[84,14],machete:[104,71],hammer:[44,67],bat:[84,78],crowbar:[92,59],
@@ -3054,8 +3054,9 @@ function objSVGRaw(o,sel){
         class="k-lead"/>`:"")
     :"";
   const num=(o.t==="marker"&&String(o.n||"").trim())
-    ?`<text x="${o.w*.50}" y="${o.h*.53}" class="k-num"
-    style="font-size:${Math.max(12,o.h*.44)}px">${esc(o.n)}</text>`:"";
+    ?(()=>{const n=String(o.n).trim(), fit=n.length>2?2/n.length:1;
+      return `<text x="${o.w*.50}" y="${o.h*.41}" class="k-num"
+        style="font-size:${Math.max(10,o.h*.34*fit)}px">${esc(n)}</text>`})():"";
   // a locked layer is part of the picture: nothing to grab, nothing drawn round it
   const locked=skNow?layerLocked(skNow,o):false;
   const live=sel&&!locked;

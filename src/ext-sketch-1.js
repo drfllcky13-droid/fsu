@@ -25,11 +25,11 @@ function objPt(o,fx,fy){
   const a=(o.r||0)*Math.PI/180, c=Math.cos(a), s=Math.sin(a);
   return {x:cx+lx*c-ly*s, y:cy+lx*s+ly*c};
 }
-/* The point a measurement refers to. A marker is a tent card with a spike at the bottom, and
-   the spike is what points at the item, so that is where the tape was pulled to — not the
-   middle of the card. Everything else is measured at its centre. Tapping to place already put
-   the spike on the tap point; this makes measuring agree with it. */
-const ANCHOR={marker:[.5,.96]};
+/* The point a measurement refers to. A marker is a card standing on a point, and the point is
+   what sits on the item, so that is where the tape was pulled to — not the middle of the card.
+   Everything else is measured at its centre. Tapping to place already put the point on the tap
+   point; this makes measuring agree with it. */
+const ANCHOR={marker:[.5,.98]};
 const objAnchor=o=>{const a=ANCHOR[o.t]||[.5,.5]; return objPt(o,a[0],a[1])};
 /* move o so its anchor lands on p, whatever its rotation */
 function placeAnchor(o,p){

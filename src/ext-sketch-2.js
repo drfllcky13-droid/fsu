@@ -97,7 +97,7 @@ function placeBar(){
 function placeAt(x,y){
   const sk=curSk(); if(!sk||!PLACE)return;
   const t=PLACE.t; addObj(t); const o=objAt(selObj); if(!o)return;
-  if(t==="marker"){o.x=snapVal(x-o.w/2); o.y=snapVal(y-o.h*.96)}       // the pointer's tip sits on the spot
+  if(t==="marker"){o.x=snapVal(x-o.w/2); o.y=snapVal(y-o.h*.98)}       // the pointer's tip sits on the spot
   else {o.x=snapVal(x-o.w/2); o.y=snapVal(y-o.h/2)}
   if(!PLACE.sticky)PLACE=null;
   saveLocal(); keepScroll(()=>renderSketch());
@@ -219,7 +219,7 @@ function objSVG(o,sel){
       <text x="4" y="${h/2+4}" class="k-brokent">Could not draw ${esc(SHAPENAME(o.t||"object"))}</text></g>`;
   }
 }
-const SKETCH_V=3;
+const SKETCH_V=4;
 function repairSketch(sk){
   let fixed=0; const num=(v,d)=>(typeof v==="number"&&isFinite(v))?v:d;
   if(!Array.isArray(sk.objs)){sk.objs=[];fixed++}
@@ -240,7 +240,9 @@ function repairSketch(sk){
     // v3: a marker's measurement refers to its spike, not the middle of its card. The tape
     // distances are the record, so the drawing is put back where they say — which for a
     // marker moves it by about half its height. Nothing in .meas is touched.
-    if(!(sk.v>=3)&&resolveMeas(sk))saveLocal();
+    // v4 redraws the marker as a card on a full-width point, so its tip moved again. Same
+    // rule as v3: the tape distances are the record and the drawing is put back onto them.
+    if(!(sk.v>=4)&&resolveMeas(sk))saveLocal();
     sk.v=SKETCH_V;
   }
   return fixed;

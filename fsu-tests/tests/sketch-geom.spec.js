@@ -20,18 +20,18 @@ test("a marker is measured at its spike, not the middle of its card",async({page
     const sk=curSk();
     addObj("refpoint"); const a=objAt(selObj); a.x=100; a.y=500; a.r=0;
     addObj("marker");   const m=objAt(selObj); m.x=300; m.y=300; m.r=0;
-    const spike=objPt(m,.5,.96), centre=objPt(m,.5,.5);
+    const spike=objPt(m,.5,.98), centre=objPt(m,.5,.5);
     // the point the measurement engine uses for a marker, taken through refPt's ":c" key
     const used=refPt(sk,m.id+":c");
     // and placing the same marker by measurement must put the spike, not the centre, on it
     const p=solveMeas(sk,{m:"polar",a:a.id+":c",da:20,ang:90});     // 20 ft east of the ref point
     placeAnchor(m,p);
     return {used:[used.x,used.y], spike:[spike.x,spike.y], centre:[centre.x,centre.y],
-      afterSpike:[objPt(m,.5,.96).x,objPt(m,.5,.96).y], want:[p.x,p.y], h:m.h};
+      afterSpike:[objPt(m,.5,.98).x,objPt(m,.5,.98).y], want:[p.x,p.y], h:m.h};
   });
   expect(r.used).toEqual(r.spike);
   expect(r.used).not.toEqual(r.centre);
-  expect(r.spike[1]-r.centre[1]).toBeCloseTo(r.h*0.46,6);   // the error this fixes, in page units
+  expect(r.spike[1]-r.centre[1]).toBeCloseTo(r.h*0.48,6);   // the error this fixes, in page units
   expect(Math.abs(r.afterSpike[0]-r.want[0])).toBeLessThan(1);   // integer rounding of x,y only
   expect(Math.abs(r.afterSpike[1]-r.want[1])).toBeLessThan(1);
 });
@@ -128,7 +128,7 @@ test("an older sketch's markers are re-solved onto their tape distances when it 
     const right=pxReal(sk,Math.hypot(objAnchor(m).x-A.x,objAnchor(m).y-A.y));
     return {wrong,right,v:sk.v,da:m.meas.da};
   });
-  expect(r.v).toBe(3);
+  expect(r.v).toBe(4);   // migrated to the current shape, whatever it is today
   expect(r.da).toBe(20);                      // the record itself is untouched
   expect(Math.abs(r.wrong-20)).toBeGreaterThan(1);   // more than a foot out before migrating
   expect(r.right).toBeCloseTo(20,1);
