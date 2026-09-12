@@ -449,6 +449,7 @@ async function ghPush(force){
     const r=await fetch(ghURL(),{method:"PUT",headers:Object.assign({"Content-Type":"application/json"},ghHead()),
       body:JSON.stringify(body)});
     if(r.status===409||r.status===422){conflict=true;store.set(S);renderData();
+      renderSyncBar();renderSyncPill();   // the bar is how you find out, wherever you are
       return toast("Someone else changed the data — see Sync")}
     if(!r.ok)throw new Error(r.status===401?"Token rejected":r.status===403?"No write access":"GitHub error "+r.status);
     const j=await r.json();S.gh.sha=j.content.sha;S.gh.last=new Date().toISOString();
@@ -950,9 +951,22 @@ function renderCompDetail(){
 
 /* ---------- item detail ---------- */
 let curItem=null, curForm=null, prevView="home";
+const SHEETABLE='button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
+const sheetStops=()=>[...$("#sheet").querySelectorAll(SHEETABLE)].filter(e=>!e.disabled&&e.offsetParent!==null);
 function openSheet(html){$("#sheetbody").innerHTML=html;$("#scrim").classList.add("on");
-  const f=()=>{if($("#scrim").classList.contains("on"))$("#sheet").classList.add("on")};
+  const f=()=>{if($("#scrim").classList.contains("on")){$("#sheet").classList.add("on");
+    const st=sheetStops(); if(st.length&&!$("#sheet").contains(document.activeElement))st[0].focus()}};
   typeof requestAnimationFrame==="function"?requestAnimationFrame(f):setTimeout(f,16)}
+// while a sheet is up it is the only thing on screen, so the keyboard stays inside it
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Tab")return;
+  const sh=$("#sheet"); if(!sh||!sh.classList.contains("on"))return;
+  const st=sheetStops(); if(!st.length)return;
+  const first=st[0], last=st[st.length-1], here=document.activeElement;
+  if(!sh.contains(here)){e.preventDefault();(e.shiftKey?last:first).focus();return}
+  if(!e.shiftKey&&here===last){e.preventDefault();first.focus()}
+  else if(e.shiftKey&&here===first){e.preventDefault();last.focus()}
+});
 function askConfirm(title,body,label,danger,fn){
   openSheet(`<h3>${esc(title)}</h3>
     <p style="margin:0 0 16px;color:var(--ink2);font-size:14.5px;line-height:1.5">${esc(body)}</p>

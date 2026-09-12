@@ -1,105 +1,111 @@
-FSU test tooling — what exists now, and what else is worth building
+FSU test tooling — what exists, what it found, what is left
 2026-09-12
 
 
-BUILT TODAY
+THE CHECKS
 
-crawl.js          Presses every control in every view, one level into any sheet a
-                  control opens. Reports a nav control whose target view is missing or
-                  that lands somewhere else, a button that changed nothing at all, and
-                  anything a handler throws. Saved state and the open item/sketch/
-                  incident pointers are snapshotted and put back after every click, and
-                  controls that delete, export, send or sign are named, not pressed.
+Run them all with `npx playwright test` from fsu-tests. 94 checks, about 20 seconds.
+The four console tools also run by hand on the iPad: open the app, paste the file into
+the console. That is how they are meant to be used away from a desk.
 
-visible.js        Layout audit per view at the current window size, checked at the top
-                  of the page and again at the bottom. Reports elements outside the
-                  window horizontally, content cut off by a hidden overflow, a control
-                  with something on top of it, a control with text that takes no space,
-                  and controls under 44px (advisory).
+sweep.js        Was already here. Switches through each view looking for render errors,
+                NaN in a symbol, duplicate ids, page-level overflow, and a data- attribute
+                with no handler behind it.
 
-fsu-tests/tests/ui.spec.js
-                  Runs the crawl at 1500 and 393px and the layout audit at 1500, 1194,
-                  393 and 320px in both colour schemes. It seeds an incident, a scaled
-                  sketch, an open bay, compartment and item first, because those views
-                  have no controls until something is open.
+crawl.js        Presses every control in every view, and one level into any sheet a control
+                opens. Reports a nav control whose target view is missing or that lands
+                somewhere else, a handler that throws, and a button that does nothing.
+                Saved state and the open item, sketch, incident, bay and compartment are
+                snapshotted and put back after every click. Controls that delete, export,
+                send or sign are named, not pressed. 375 controls at desktop width, 474 on
+                an iPad in portrait.
 
-Both files run in the console with the app open, the same way sweep.js does, so they
-are usable on the iPad without the test harness.
+visible.js      Layout audit per view at the current window size, checked at the top of the
+                page and again at the bottom. Anything outside the window horizontally,
+                content cut off by a hidden overflow, a control with something on top of it,
+                a control with text that takes no space, and controls under the tap size.
+                A sticky header or fixed tab bar scrolling over content is not counted: that
+                is how scrolling works.
 
-First finding: app.js declared no `curForm`, and app.js is in strict mode, so opening
-any form in Templates threw "curForm is not defined" and the sheet never opened. Fixed
-by declaring it alongside curItem. That bug was invisible to the old suite.
+contrast.js     The WCAG ratio for every piece of text against the background behind it.
+                Prints, never fails a run: which colour to change is a design call.
 
-Still reported, all correct behaviour rather than defects: Undo and Redo with an empty
-history, zoom out at the minimum, a tab that is already active, and Home while on Home.
-They would read better disabled at their limit, which is a design call, not a bug.
-
-
-WORTH BUILDING NEXT, ROUGHLY IN ORDER OF WHAT IT WOULD CATCH
-
-1. Offline check. DONE, fsu-tests/tests/offline.spec.js. The worker takes over, the page
-   opens with the network cut, an incident started and a compartment checked offline are
-   still there after an offline reload, and every same-origin file the page asks for is in
-   the cache. That last list is one entry, index.html, because the app is one file on
-   purpose; it earns its keep the day something external gets added and never cached.
-
-2. Data round trip across versions. Take a saved state from an older STOCKV, load it,
-   and assert the migration leaves every item, compartment and sketch intact, then
-   export a case package and read it back. A silent migration bug loses van data, which
-   is the one failure with no undo.
-
-3. Storage-full behaviour. Fill localStorage to the quota, then save. The app already
-   has a save-failure bar; this proves it appears instead of losing a scene halfway
-   through documenting one. Worth pairing with a big-data run: 600 items and 40 sketches,
-   asserting render stays under a budget on an iPad-class CPU throttle.
-
-4. Print and PDF layout. Reports, the printable map, the labels sheet and install.html
-   are paper deliverables. Render each with Playwright's print media emulation and
-   assert nothing lands off the page and no row splits across a page break.
-
-5. Contrast DONE, contrast.js and fsu-tests/tests/contrast.spec.js; it reports and never
-   fails a run, because which colour to change is a design call. Findings below. The
-   keyboard half is still open: tab through each view asserting focus is visible and never
-   trapped in a sheet.
-
-6. Sync conflict drill. Two browser contexts pointed at the same van-data repo, both
-   editing, one pushing first. Assert the second gets the conflict path and no write is
-   silently lost.
-
-7. Screenshot baselines. Playwright's toHaveScreenshot per view per width, so a CSS
-   change that shifts a layout shows up as a picture rather than as nothing. Only worth
-   it once the layout has settled, otherwise the baselines churn.
-
-8. A real iPad pass. The crawl and the layout audit now run in WebKit as well, which is
-   the engine Safari uses, and both are clean. That is the cheap 80%; the last 20% is
-   holding the actual iPad, where the home-screen shell, the on-screen keyboard and the
-   pencil are not something a desktop WebKit build reproduces.
+fsu-tests/tests/
+  fsu.spec.js       Was already here. The render sweep at four widths in both schemes, and
+                    the sketch flows: measurement maths, walls, placement, ink, marquee,
+                    layers, DXF and PDF export, the save-failure bar, case package round
+                    trip, undo after a reload.
+  ui.spec.js        The crawl and the layout audit, at 1500 and 1280 for a desktop and
+                    1194x834 and 834x1194 for an iPad either way up, in Chromium and in
+                    WebKit, which is the engine Safari uses.
+  contrast.spec.js  The contrast report in both schemes.
+  keyboard.spec.js  Tab moves through every view, focus is visible wherever it lands, a
+                    sheet can be left with Escape, and the keyboard stays inside a sheet
+                    while it is up.
+  offline.spec.js   The worker takes over, the page opens with the network cut, an incident
+                    started and a compartment checked offline survive a reload, and every
+                    file the page asks for is in the cache.
+  print.spec.js     The compartment map, the labels sheet and the install sheet fit inside
+                    a letter page, and the map really renders as a PDF.
+  storage.spec.js   localStorage is filled to the quota: a refused write raises the red bar,
+                    nothing disappears from the running app, and the bar clears and the data
+                    saves once there is room again.
+  migration.spec.js A record written under van3, vaninv2 or vaninv still loads, an old
+                    record gains this version's stock forms without losing the unit's own,
+                    and a case package goes out and comes back whole.
+  sync.spec.js      GitHub is stubbed, so no token and no network: a file changed by another
+                    device is reported and never silently overwritten, pushing over theirs
+                    takes a second deliberate act, pulling takes their version whole, and a
+                    lapsed token says so.
+  bulk.spec.js      600 extra items and 40 sketches, rendered at a quarter speed to stand in
+                    for an older iPad. Budget 200ms a view; the worst today is about 85.
+  visual.spec.js    Picture baselines for Home, Storage and Items at iPad width in both
+                    schemes. Skipped on CI, where another machine's font rendering would
+                    fail every run. After a deliberate change:
+                    npx playwright test tests/visual.spec.js --update-snapshots
 
 
-WHAT THE CONTRAST CHECK FOUND, AND THE FOUR COLOURS BEHIND IT
+WHAT THEY FOUND, AND WHAT WAS CHANGED
 
-51 of 1503 pieces of text under AA in light, 24 in dark, nearly all of it four tokens in
-app.css. None of this is changed: it is your look, and the numbers are here so the call is
-yours.
+curForm was never declared, and app.js is in strict mode, so opening any form in Templates
+threw before the sheet could show. One declaration. Found by the crawl on its first run.
 
---ink3 #8E8E93, the secondary label grey, is nearly all of it. On white it reads 3.26 where
-body text needs 4.5; in dark it is fine on the page and on a card (6.44 and 5.22) and fails
-only on the #2C2C2E panels, at 4.27. It carries the small print everywhere: "27 not
-checked", "Not placed yet", every column heading. Light could take #6C6C70, which is what
---ink2 already is, for 5.23. Dark could take #AEAEB2, again --ink2, for 6.30 on those
-panels.
+A sheet was not a focus trap: with a sheet up, Tab walked straight out into the page behind
+it. openSheet now moves focus into the sheet and Tab cycles inside it while it is up.
+Escape already closed the sheet and still does.
 
---ambersolid #E8890B with white text, the Sweep tile on Home. 2.62 light, 3.85 dark. The
-amber badge a few lines up in the same stylesheet already uses near-black text (#1a1200) on
-amber; the same choice here reads 7.09.
+On a sync clash the app set the flag and re-drew the Sync screen, but never the bar or the
+pill, so unless you happened to be on that screen you were not told that another device had
+changed the van list. The conflict branch now raises both.
 
---blue #57A6FF with white text in dark, on "Start an incident". 2.53, the worst number in
-the app, and it is the primary action. Either near-black text on that blue, or keep white
-text and darken the blue to #1A6FD0, which gives 4.97. Near-black on the blue as it
-stands gives 7.47.
+Contrast: 51 of 1503 pieces of text under AA in light, 24 in dark. Now zero in both, worst
+4.40 light and 4.93 dark. Four things changed, all in app.css:
+  --ink3 8E8E93 -> 6C6C70 light, 9A9AA0 dark, and --grey with it. This was nearly all of it:
+    the grey carries the small print at 10-13px everywhere.
+  --amber A96400 -> 8F5400 in light, the unverified warning strip.
+  The Sweep tile: white text on solid amber was 2.62. Now near-black through a new --onamber,
+    the same choice the amber badge already made.
+  Text on a blue fill: white on 57A6FF in dark was 2.53, the worst in the app and the primary
+    button. Now near-black through a new --onblue. Light keeps white on 0A62C4 at 5.90.
+  The van drawing kept the old grey through a new --metal, so darkening the label colour did
+  not repaint the bodywork.
 
---amber #A96400 as text on --amberbg #FDF2E0, the unverified warning strip. 4.20, just
-under. #8F5400 clears it at 5.52.
+Tap size is reported, never asserted. At iPad width the sidebar toggle is 36x34, "Set your
+initials" 91x19, the header gear 87x31 and the side-nav rows 231x43, all just under the 44px
+guideline. Gloved hands in a van is where that matters, so they are worth a look, but moving
+them is a layout decision and nothing has been moved.
 
-The muted grey is the one worth doing regardless of taste: it is used for small text at
-10-13px, which is where a low ratio actually costs you a reading in a van in daylight.
+Still reported by the crawl and all correct: Undo and Redo with an empty history, zoom out
+at the minimum, a tab that is already active, Home while on Home. They would read better
+disabled at their limit, which is a design call.
+
+
+WHAT IS LEFT
+
+A real iPad. Everything here runs in Chromium and WebKit on a desktop. The home-screen
+shell, the on-screen keyboard, the pencil and Safari's own scrolling are not reproduced by a
+desktop WebKit build. Nothing on this list replaces holding the thing in the van.
+
+A real sync drill against the live van-data repo. The stub proves the app's side of a clash.
+It does not prove GitHub's, and running it for real needs a token, which belongs on a device
+and not in a test file.

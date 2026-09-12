@@ -1,5 +1,18 @@
 # FSU change log
 
+## 2026.09.12.3
+Text that was too faint to read has been darkened. The small grey print everywhere, the
+warning strip, the Sweep tile and the blue buttons in dark mode all now clear the contrast
+standard for readable text; nothing else about the look changes, and the van drawing keeps
+its old grey.
+
+A sheet now holds the keyboard while it is up, instead of letting Tab wander into the page
+behind it. If another device changes the van list while you are saving, the red bar says so
+wherever you are, not only on the Sync screen.
+
+Checks added for offline, keyboard, print, a full storage, older saved data, a case package
+round trip, a sync clash, and a van list with years of data in it.
+
 ## 2026.09.12.2
 Offline checks: the app opens with the network cut, an incident started and a compartment
 checked offline survive a reload, and every file the page asks for is in the cache. A
