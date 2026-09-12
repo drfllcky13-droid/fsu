@@ -58,7 +58,19 @@ back buttons call `navBack(fallback)`. Tab clicks go through `go(v)`, which clea
 **Layout.** Three modes driven by body classes: phone (bottom tabs), `wide`, `xwide`
 (side nav, and a split master/detail pane for drill-downs listed in `DETAILS`).
 
-**Sync.** Optional GitHub push of a JSON payload. **Sketches, filled forms and photographs are
+**Sync.** Optional, to one file in a private repo, and it **merges per record** rather than
+pushing the whole file and hoping. Every item, compartment and form carries `_v` (a Lamport
+counter, so a wrong clock cannot reorder anything), `_d` (the device that set it) and, when
+deleted, a tombstone. Records are stamped by diffing against `S.base` at sync time, not at the
+hundreds of places that call `save()` — do not add stamping to edit sites, it is deliberately
+not there. Tombstones live in `S.tomb` in memory but travel inside the arrays on the wire,
+shaped so an old build's own filters hide them; that is what lets a build that predates all of
+this round-trip the file without corrupting it. Absence is never deletion. The losing side of a
+same-record clash is kept in `S.conflicts` and offered back in Settings › Automatic saving.
+**SYNC_DESIGN.txt at the repo root is the full reasoning and every failure case.**
+`fsu-tests/tests/sync.spec.js` drives all of it against a stubbed GitHub.
+
+**Sketches, filled forms and photographs are
 deliberately excluded** from both sync and backup — that is case material and it stays on the
 device. Keep that. The only way case material leaves the device is a **case package** (Settings › Case packages,
 or Scene › Save a case package): one JSON file with incidents, forms, sketches and photographs,

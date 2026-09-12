@@ -1,0 +1,358 @@
+SYNC DESIGN — van data between devices
+2026-09-12
+
+--------------------------------------------------------------------------------
+1. WHAT IS WRONG TODAY  (verified against src/app.js)
+--------------------------------------------------------------------------------
+
+Your read of it is correct on every point. Line numbers as of this writing:
+
+* app.js:436  payload() serialises items, comps, forms (fills stripped), walls,
+  demo, lastCat, lastCls, savedAt. One blob.
+* app.js:453  ghPush() PUTs that blob with the sha it last saw. GitHub refuses
+  with 409 when the sha is stale.
+* app.js:463  a 409 sets conflict=true and the person is offered exactly two
+  buttons (app.js:4239-4241): "Push over theirs" — their edits gone — or "Pull
+  from GitHub" — mine gone (ghPull at app.js:447 does S.items=o.items||[], a
+  straight assignment). There is no merge and nothing keeps the losing copy.
+* Two devices that touched *different* items produce that same 409. That is the
+  common case, and it currently costs somebody their afternoon.
+* A device offline for a week hits the identical path with a week on the line.
+* app.js:5008 — the Connect flow has its own version of the same cliff:
+  "They can't be merged — pick which one survives."
+* Scene material (incidents, fills, sketches) is genuinely not in payload().
+* S.ghExp is typed in by hand (app.js:4253) and the expiry warning at
+  app.js:4184 says "saving stopped" — which is a lie, nothing stops. A real 401
+  sets syncErr and retries forever on backoff (app.js:471-473), so a lapsed
+  token looks like a flaky network.
+
+One thing you did not mention that is worse than any of the above: a 409 leaves
+`dirty` true and re-arms nothing. The bar says "see Sync". If the technician
+does not go and look, the device keeps accumulating unpushed work behind a
+conflict flag indefinitely.
+
+--------------------------------------------------------------------------------
+2. WHAT CHANGES, IN ONE PARAGRAPH
+--------------------------------------------------------------------------------
+
+Pushing becomes read-merge-write instead of write-and-hope. Before every PUT the
+device GETs the current file, merges it into its own copy record by record, and
+PUTs the merge with the sha it just read; a 409 in that narrow window simply
+loops. Merging per record needs three things on each record: a version stamp
+that does not depend on the clock (a Lamport counter), the id of the device that
+set it, and a tombstone when the record is deleted. Two devices that edited
+different records both keep their work with no prompt at all. Two devices that
+edited the *same* record still have to have a winner — the merge picks one
+deterministically, and stashes the loser on the device that lost it, where it
+can be put back with one tap. Nothing is discarded without a copy.
+
+--------------------------------------------------------------------------------
+3. THE MODEL
+--------------------------------------------------------------------------------
+
+3.1 Record identity
+  items   keyed by  id     (already a stable random id, app.js newId())
+  comps   keyed by  code   (comps have no id; the code is the key, as it already
+                            is everywhere in the app)
+  forms   keyed by  id
+Renaming a compartment code is therefore a delete plus an add. That is already
+how the rest of the app treats it.
+
+3.2 Stamps
+  r._v  integer, a Lamport counter
+  r._d  this device's id (S.dev, a newId() generated once)
+  r._x  1 on a tombstone, with r._t an ISO date for garbage collection
+
+S.lam is the device's counter. Every stamp does ++S.lam. Every merge does
+S.lam = max(S.lam, highest _v seen in the file). That is the whole Lamport
+rule and it is why a wrong clock cannot reorder anything.
+
+Winner between two versions of the same record: higher _v; on a tie, higher _d
+string. The tie-break is arbitrary but it is the *same* arbitrary on every
+device, so all devices converge on the same answer without talking to each
+other.
+
+3.3 How records get stamped — no stamping at the edit sites
+There are several hundred places in app.js that mutate a record and call save().
+Stamping each of them is a large diff and one missed site is a silent
+correctness hole. Instead the device keeps S.base: for each record key, a hash
+of its content as it stood at the last successful sync. Immediately before any
+merge, stampDirty() walks the records, re-hashes them, and stamps anything whose
+hash moved or that has no base entry at all. A key that is in base and no longer
+in the array was deleted — that is where tombstones come from, also for free.
+
+The hash is over a canonical serialisation (keys sorted, _-prefixed fields
+skipped), so key order and the stamps themselves do not perturb it.
+
+Consequence worth stating plainly: a mutation that is written and then reverted
+to the identical bytes before a sync does not count as an edit. That is correct
+behaviour, not a gap.
+
+3.4 Tombstones
+In memory they live in S.tomb = {items:{id:{_v,_d,_t}}, comps:{}, forms:{}},
+*not* in S.items. That is deliberate: it means not one of the hundreds of
+readers of S.items needs a "skip the dead ones" filter, and not one of the
+delete sites needs to change. They keep doing S.items.filter(...) and the
+tombstone is synthesised from the base diff.
+
+On the wire they are written back *into* the items/comps/forms arrays, shaped so
+an old build of the app cannot see them (see §5). splitTomb()/joinTomb() at the
+fetch/PUT boundary is the only code that knows about the difference.
+
+Tombstones are dropped 90 days after _t. 90 days is far past the offline-for-a-
+week case with room to spare, and _t is only compared against a three-month
+threshold so an hour of clock skew is irrelevant.
+
+3.5 What is merged and what is not
+  items, comps, forms   per record, as above
+  walls                 one value, last-writer-wins on S.wallsV/S.wallsD
+  demo                  no longer synced as a flag; it is recomputed after every
+                        merge as "is there any record still marked demo".
+  lastCat, lastCls      no longer synced. They are this-device UI memory — which
+                        category you last typed into — in the same class as
+                        curLoc, which was never synced. Removing them removes a
+                        merge question that has no right answer.
+  fills, sketches,
+  incidents             still not synced. See §7.
+
+--------------------------------------------------------------------------------
+4. THE FLOWS
+--------------------------------------------------------------------------------
+
+ghPush()
+  1. stampDirty()  -> also returns the set of keys this device has changed
+  2. GET the file  -> remote, sha         (404: there is no file yet, skip to 4)
+  3. merge remote into local
+  4. PUT join(local) with that sha
+  5. 409 in that window: another device wrote between 2 and 4. Go to 1, up to
+     four times, then give up and raise the old conflict flag. In practice step
+     5 does not fire; it exists so that it is not a data-loss path when it does.
+  6. on success, rebase (S.base := hashes of what was just pushed)
+
+ghPull()
+  Same merge, then rebase, then push if the merge produced anything the remote
+  does not have. A pull can no longer discard local work, so the pull button is
+  now just "check for changes" and is safe to press at any time.
+
+Cost: one extra GET per push. Push is debounced 2.5s; a PAT allows 5000 requests
+an hour. Not a constraint at this scale.
+
+--------------------------------------------------------------------------------
+5. THE OLD-BUILD PROBLEM
+--------------------------------------------------------------------------------
+
+Mid-rollout an iPad in a van is running yesterday's build, which pulls with
+S.items=o.items and pushes payload() — whole file, no stamps, no knowledge of
+tombstones. Three properties make that safe:
+
+(a) The merge is a union. Absence is never deletion. Only a tombstone deletes.
+    So an old device pushing its stale copy cannot remove anything: the next new
+    device to sync simply puts the missing records back. Self-healing.
+
+(b) Tombstones ride inside the items/comps/forms arrays on the wire, so an old
+    device round-trips them instead of dropping them. If they lived in a
+    top-level "tomb" key the old build's payload() would silently drop it and
+    every deletion would resurrect.
+
+(c) An items tombstone is written as
+        {id, _x:1, _v, _d, _t, name:"", status:"Not carried", gapType:"deliberate"}
+    An old build's live() excludes status "Not carried"; its gaps() and
+    requests() both exclude gapType "deliberate". So it is invisible on the old
+    build too, in every list, without the old build knowing anything.
+
+What an old build still costs:
+  - a comps tombstone has no equivalent hiding place, so a deleted compartment
+    shows as an empty compartment on an old device until it updates. Compartment
+    deletion is rare (one site, app.js:4594). Accepted.
+  - a forms tombstone shows as a blank-named form template on an old device.
+    Same reasoning.
+  - an old push drops the top-level lam and wallsV keys. lam is recovered as
+    max(_v) on the next merge. A lost wallsV means the next walls edit wins by
+    default; walls are edited about once a year.
+  - an old device that *edits* a record does not bump _v. Change detection is by
+    content hash, not by _v, so its edit still propagates normally. It only
+    loses a genuine simultaneous edit, and the loser is stashed.
+
+The file format version is recorded as "v":2 but nothing branches on it; it is
+there for the next person. Compatibility is structural, not versioned, which is
+what makes it survive a build that has never heard of it.
+
+--------------------------------------------------------------------------------
+6. REJECTED
+--------------------------------------------------------------------------------
+
+Wall-clock timestamps instead of a Lamport counter. One iPad whose date is wrong
+by a year would win, or lose, every conflict forever. Rejected for exactly the
+failure case you listed.
+
+Field-level merge (merge the individual fields of one item). It is only a little
+more code, but it invents records that no human ever entered: qty from one
+device and expiry date from another, agreeing with nobody's copy. On an
+inventory that feeds evidence handling that is worse than picking a side and
+keeping the other one recoverable.
+
+One file per record in the repo. It is the textbook answer and it removes
+conflicts almost entirely. It also means one HTTP request per record — hundreds
+on first sync, a rate-limit problem, minutes of spinner on an iPad on LTE, and
+a git history nobody can read. Rejected on cost.
+
+Two files (a data file plus an append-only journal of edits). Better conflict
+behaviour still, but it doubles the request count and needs its own compaction,
+which is a second thing to get wrong. The union merge gets most of the benefit.
+
+A QR code on a connected device that carries the token to a second device. This
+is the obvious setup shortcut and I am not building it: it puts the token into
+a picture that can be photographed off a screen or left in a camera roll, and
+the hard constraint is that the token is never written anywhere but this
+browser. tests/security.spec.js would not catch a base64 QR, which is precisely
+why it should not be done.
+
+Encrypting the token into a shareable string. Same objection plus a passphrase
+to lose.
+
+Syncing scene material. See §7.
+
+--------------------------------------------------------------------------------
+7. SCENE MATERIAL — DECIDED: IT STAYS OFF GITHUB
+--------------------------------------------------------------------------------
+
+Incidents, filled forms and sketches continue not to sync. This is not inertia:
+
+* The store is a GitHub repository. It is private, but it is a commit history on
+  a third-party service reachable by any token ever issued against it and by
+  anyone who administers that account. Van inventory is logistics. Scene
+  material is case material, and the unit has an evidence system for that. The
+  README already promises this in writing and the install sheet repeats it.
+* A token that lapses and is reissued is a routine annoyance for an inventory
+  list. For case material it would be a disclosure question.
+* Sketches carry embedded images. One documented scene is comfortably larger
+  than the entire inventory file; the read-merge-write cycle above reads the
+  whole file on every push, and that cost is linear in file size.
+
+What it costs: scene material still moves device-to-device only as an exported
+case package, by hand. That is the right trade and it should be written down as
+a decision rather than left as an accident, which is what this section is.
+
+--------------------------------------------------------------------------------
+8. BEHAVIOUR IN EACH FAILURE CASE
+--------------------------------------------------------------------------------
+
+Two devices editing different items
+  Both edits survive, both devices end up with both, nobody is prompted and
+  nothing appears in the bar. This is the case that used to cost an afternoon.
+
+Two devices editing the same item
+  Higher _v wins; tie broken on device id, identically on both devices. The
+  device that lost keeps its own version in S.conflicts and shows
+  "1 of your edits was replaced by another device — review" in Settings ›
+  Automatic saving, with the old value shown and a "Put mine back" button that
+  re-applies it (it gets a fresh, higher stamp and wins the next round). Nothing
+  is lost; somebody has to decide, which is honest, because a computer cannot
+  know whether 4 or 6 boxes are actually on the shelf.
+
+A device offline for a week
+  Its edits stamp on first sync, and merge in as ordinary per-record edits.
+  Records the week's other devices did not touch land untouched. Records they
+  did touch resolve as above, and this device is likely to *lose* those (its
+  counter is a week behind), so its versions are the ones stashed — which is the
+  correct direction: the stale device's copies are the suspect ones, and they
+  are still recoverable.
+
+A delete on one device and an edit to the same record on another
+  Tombstone and edit are both stamped records and are compared the same way. If
+  the delete wins the record goes; the edit is stashed on the editing device, so
+  the technician who typed it can see what happened and put it back. If the edit
+  wins the record survives and the deleting device gets it back on its next
+  merge — which reads, correctly, as "somebody was still using that".
+
+The clock on one device being wrong
+  Ordering does not consult the clock at all. Nothing misresolves. Three
+  cosmetic effects remain: "Synced 14:32" shows that device's idea of the time;
+  a tombstone's 90-day expiry is judged against a wrong clock, which needs to be
+  three months out to matter; and the token countdown is a date subtraction, so
+  a badly wrong clock can claim the token expires next week. The countdown no
+  longer claims saving has stopped — saving stops when GitHub says 401 and not
+  before.
+
+A token that has lapsed
+  401 or 403 on a write stops the retry loop instead of backing off forever,
+  sets a distinct state, and shows "The access token has expired or been
+  revoked. Your changes are safe on this device." with a Reconnect button. The
+  token is not erased and the queued work stays queued: paste a new token and
+  everything that piled up pushes. Expiry is read from GitHub's own
+  github-authentication-token-expiration response header when it is exposed, so
+  the countdown is right without anyone typing a date.
+
+Storage that refuses writes
+  Unchanged and already correct: store.set falls back to an in-memory record
+  (app.js:166) and the save-failed banner goes up. Sync keeps working from that
+  in-memory copy, which is in fact the one case where sync is the only thing
+  saving the work. S.base lives in the same record, so a device in this state
+  re-stamps everything on each merge: noisier, not wrong.
+
+A half-written file
+  GitHub's contents API commits atomically, so a genuinely torn file is not
+  reachable through it; what is reachable is a file some other tool wrote badly.
+  If the fetched content will not base64-decode or will not parse, or parses to
+  something with no items array, the device does not merge and does not push
+  over it. It raises "The file in the repo can't be read" and offers one
+  explicit button to replace it with this device's copy. Refusing to
+  auto-overwrite matters: if the remote is intact and our *parse* is what broke,
+  auto-overwriting would destroy every other device's work.
+
+A device still running the old version
+  Section 5.
+
+--------------------------------------------------------------------------------
+9. SETUP
+--------------------------------------------------------------------------------
+
+The honest answer first: with no server, the fine-grained PAT generated by hand
+in GitHub's UI is irreducible. Anything that would remove it — a device code
+flow, an OAuth app, a token broker — is a server. Anything that would move an
+existing token to a second device without retyping it is a copy of the token
+somewhere it should not be. There is no trick available here and I am not going
+to invent one.
+
+So the token dance stays, and the things around it get shorter:
+
+* The connect form loses two of its five fields. "File path" is always
+  data.json and is now a constant. "Token expires on" is read from GitHub's
+  response header on connect; the manual date field only appears if the header
+  was not exposed. What is left is owner, repository (both pre-filled) and the
+  token — one paste and one button.
+* Connecting a device that already has data no longer asks anyone to choose
+  which copy survives. It merges. That dialog was the single most dangerous
+  screen in the app and it is gone.
+* A lapsed token is a Reconnect button in the sync bar that opens straight to
+  the token field, rather than a repeat of the whole setup.
+* README's setup section is rewritten to match, and says out loud that a second
+  device is set up by generating or reusing the token in GitHub, not by copying
+  anything out of the app.
+
+--------------------------------------------------------------------------------
+10. WHAT THIS COSTS
+--------------------------------------------------------------------------------
+
+* One extra GET per push.
+* S.base — one hash per record — is carried in local storage and in nothing else.
+  On a 400-record van that is a few kilobytes.
+* Tombstones live in the file for 90 days, so the file is slightly larger than
+  the live data.
+* A same-record conflict still needs a human. It is surfaced and reversible
+  rather than silent, which is the most that can be true without inventing
+  records nobody entered.
+* Mid-rollout, an old build shows deleted compartments and blank form templates
+  until it is updated. Deleted items are invisible to it.
+* A device that has never synced defers to the repo for any record they both
+  already hold, and does not stash its own copy of those. It has no base to
+  judge against, so it has no basis to claim its copy is the newer one — and on
+  a fresh device those records are the seeded defaults, which must not beat the
+  real van. The one case this costs is two devices that separately restored the
+  same backup, edited it, and then connected: the second one's edits to records
+  they share defer. Records only that device has still survive. Connect a device
+  before a shift's work, not after, and this cannot arise.
+* GitHub's token-expiry response header is read when it is exposed to the page.
+  If a future GitHub stops exposing it the countdown falls back to the date
+  typed in by hand, which is still offered under Settings. Nothing else depends
+  on it.

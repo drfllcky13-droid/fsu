@@ -1,5 +1,25 @@
 # FSU change log
 
+## Unreleased — sync merges instead of choosing a side
+Two devices that changed different things no longer fight. Saving to GitHub now reads the
+shared file, merges it into this device item by item, and writes the result, so two people
+working at once — or a device that has been out of signal for a week — both keep their work
+with nobody being asked anything. Deletions carry across properly instead of quietly coming
+back, and an iPad still running an older build cannot damage any of it.
+
+When two devices did change the *same* item, one of them has to win. The app picks, the same
+way on every device and without consulting the clock, and keeps the other version under
+Settings › Automatic saving with a **Put mine back** button. Nothing is thrown away.
+
+Connecting a device is shorter: owner, repository, token, and no more being asked which copy
+of the data survives. The token's expiry comes from GitHub instead of being typed in. A token
+that has lapsed now says so plainly, stops retrying, holds everything typed since, and offers
+a Reconnect button that asks only for the new token. A file in the repo that will not open is
+reported and never written over.
+
+Scene material — incidents, filled forms, sketches, photographs — still does not sync, on
+purpose. SYNC_DESIGN.txt at the repo root says why, and covers every failure case.
+
 ## 2026.09.12.4
 The interface is quieter. One spacing and type scale runs through every panel, row, tile and
 button instead of each carrying its own numbers; panel headers are captions rather than filled

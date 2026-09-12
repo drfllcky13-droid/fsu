@@ -6,9 +6,9 @@ html.theme-light{color-scheme:light}
   --ink:#000000;--ink2:#6C6C70;--ink3:#6C6C70;
   --line:#D8D8DC;--line2:#E8E8ED;
   --blue:#0A62C4;--bluebg:#E8F0FB;
-  --red:#D62B20;--redbg:#FDECEA;--redsolid:#D93A2E;
+  --red:#D62B20;--redbg:#FDECEA;--redink:#A8261C;--redsolid:#D93A2E;
   --amber:#8F5400;--amberbg:#FDF2E0;--ambersolid:#E8890B;--onamber:#12100A;--onblue:#FFFFFF;--metal:#8E8E93;
-  --green:#1E8A45;--greenbg:#E7F5EC;--greensolid:#22A153;
+  --green:#1E8A45;--greenbg:#E7F5EC;--greenink:#156632;--greensolid:#22A153;
   --grey:#6C6C70;--greybg:#EFEFF2;
   --dark:#22262B;--darkink:#FFFFFF;
   --sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
@@ -30,9 +30,9 @@ html.theme-light{color-scheme:light}
   --ink:#FFFFFF;--ink2:#AEAEB2;--ink3:#9A9AA0;
   --line:#38383A;--line2:#2C2C2E;
   --blue:#57A6FF;--bluebg:#132A44;
-  --red:#FF6B5E;--redbg:#3A1B18;--redsolid:#C7382C;
+  --red:#FF6B5E;--redbg:#3A1B18;--redink:#FF6B5E;--redsolid:#C7382C;
   --amber:#F0A93B;--amberbg:#3A2A10;--ambersolid:#B87209;--onamber:#12100A;--onblue:#12100A;--metal:#8E8E93;
-  --green:#4CD07D;--greenbg:#13301F;--greensolid:#1C8746;
+  --green:#4CD07D;--greenbg:#13301F;--greenink:#4CD07D;--greensolid:#1C8746;
   --grey:#9A9AA0;--greybg:#2C2C2E;
   --dark:#3A3F45;--darkink:#FFFFFF;
   --kpv:#E8E8E8;
@@ -43,9 +43,9 @@ html.theme-dark{
   --ink:#FFFFFF;--ink2:#AEAEB2;--ink3:#9A9AA0;
   --line:#38383A;--line2:#2C2C2E;
   --blue:#57A6FF;--bluebg:#132A44;
-  --red:#FF6B5E;--redbg:#3A1B18;--redsolid:#C7382C;
+  --red:#FF6B5E;--redbg:#3A1B18;--redink:#FF6B5E;--redsolid:#C7382C;
   --amber:#F0A93B;--amberbg:#3A2A10;--ambersolid:#B87209;--onamber:#12100A;--onblue:#12100A;--metal:#8E8E93;
-  --green:#4CD07D;--greenbg:#13301F;--greensolid:#1C8746;
+  --green:#4CD07D;--greenbg:#13301F;--greenink:#4CD07D;--greensolid:#1C8746;
   --grey:#9A9AA0;--greybg:#2C2C2E;
   --dark:#3A3F45;--darkink:#FFFFFF;
 }
@@ -53,9 +53,9 @@ html.theme-light{  --bg:#F2F2F7;--card:#FFFFFF;--card2:#F7F7FA;
   --ink:#000000;--ink2:#6C6C70;--ink3:#6C6C70;
   --line:#D8D8DC;--line2:#E8E8ED;
   --blue:#0A62C4;--bluebg:#E8F0FB;
-  --red:#D62B20;--redbg:#FDECEA;--redsolid:#D93A2E;
+  --red:#D62B20;--redbg:#FDECEA;--redink:#A8261C;--redsolid:#D93A2E;
   --amber:#8F5400;--amberbg:#FDF2E0;--ambersolid:#E8890B;--onamber:#12100A;--onblue:#FFFFFF;--metal:#8E8E93;
-  --green:#1E8A45;--greenbg:#E7F5EC;--greensolid:#22A153;
+  --green:#1E8A45;--greenbg:#E7F5EC;--greenink:#156632;--greensolid:#22A153;
   --grey:#6C6C70;--greybg:#EFEFF2;
   --dark:#22262B;--darkink:#FFFFFF;
   --sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
@@ -723,12 +723,13 @@ body.wide .mslot.hit{font-size:13px}
 .fmt{background:var(--card2);border:.5px solid var(--line2);border-radius:9px;padding:10px 11px;
   font-family:var(--mono);font-size:11.5px;line-height:1.5;overflow-x:auto;margin:0 0 12px;white-space:pre}
 .lnkbtn{background:none;border:0;color:var(--blue);font:inherit;padding:0;text-decoration:underline}
-.okpill{background:var(--greenbg);color:var(--green);font-size:12px;font-weight:600;
+.okpill{background:var(--greenbg);color:var(--greenink);font-size:12px;font-weight:600;
   padding:3px 9px;border-radius:20px}
 .warnpill{background:var(--amberbg);color:var(--amber);font-size:12px;font-weight:600;
   padding:3px 9px;border-radius:20px}
 .idsect .opt{font-size:11.5px;font-weight:500;color:var(--ink3);text-transform:none;
   letter-spacing:0;margin-left:6px}
+.unver.bad{background:var(--redbg);color:var(--redink)}
 .unver{background:var(--amberbg);color:var(--amber);border-radius:var(--r1);padding:var(--s3) var(--s4);
   font-size:var(--f2);line-height:1.45;margin-top:var(--s2)}
 .psheet{background:#fff;color:#000;border:.5px solid var(--line);border-radius:10px;padding:18px}
@@ -1098,6 +1099,12 @@ label.btn{cursor:pointer}
 .errrow{padding:8px 0;border-bottom:.5px solid var(--line2);font-size:13px}
 .errrow .et{color:var(--ink3);font-size:12px}
 .errrow .em{display:block;word-break:break-word;color:var(--ink)}
+/* one superseded edit, with the two answers side by side */
+.cfrow{padding:10px 0;border-bottom:.5px solid var(--line2)}
+.cfn{display:block;color:var(--ink);font-size:var(--f3);font-weight:600;word-break:break-word}
+.cfn i{display:block;font-style:normal;font-weight:400;color:var(--ink3);font-size:12px;margin-top:2px}
+.cfb{display:flex;gap:8px;margin-top:8px}
+.cfb .btn{margin:0;max-width:none;flex:1;font-size:var(--f3)}
 .guidestep{display:flex;gap:12px;margin:0 0 14px}
 .guidestep .gn{flex:0 0 30px;height:30px;border-radius:50%;background:var(--blue);color:var(--onblue);font-weight:700;
   display:flex;align-items:center;justify-content:center}

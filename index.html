@@ -22,9 +22,9 @@ html.theme-light{color-scheme:light}
   --ink:#000000;--ink2:#6C6C70;--ink3:#6C6C70;
   --line:#D8D8DC;--line2:#E8E8ED;
   --blue:#0A62C4;--bluebg:#E8F0FB;
-  --red:#D62B20;--redbg:#FDECEA;--redsolid:#D93A2E;
+  --red:#D62B20;--redbg:#FDECEA;--redink:#A8261C;--redsolid:#D93A2E;
   --amber:#8F5400;--amberbg:#FDF2E0;--ambersolid:#E8890B;--onamber:#12100A;--onblue:#FFFFFF;--metal:#8E8E93;
-  --green:#1E8A45;--greenbg:#E7F5EC;--greensolid:#22A153;
+  --green:#1E8A45;--greenbg:#E7F5EC;--greenink:#156632;--greensolid:#22A153;
   --grey:#6C6C70;--greybg:#EFEFF2;
   --dark:#22262B;--darkink:#FFFFFF;
   --sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
@@ -46,9 +46,9 @@ html.theme-light{color-scheme:light}
   --ink:#FFFFFF;--ink2:#AEAEB2;--ink3:#9A9AA0;
   --line:#38383A;--line2:#2C2C2E;
   --blue:#57A6FF;--bluebg:#132A44;
-  --red:#FF6B5E;--redbg:#3A1B18;--redsolid:#C7382C;
+  --red:#FF6B5E;--redbg:#3A1B18;--redink:#FF6B5E;--redsolid:#C7382C;
   --amber:#F0A93B;--amberbg:#3A2A10;--ambersolid:#B87209;--onamber:#12100A;--onblue:#12100A;--metal:#8E8E93;
-  --green:#4CD07D;--greenbg:#13301F;--greensolid:#1C8746;
+  --green:#4CD07D;--greenbg:#13301F;--greenink:#4CD07D;--greensolid:#1C8746;
   --grey:#9A9AA0;--greybg:#2C2C2E;
   --dark:#3A3F45;--darkink:#FFFFFF;
   --kpv:#E8E8E8;
@@ -59,9 +59,9 @@ html.theme-dark{
   --ink:#FFFFFF;--ink2:#AEAEB2;--ink3:#9A9AA0;
   --line:#38383A;--line2:#2C2C2E;
   --blue:#57A6FF;--bluebg:#132A44;
-  --red:#FF6B5E;--redbg:#3A1B18;--redsolid:#C7382C;
+  --red:#FF6B5E;--redbg:#3A1B18;--redink:#FF6B5E;--redsolid:#C7382C;
   --amber:#F0A93B;--amberbg:#3A2A10;--ambersolid:#B87209;--onamber:#12100A;--onblue:#12100A;--metal:#8E8E93;
-  --green:#4CD07D;--greenbg:#13301F;--greensolid:#1C8746;
+  --green:#4CD07D;--greenbg:#13301F;--greenink:#4CD07D;--greensolid:#1C8746;
   --grey:#9A9AA0;--greybg:#2C2C2E;
   --dark:#3A3F45;--darkink:#FFFFFF;
 }
@@ -69,9 +69,9 @@ html.theme-light{  --bg:#F2F2F7;--card:#FFFFFF;--card2:#F7F7FA;
   --ink:#000000;--ink2:#6C6C70;--ink3:#6C6C70;
   --line:#D8D8DC;--line2:#E8E8ED;
   --blue:#0A62C4;--bluebg:#E8F0FB;
-  --red:#D62B20;--redbg:#FDECEA;--redsolid:#D93A2E;
+  --red:#D62B20;--redbg:#FDECEA;--redink:#A8261C;--redsolid:#D93A2E;
   --amber:#8F5400;--amberbg:#FDF2E0;--ambersolid:#E8890B;--onamber:#12100A;--onblue:#FFFFFF;--metal:#8E8E93;
-  --green:#1E8A45;--greenbg:#E7F5EC;--greensolid:#22A153;
+  --green:#1E8A45;--greenbg:#E7F5EC;--greenink:#156632;--greensolid:#22A153;
   --grey:#6C6C70;--greybg:#EFEFF2;
   --dark:#22262B;--darkink:#FFFFFF;
   --sys:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
@@ -739,12 +739,13 @@ body.wide .mslot.hit{font-size:13px}
 .fmt{background:var(--card2);border:.5px solid var(--line2);border-radius:9px;padding:10px 11px;
   font-family:var(--mono);font-size:11.5px;line-height:1.5;overflow-x:auto;margin:0 0 12px;white-space:pre}
 .lnkbtn{background:none;border:0;color:var(--blue);font:inherit;padding:0;text-decoration:underline}
-.okpill{background:var(--greenbg);color:var(--green);font-size:12px;font-weight:600;
+.okpill{background:var(--greenbg);color:var(--greenink);font-size:12px;font-weight:600;
   padding:3px 9px;border-radius:20px}
 .warnpill{background:var(--amberbg);color:var(--amber);font-size:12px;font-weight:600;
   padding:3px 9px;border-radius:20px}
 .idsect .opt{font-size:11.5px;font-weight:500;color:var(--ink3);text-transform:none;
   letter-spacing:0;margin-left:6px}
+.unver.bad{background:var(--redbg);color:var(--redink)}
 .unver{background:var(--amberbg);color:var(--amber);border-radius:var(--r1);padding:var(--s3) var(--s4);
   font-size:var(--f2);line-height:1.45;margin-top:var(--s2)}
 .psheet{background:#fff;color:#000;border:.5px solid var(--line);border-radius:10px;padding:18px}
@@ -1114,6 +1115,12 @@ label.btn{cursor:pointer}
 .errrow{padding:8px 0;border-bottom:.5px solid var(--line2);font-size:13px}
 .errrow .et{color:var(--ink3);font-size:12px}
 .errrow .em{display:block;word-break:break-word;color:var(--ink)}
+/* one superseded edit, with the two answers side by side */
+.cfrow{padding:10px 0;border-bottom:.5px solid var(--line2)}
+.cfn{display:block;color:var(--ink);font-size:var(--f3);font-weight:600;word-break:break-word}
+.cfn i{display:block;font-style:normal;font-weight:400;color:var(--ink3);font-size:12px;margin-top:2px}
+.cfb{display:flex;gap:8px;margin-top:8px}
+.cfb .btn{margin:0;max-width:none;flex:1;font-size:var(--f3)}
 .guidestep{display:flex;gap:12px;margin:0 0 14px}
 .guidestep .gn{flex:0 0 30px;height:30px;border-radius:50%;background:var(--blue);color:var(--onblue);font-weight:700;
   display:flex;align-items:center;justify-content:center}
@@ -1742,7 +1749,149 @@ function renderDemoBar(){
 
 /* ---------- github sync ---------- */
 if(!S.gh)S.gh={owner:"",repo:"",path:"data.json",token:"",sha:"",last:""};
-let dirty=false, pushT=null, conflict=false, syncErr="";
+// merging needs three things per record: a counter that does not consult the clock, the
+// device that set it, and a marker when it is deleted. SYNC_DESIGN.txt is the long version.
+if(!S.dev)S.dev=newId();
+if(typeof S.lam!=="number")S.lam=0;
+const KINDS=["items","comps","forms"];
+const kKey=(k,r)=>k==="comps"?r.code:r.id;
+if(!S.tomb||typeof S.tomb!=="object")S.tomb={};
+if(!S.base||typeof S.base!=="object")S.base={};
+KINDS.forEach(k=>{if(!S.tomb[k]||typeof S.tomb[k]!=="object")S.tomb[k]={};
+  if(!S.base[k]||typeof S.base[k]!=="object")S.base[k]={}});
+if(!Array.isArray(S.conflicts))S.conflicts=[];
+let dirty=false, pushT=null, conflict=false, syncErr="", tokenBad=false, badFile=false;
+
+// content hash, ignoring the _ stamps and the order the keys happen to sit in, so that
+// stamping a record does not itself look like an edit
+const canon=v=>Array.isArray(v)?"["+v.map(canon).join(",")+"]"
+  :(v&&typeof v==="object")?"{"+Object.keys(v).filter(x=>x[0]!=="_").sort()
+      .map(x=>x+":"+canon(v[x])).join(",")+"}"
+  :JSON.stringify(v===undefined?null:v);
+const hash=s=>{let h=5381,g=52711;
+  for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);h=((h*33)^c)>>>0;g=((g*31)+c)>>>0}
+  return h.toString(36)+"."+g.toString(36)};
+const rhash=r=>hash(canon(r));
+// the same arbitrary answer on every device, so they all converge without talking
+const newerRec=(a,b)=>{const av=(a&&a._v)||0, bv=(b&&b._v)||0;
+  return av!==bv?av>bv:String((a&&a._d)||"")>String((b&&b._d)||"")};
+
+// stamp whatever has moved since the last sync, and raise a tombstone for whatever has
+// gone. Done here rather than at the several hundred places that mutate a record and call
+// save(), because one forgotten site there is a silent hole.
+function stampDirty(){
+  const changed={};
+  KINDS.forEach(k=>{
+    const b=S.base[k], T=S.tomb[k], ch=changed[k]={}, seen={};
+    S[k].forEach(r=>{
+      const key=kKey(k,r); if(key==null||key==="")return;
+      seen[key]=1; if(T[key])delete T[key];
+      const h=rhash(r);
+      if(b[key]!==h){r._v=++S.lam;r._d=S.dev;ch[key]=1}
+      else if(r._v==null){r._v=++S.lam;r._d=S.dev}
+    });
+    Object.keys(b).forEach(key=>{
+      if(seen[key])return;
+      T[key]={_v:++S.lam,_d:S.dev,_t:new Date().toISOString()};
+      ch[key]=1; delete b[key];
+    });
+  });
+  const wh=rhash(S.walls||{});
+  if(S.base.walls!==wh){S.wallsV=++S.lam;S.wallsD=S.dev;changed.walls=1}
+  return changed;
+}
+function rebase(){
+  KINDS.forEach(k=>{const b=S.base[k]={};
+    S[k].forEach(r=>{const key=kKey(k,r); if(key!=null&&key!=="")b[key]=rhash(r)})});
+  S.base.walls=rhash(S.walls||{});
+}
+// the edit that lost, kept where the person who typed it can put it back
+function stashLoser(k,key,mine){
+  S.conflicts.push({k,key,when:new Date().toISOString(),
+    name:String(mine.name||mine.code||key),
+    rec:JSON.parse(JSON.stringify(mine))});
+  if(S.conflicts.length>50)S.conflicts.splice(0,S.conflicts.length-50);
+}
+
+// on the wire tombstones ride inside the arrays, so a build that predates them carries
+// them through instead of dropping them, and shaped so that build's own filters hide them
+const TOMBSHAPE={items:{name:"",status:"Not carried",gapType:"deliberate",cat:"",cls:"Consumable",
+    loc:"",qty:0,par:"",date:"",note:"",steps:[],uses:[],rel:[],links:[]},
+  comps:{desc:"",side:"",x:null,y:null,w:6,h:4},
+  forms:{name:"",cat:"",rev:"",desc:"",fields:[]}};
+const TOMBDAYS=90;
+function splitWire(k,arr,alive,tomb){
+  (Array.isArray(arr)?arr:[]).forEach(r=>{
+    if(!r||typeof r!=="object")return;
+    const key=kKey(k,r); if(key==null||key==="")return;
+    if(r._x)tomb[key]={_v:+r._v||0,_d:r._d||"",_t:r._t||""};
+    else alive[key]=r;
+  });
+}
+function joinWire(k){
+  const out=S[k].slice(), T=S.tomb[k], cut=Date.now()-TOMBDAYS*86400000;
+  Object.keys(T).forEach(key=>{
+    const t=T[key], when=Date.parse(t._t||"")||Date.now();
+    if(when<cut)return delete T[key];
+    out.push(Object.assign({},TOMBSHAPE[k],k==="comps"?{code:key}:{id:key},
+      {_x:1,_v:t._v,_d:t._d,_t:t._t}));
+  });
+  return out;
+}
+function applyRec(k,key,stamp,alive){
+  const i=S[k].findIndex(r=>kKey(k,r)===key);
+  if(alive){ delete S.tomb[k][key];
+    if(i>-1)S[k][i]=alive; else S[k].push(alive) }
+  else { S.tomb[k][key]={_v:stamp._v||0,_d:stamp._d||"",_t:stamp._t||new Date().toISOString()};
+    if(i>-1)S[k].splice(i,1) }
+}
+// merge a parsed remote file into this device, record by record. Absence is never a
+// deletion — only a tombstone deletes — which is what stops an old build's whole-file
+// push from destroying anything. Returns true if we hold something the remote does not.
+function mergeRemote(o){
+  const changed=stampDirty();
+  let maxv=+o.lam||0, ahead=false;
+  // a device that has never synced has no claim that its copy is the newer one, and the
+  // stamps it just gave its own seeded defaults would otherwise beat the repo's real van.
+  // Local-only records still survive: the merge is a union either way.
+  const virgin=!S.synced;
+  KINDS.forEach(k=>{
+    const ra={}, rt={};
+    splitWire(k,o[k],ra,rt);
+    const T=S.tomb[k], b=S.base[k], ch=changed[k], mine={};
+    S[k].forEach(r=>{const key=kKey(k,r); if(key!=null&&key!=="")mine[key]=r});
+    const keys={};
+    [mine,T,ra,rt].forEach(m=>Object.keys(m).forEach(key=>keys[key]=1));
+    Object.keys(keys).forEach(key=>{
+      const lv=mine[key]||T[key], rv=ra[key]||rt[key];
+      maxv=Math.max(maxv,(rv&&+rv._v)||0,(lv&&+lv._v)||0);
+      if(!rv){ahead=true;return}                      // never reached them: keep ours
+      if(!lv){applyRec(k,key,rv,ra[key]);return}
+      if(virgin){applyRec(k,key,rv,ra[key]);return}
+      const rH=ra[key]?rhash(ra[key]):-1, lH=mine[key]?rhash(mine[key]):-1;
+      if(rH===lH)return;                              // the same record: nothing to settle
+      // who moved is decided on content, not on the stamps, so an edit made by a build that
+      // does not know about stamps still propagates
+      const based=b[key]!=null, theyMoved=!based||rH!==b[key], weMoved=!!ch[key];
+      if(weMoved&&!theyMoved){ahead=true;return}
+      if(theyMoved&&!weMoved){applyRec(k,key,rv,ra[key]);return}
+      if(!newerRec(rv,lv)){ahead=true;return}
+      // both sides moved on from the copy we last synced, so the one about to be replaced
+      // is somebody's real work: keep it rather than drop it
+      if(based&&mine[key])stashLoser(k,key,mine[key]);
+      applyRec(k,key,rv,ra[key]);
+    });
+  });
+  if(o.walls&&(virgin||newerRec({_v:+o.wallsV||0,_d:o.wallsD||""},{_v:S.wallsV||0,_d:S.wallsD||""}))){
+    S.walls=o.walls; S.wallsV=+o.wallsV||0; S.wallsD=o.wallsD||"";
+  } else if(o.wallsV!=null&&(S.wallsV||0)>(+o.wallsV||0)) ahead=true;
+  maxv=Math.max(maxv,+o.wallsV||0);
+  S.lam=Math.max(S.lam,maxv);                          // Lamport receive
+  S.synced=true;
+  S.demo=S.items.some(i=>i.demo)||S.comps.some(c=>c.demo)||S.forms.some(f=>f.demo);
+  if(S.curLoc&&!S.comps.some(c=>c.code===S.curLoc))S.curLoc="";
+  return ahead;
+}
 
 const b64enc=s=>{const b=new TextEncoder().encode(s);let out="";
   for(let i=0;i<b.length;i+=8192)out+=String.fromCharCode.apply(null,b.subarray(i,i+8192));
@@ -1768,68 +1917,131 @@ async function claimStorage(){
   storageState.asked=true;
   if(view==="data")renderData();
 }
-const payload=()=>({items:S.items,comps:S.comps,forms:S.forms.map(f=>{
-    const c=Object.assign({},f);delete c.fills;return c}),walls:S.walls,demo:S.demo,
-  lastCat:S.lastCat,lastCls:S.lastCls,savedAt:new Date().toISOString()});
+const payload=()=>({v:2,lam:S.lam,items:joinWire("items"),comps:joinWire("comps"),
+  forms:joinWire("forms").map(f=>{const c=Object.assign({},f);delete c.fills;return c}),
+  walls:S.walls,wallsV:S.wallsV||0,wallsD:S.wallsD||"",demo:S.demo,
+  savedAt:new Date().toISOString()});
 
+const ghErr=s=>{const e=new Error(s===401?"Token rejected":s===403?"No access to that repo"
+  :"GitHub error "+s); e.status=s; return e};
+// GitHub tells us when the token dies, so nobody has to type the date in
+function ghExpFrom(r){
+  try{const h=r&&r.headers&&r.headers.get&&r.headers.get("github-authentication-token-expiration");
+    if(!h)return; const d=String(h).slice(0,10);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(d)){S.ghExp=d;S.ghAuto=true}
+  }catch(e){}
+}
+async function ghGet(){
+  const r=await fetch(ghURL()+"?ref=HEAD&t="+Date.now(),{headers:ghHead(),cache:"no-store"});
+  ghExpFrom(r);
+  if(r.status===404)return {missing:true};
+  if(!r.ok)throw ghErr(r.status);
+  const j=await r.json();
+  let o=null; try{o=JSON.parse(b64dec(j.content))}catch(e){}
+  // a file we cannot read is not a file we may write over: if the remote is intact and our
+  // parse is what broke, overwriting it would take out every other device
+  if(!o||typeof o!=="object"||!Array.isArray(o.items))return {sha:j.sha,bad:true};
+  return {sha:j.sha,data:o};
+}
+function syncFail(e,silent){
+  if(e&&(e.status===401||e.status===403)){
+    tokenBad=true; syncErr=e.message; retries=0; clearTimeout(pushT);
+    store.set(S); renderSyncBar(); renderSyncPill(); if(view==="data")renderData();
+    if(!silent)toast(e.message);
+    return "error";
+  }
+  syncErr=(e&&e.message)||"Couldn't reach GitHub";
+  store.set(S); renderSyncBar(); renderSyncPill();
+  if(dirty){clearTimeout(pushT); pushT=setTimeout(()=>ghPush(false),retryIn())}
+  if(!silent)toast(syncErr);
+  return "error";
+}
+// a pull can no longer discard anything local, so it is safe to press at any time
 async function ghPull(silent){
   if(!ghOn())return;
   try{
-    const r=await fetch(ghURL()+"?ref=HEAD&t="+Date.now(),{headers:ghHead(),cache:"no-store"});
-    if(r.status===404){S.gh.sha="";store.set(S);if(!silent)toast("No data file yet — push to create it");return"empty"}
-    if(!r.ok)throw new Error(r.status===401?"Token rejected":r.status===403?"No access to that repo":"GitHub error "+r.status);
-    const j=await r.json(), o=JSON.parse(b64dec(j.content));
-    S.items=o.items||[];S.comps=o.comps||[];S.forms=o.forms||[];if(o.walls)S.walls=o.walls;S.demo=!!o.demo;
-    S.gh.sha=j.sha;S.gh.last=new Date().toISOString();dirty=false;conflict=false;
-    syncErr="";retries=0;clearTimeout(pushT);store.set(S);renderSyncBar();
-    if(!silent)toast("Pulled "+S.items.length+" items");render();return"ok";
-  }catch(e){if(!silent)toast(e.message||"Pull failed");return"error"}
+    const g=await ghGet();
+    if(g.missing){S.gh.sha="";store.set(S);
+      if(!silent)toast("No data file yet — sync to create it");return"empty"}
+    if(g.bad){badFile=true;syncErr="The file in the repo can't be read";
+      store.set(S);renderSyncBar();renderSyncPill();if(view==="data")renderData();
+      if(!silent)toast(syncErr);return"error"}
+    badFile=false;
+    const ahead=mergeRemote(g.data);
+    S.gh.sha=g.sha; S.gh.last=new Date().toISOString();
+    tokenBad=false; conflict=false; syncErr=""; retries=0;
+    rebase(); dirty=!!ahead; store.set(S);
+    renderSyncBar(); renderSyncPill(); render();
+    if(ahead)queuePush(); else clearTimeout(pushT);
+    if(!silent)toast("Synced — "+live().length+" items");
+    return"ok";
+  }catch(e){return syncFail(e,silent)}
 }
+// read, merge, write. A 409 means somebody wrote in the gap between the read and the
+// write, which is a reason to merge again, not a reason to ask anyone anything.
 async function ghPush(force){
   if(!ghOn())return;
+  clearTimeout(pushT);
   try{
-    const body={message:"Van inventory — "+new Date().toISOString().slice(0,16).replace("T"," "),
-      content:b64enc(JSON.stringify(payload(),null,1))};
-    if(S.gh.sha&&!force)body.sha=S.gh.sha;
-    else if(force){const r0=await fetch(ghURL(),{headers:ghHead(),cache:"no-store"});
-      if(r0.ok){const j0=await r0.json();body.sha=j0.sha}}
-    const r=await fetch(ghURL(),{method:"PUT",headers:Object.assign({"Content-Type":"application/json"},ghHead()),
-      body:JSON.stringify(body)});
-    if(r.status===409||r.status===422){conflict=true;store.set(S);renderData();
-      renderSyncBar();renderSyncPill();   // the bar is how you find out, wherever you are
-      return toast("Someone else changed the data — see Sync")}
-    if(!r.ok)throw new Error(r.status===401?"Token rejected":r.status===403?"No write access":"GitHub error "+r.status);
-    const j=await r.json();S.gh.sha=j.content.sha;S.gh.last=new Date().toISOString();
-    dirty=false;conflict=false;syncErr="";retries=0;store.set(S);
-    renderSyncBar();renderData();return"ok";
-  }catch(e){
-    syncErr=e.message||"Couldn't reach GitHub";
-    store.set(S);renderSyncBar();
-    clearTimeout(pushT);pushT=setTimeout(()=>ghPush(false),retryIn());
-    return "error"}
+    for(let attempt=0;attempt<4;attempt++){
+      const g=await ghGet();
+      if(g.bad&&!force){badFile=true;syncErr="The file in the repo can't be read";
+        store.set(S);renderSyncBar();renderSyncPill();if(view==="data")renderData();
+        toast(syncErr);return"error"}
+      badFile=false;
+      if(g.data&&!force)mergeRemote(g.data); else stampDirty();
+      const body={message:"Van inventory — "+new Date().toISOString().slice(0,16).replace("T"," "),
+        content:b64enc(JSON.stringify(payload(),null,1))};
+      if(g.sha)body.sha=g.sha;
+      const r=await fetch(ghURL(),{method:"PUT",
+        headers:Object.assign({"Content-Type":"application/json"},ghHead()),
+        body:JSON.stringify(body)});
+      ghExpFrom(r);
+      if(r.status===409||r.status===422)continue;
+      if(!r.ok)throw ghErr(r.status);
+      const j=await r.json();
+      S.gh.sha=(j.content&&j.content.sha)||"";S.gh.last=new Date().toISOString();
+      dirty=false;conflict=false;tokenBad=false;syncErr="";retries=0;
+      rebase();store.set(S);
+      renderSyncBar();renderSyncPill();if(view==="data")renderData();
+      return"ok";
+    }
+    conflict=true;store.set(S);
+    renderSyncBar();renderSyncPill();if(view==="data")renderData();
+    toast("Couldn't settle with the other device — try again");
+    return"error";
+  }catch(e){return syncFail(e,true)}
 }
 let retries=0;
 function retryIn(){retries=Math.min(retries+1,6);return Math.min(60000,2000*Math.pow(2,retries-1))}
-function queuePush(){ if(!ghOn())return; dirty=true; retries=0;
+function queuePush(){ if(!ghOn()||tokenBad)return; dirty=true; retries=0;
   clearTimeout(pushT); pushT=setTimeout(()=>ghPush(false),2500);
   renderSyncPill(); renderSyncBar(); }
 function renderSyncBar(){
   const b=$("#syncbar"); if(!b)return;
   const offline=typeof navigator!=="undefined"&&navigator.onLine===false;
-  if(!ghOn()||(!dirty&&!syncErr&&!conflict)){b.style.display="none";b.innerHTML="";fitHeader();return}
-  let msg,cls;
-  if(conflict){cls="bad";msg="Another device changed the data. Open Sync to choose which version wins."}
-  else if(offline){cls="warn";msg="No connection. Your changes are saved on this phone and will push when you're back online."}
-  else if(syncErr){cls="bad";msg=syncErr+". Retrying — your changes are still saved on this phone."}
+  if(!ghOn()||(!dirty&&!syncErr&&!conflict&&!tokenBad&&!badFile)){
+    b.style.display="none";b.innerHTML="";fitHeader();return}
+  let msg,cls,btn="Retry";
+  if(tokenBad){cls="bad";btn="Reconnect";
+    msg="The access token has expired or been revoked. Your changes are safe on this device."}
+  else if(badFile){cls="bad";btn="Open Sync";
+    msg="The file in the repo can't be read. Nothing has been overwritten."}
+  else if(conflict){cls="bad";btn="Open Sync";
+    msg="Another device kept writing while this one tried to. Open Sync and try again."}
+  else if(offline){cls="warn";btn="";
+    msg="No connection. Your changes are saved on this device and will sync when you're back online."}
+  else if(syncErr){cls="bad";msg=syncErr+". Retrying — your changes are still saved on this device."}
   else {b.style.display="none";b.innerHTML="";fitHeader();return}
   b.className="demobar "+cls; b.style.display="";
-  b.innerHTML=`<span>${esc(msg)}</span><button id="syncnow">${conflict?"Open Sync":"Retry"}</button>`;
+  b.innerHTML=`<span>${esc(msg)}</span>${btn?`<button id="syncnow">${btn}</button>`:""}`;
   fitHeader();
 }
 function renderSyncPill(){
   const el=$("#syncpill"); if(!el)return;
-  el.textContent=conflict?"Conflict":dirty?"Saving…":S.gh.last?"Synced "+S.gh.last.slice(11,16):"Not synced";
-  el.className="syncpill"+(conflict?" bad":dirty?" busy":"");
+  el.textContent=tokenBad?"Token expired":badFile?"Can't read":conflict?"Busy":
+    dirty?"Saving…":S.gh.last?"Synced "+S.gh.last.slice(11,16):"Not synced";
+  el.className="syncpill"+(tokenBad||badFile||conflict?" bad":dirty?" busy":"");
 }
 
 /* ---------- nav ---------- */
@@ -2395,7 +2607,7 @@ function renderItemDetail(){
     ${steps.length?`<div class="steps">${steps.map((s,x)=>
       `<div class="step"><i>${x+1}</i><p>${esc(s)}</p></div>`).join("")}</div>
       ${!i.verified?`<div class="unver">No verified date on these instructions. Check them against the manufacturer sheet or your SOP before relying on them at a scene.</div>`
-        :isStale(i)?`<div class="unver" style="background:var(--redbg);color:var(--red)">Last checked ${esc(i.verified)}, over a year ago. Confirm against the current sheet.</div>`:""}`
+        :isStale(i)?`<div class="unver bad">Last checked ${esc(i.verified)}, over a year ago. Confirm against the current sheet.</div>`:""}`
     :`<div class="empty" style="padding:20px 16px"><strong>No instructions yet</strong>
        <p>Paste the steps from the manufacturer sheet or your SOP, and record where they came from.</p>
        <button class="btn sec" data-editsteps="${i.id}" style="margin-top:12px">Add instructions</button></div>`}
@@ -5348,6 +5560,7 @@ function ingest(text,replace){
 // the share sheet puts the file straight into Drive or Mail; download is the fallback
 async function backupOut(){
   const safe=Object.assign({},S);delete safe.gh;delete safe.fills;delete safe.sketches;
+  delete safe.base;delete safe.tomb;delete safe.dev;   // sync bookkeeping, meaningless elsewhere
   safe.items=(safe.items||[]).map(i=>{const c=Object.assign({},i);delete c.dupOf;return c});
   const text=JSON.stringify(safe,null,1);
   const name="van-backup-"+today()+".json";
@@ -5365,6 +5578,19 @@ async function backupOut(){
 function tokenDays(){
   if(!S.ghExp)return null;
   return daysOut(S.ghExp);
+}
+// an edit of yours that another device's edit replaced. It is kept rather than dropped, so
+// the only thing lost is the time it takes somebody to say which of the two is true.
+function conflictsHTML(){
+  const c=S.conflicts||[]; if(!c.length)return "";
+  return `<div class="unver bad">${c.length===1
+      ?"One of your edits was replaced by another device."
+      :c.length+" of your edits were replaced by another device."} Your version is kept here until
+      you say which one is right.</div>
+    <div style="margin:0 0 12px">${c.map((x,i)=>`<div class="cfrow">
+      <span class="cfn">${esc(x.name||x.key)}<i>${esc(String(x.when||"").slice(0,16).replace("T"," "))}</i></span>
+      <span class="cfb"><button class="btn sec" data-cback="${i}">Put mine back</button>
+        <button class="btn sec" data-cdrop="${i}">Keep theirs</button></span></div>`).join("")}</div>`;
 }
 function tokenPill(){
   const d=tokenDays(); if(d==null)return "";
@@ -5516,8 +5742,13 @@ function settingsMenu(){
   const whoTxt=S.who?esc(S.who)+(S.whoName?" \u00b7 "+esc(S.whoName):""):"Not set";
   let syncTxt="Not connected", syncCls="";
   if(ghOn()){
-    if(conflict){syncTxt="Conflict, needs a decision";syncCls="bad"}
-    else if(td!=null&&td<0){syncTxt="Token expired, saving stopped";syncCls="bad"}
+    const nc=(S.conflicts||[]).length;
+    // a stored expiry date that has passed is a warning; only GitHub saying 401 stops saving
+    if(tokenBad){syncTxt="Token expired, saving stopped";syncCls="bad"}
+    else if(badFile){syncTxt="The file in the repo can't be read";syncCls="bad"}
+    else if(nc){syncTxt=nc+" edit"+(nc===1?"":"s")+" of yours needs a decision";syncCls="warn"}
+    else if(conflict){syncTxt="Couldn't settle, try again";syncCls="bad"}
+    else if(td!=null&&td<0){syncTxt="The token may have expired";syncCls="warn"}
     else if(td!=null&&td<=30){syncTxt="Token expires in "+td+" day"+(td===1?"":"s");syncCls="warn"}
     else syncTxt=S.gh.last?"Connected \u00b7 synced "+esc(S.gh.last.slice(11,16)):"Connected";
   }
@@ -5562,32 +5793,44 @@ function settingsSection(k){
     <label class="fld"><span>Name and rank, as it should appear on reports</span>
       <input type="text" id="whoname" value="${esc(S.whoName||"")}" placeholder="Det. D. Alvarez #417"></label>
     <p class="hint">Saved as you type. Each device carries its own initials, so set them on every device you use.</p>`;
-  else if(k==="sync")body=ghOn()?`
+  else if(k==="sync")body=(ghOn()&&!tokenBad)?`
       <div class="kv" style="margin-bottom:9px">
         <div><dt>Repository</dt><dd>${esc(S.gh.owner)}/${esc(S.gh.repo)}</dd></div>
-        <div><dt>File</dt><dd>${esc(S.gh.path||"data.json")}</dd></div>
         <div><dt>Last synced</dt><dd><span id="syncpill" class="syncpill"></span></dd></div>
         ${S.ghExp?`<div><dt>Token expires</dt><dd>${tokenPill()}</dd></div>`:""}
       </div>
-      ${!S.ghExp?`<p class="hint" style="margin:0 0 10px">Set the token's expiry date so the app can
-        warn you before it lapses. <button class="lnkbtn" id="ghsetexp">Add the date</button></p>`:""}
-      ${conflict?`<div class="unver" style="background:var(--redbg);color:var(--red)">Another device saved changes after yours. Pull to take their version and lose what you changed here, or push to overwrite theirs. There is no automatic merge.</div>`:""}
+      ${!S.ghExp?`<p class="hint" style="margin:0 0 10px">GitHub did not say when this token
+        expires. <button class="lnkbtn" id="ghsetexp">Add the date</button> and the app will warn
+        you before it lapses.</p>`:""}
+      ${badFile?`<div class="unver bad">The file in the
+        repo will not open. Nothing has been overwritten and nothing on this device is lost. If no
+        other device is waiting to sync, replace it with this device's copy.</div>
+        <button class="btn sec" id="ghforce" style="max-width:none;margin:0 0 12px;color:var(--red);border-color:var(--red)">Replace the file with this device's copy</button>`:""}
+      ${conflict?`<div class="unver bad">Another device
+        kept writing while this one was trying to. Nothing is lost — press Sync now again.</div>`:""}
+      ${conflictsHTML()}
       <div class="stackb">
-        <button class="btn" id="ghpush" style="max-width:none;margin:0">${conflict?"Push over theirs":"Push now"}</button>
-        <button class="btn sec" id="ghpull" style="max-width:none">Pull from GitHub</button>
+        <button class="btn" id="ghpush" style="max-width:none;margin:0">Sync now</button>
         <button class="btn sec" id="ghoff" style="max-width:none">Disconnect this device</button></div>
-      <p class="hint">Changes save automatically a couple of seconds after you make them, and every version is kept.</p>`
-    :`<p class="hint" style="margin-top:0">Connect once and every change saves itself to a private
-      repo a couple of seconds after you make it \u2014 no sign-in after the first time, and any other
-      device you connect reads the same list. The token you paste is what keeps it automatic, so it
-      is worth setting the longest expiry GitHub offers.</p>
-      <div class="two"><label class="fld"><span>Owner</span><input type="text" id="gho" value="${esc(S.ghOwner||"drfllcky13-droid")}" autocapitalize="off"></label>
-        <label class="fld"><span>Repository</span><input type="text" id="ghr" value="${esc(S.ghRepo||"van-data")}" autocapitalize="off"></label></div>
-      <label class="fld"><span>File path</span><input type="text" id="ghp" value="data.json" autocapitalize="off"></label>
+      <p class="hint">Changes save themselves a couple of seconds after you make them. Every device
+        keeps its own edits: two people working at once no longer overwrite each other, and every
+        version stays in the repo's history.</p>`
+    :`${tokenBad?`<div class="unver bad">The access
+        token has expired or been revoked, so saving to GitHub has stopped. Everything you have done
+        since is still on this device and will go up as soon as you paste a working token.</div>`
+      :`<p class="hint" style="margin-top:0">Connect once and every change saves itself to a private
+      repo a couple of seconds after you make it — no sign-in after the first time, and any
+      other device you connect reads the same list.</p>`}
+      <div class="two"><label class="fld"><span>Owner</span><input type="text" id="gho" value="${esc(S.ghOwner||S.gh.owner||"drfllcky13-droid")}" autocapitalize="off"></label>
+        <label class="fld"><span>Repository</span><input type="text" id="ghr" value="${esc(S.ghRepo||S.gh.repo||"van-data")}" autocapitalize="off"></label></div>
       <label class="fld"><span>Access token</span><input type="password" id="ght" placeholder="github_pat_..." autocapitalize="off"></label>
-      <label class="fld"><span>Token expires on</span><input type="date" id="ghx" value="${esc(S.ghExp||"")}"></label>
-      <button class="btn" id="ghconnect" style="max-width:none;margin:0">Connect</button>
-      <p class="hint">The token is stored in this browser only. It never leaves the device except to talk to GitHub, and it is left out of backup files.</p>`;
+      <button class="btn" id="ghconnect" style="max-width:none;margin:0">${tokenBad?"Reconnect":"Connect"}</button>
+      ${tokenBad?`<button class="btn sec" id="ghoff" style="max-width:none">Disconnect this device</button>`:""}
+      <p class="hint">A fine-grained token from GitHub › Settings › Developer settings, with
+        access to that repository only and Contents set to read and write. Take the longest expiry
+        offered; the app reads the expiry date from GitHub itself and warns you before it lapses.
+        The token is stored in this browser only. It never leaves the device except to talk to
+        GitHub, and it is left out of backup files, exports and case packages.</p>`;
   else if(k==="backup")body=`
     <div class="kv" style="margin-bottom:12px">
       <div><dt>Items</dt><dd>${L.length}</dd></div>
@@ -5655,7 +5898,7 @@ function settingsSection(k){
 }
 function renderData(){
   $("#title").textContent="Settings";
-  if(conflict)SET_SEC="sync";
+  if(conflict||tokenBad||badFile)SET_SEC="sync";
   if(SET_SEC&&!SET_TITLES[SET_SEC])SET_SEC=null;
   $("#v-data").innerHTML=SET_SEC?settingsSection(SET_SEC):settingsMenu();
   renderSyncPill();
@@ -5976,7 +6219,7 @@ document.addEventListener("click",e=>{
       o.y=Math.max(hasHeader(sk)?HEADER_H+2:0,Math.min(H-o.h,o.y))});
     saveLocal();renderSketch();return}
   if(e.target.closest("#syncnow")){
-    if(conflict){view="data";$$(".view").forEach(v=>v.classList.toggle("on",v.id==="v-data"));return render()}
+    if(conflict||tokenBad||badFile){openSettings("sync");return}
     syncErr="";retries=0;renderSyncBar();toast("Retrying");ghPush(false);return}
   if(e.target.closest("[data-quicksketch]")){
     const sk=newSketch(); curSketch=sk.id; selObj=null; curLayer=null;
@@ -6314,42 +6557,39 @@ document.addEventListener("click",e=>{
     navigator.clipboard&&navigator.clipboard.writeText(toCSV())
       .then(()=>{S.lastBackup=today();save();renderData();toast("Copied")})
       .catch(()=>toast("Copy blocked by the browser"));return}
+  // connecting no longer asks anyone to choose which copy survives: it merges. The old
+  // question was the most dangerous screen in the app.
   if(e.target.closest("#ghconnect")){
     S.ghOwner=$("#gho").value.trim(); S.ghRepo=$("#ghr").value.trim();
-    S.ghExp=($("#ghx")&&$("#ghx").value)||"";
-    S.gh={owner:$("#gho").value.trim(),repo:$("#ghr").value.trim(),
-      path:$("#ghp").value.trim()||"data.json",token:$("#ght").value.trim(),sha:"",last:""};
+    S.gh={owner:S.ghOwner,repo:S.ghRepo,path:S.gh.path||"data.json",
+      token:$("#ght").value.trim(),sha:"",last:S.gh.last||""};
     if(!ghOn()){S.gh.token="";return toast("Owner, repository and token are all needed")}
-    store.set(S);toast("Checking...");
-    const localCount=S.items.length;
+    tokenBad=false; badFile=false; syncErr=""; conflict=false; retries=0;
+    store.set(S); toast("Connecting…");
     (async()=>{
-      let r;
-      try{ r=await fetch(ghURL()+"?t="+Date.now(),{headers:ghHead(),cache:"no-store"}) }
-      catch(err){ S.gh.token="";store.set(S);renderData();return toast("Couldn't reach GitHub") }
-      if(r.status===404){ S.gh.sha="";store.set(S);renderData();
-        return toast(localCount?"Connected. Push now to upload what's on this phone.":"Connected. Push to create the file.") }
-      if(!r.ok){ S.gh.token="";store.set(S);renderData();
-        return toast(r.status===401?"Token rejected":r.status===403?"No access to that repo":"GitHub error "+r.status) }
-      const j=await r.json();
-      let remote; try{ remote=JSON.parse(b64dec(j.content)) }catch(err){ remote=null }
-      const remoteCount=remote&&remote.items?remote.items.length:0;
-      if(localCount&&remoteCount){
-        S.gh.sha=j.sha;store.set(S);renderData();
-        return askConfirm("Both have data",
-          "This phone has "+localCount+" item"+(localCount===1?"":"s")+" and the repo has "+remoteCount+
-          ". They can't be merged — pick which one survives.",
-          "Use the repo's copy",true,()=>{
-            S.items=remote.items||[];S.comps=remote.comps||[];if(remote.walls)S.walls=remote.walls;
-            S.demo=!!remote.demo;S.gh.last=new Date().toISOString();dirty=false;
-            store.set(S);render();toast("Pulled "+S.items.length+" items")});
-      }
-      if(remoteCount){ await ghPull(true); renderData(); return toast("Connected and pulled") }
-      S.gh.sha=j.sha;store.set(S);renderData();
-      return toast(localCount?"Connected. Push now to upload what's on this phone.":"Connected");
+      const r=await ghPull(true);
+      if(r==="error"){renderData();return toast(syncErr||"Couldn't reach GitHub")}
+      await ghPush(false);
+      renderData();
+      if(!tokenBad&&!syncErr)toast("Connected — "+live().length+" items");
     })();
     return}
-  if(e.target.closest("#ghpush")){toast("Pushing...");ghPush(conflict);return}
-  if(e.target.closest("#ghpull")){toast("Pulling...");ghPull(false);return}
+  if(e.target.closest("#ghpush")){toast("Syncing…");ghPush(false);return}
+  if(e.target.closest("#ghforce"))
+    return askConfirm("Replace the file in the repo",
+      "The unreadable file is replaced by this device's copy. Anything another device saved into it and has not got locally is gone.",
+      "Replace it",true,()=>{toast("Replacing…");ghPush(true)});
+  const cfb=e.target.closest("[data-cback]");
+  if(cfb){
+    const i=+cfb.dataset.cback, x=(S.conflicts||[])[i]; if(!x)return;
+    const arr=S[x.k]||[], at=arr.findIndex(r=>kKey(x.k,r)===x.key);
+    const rec=Object.assign({},x.rec); delete rec._v; delete rec._d;   // it gets a fresh, higher stamp
+    if(at>-1)arr[at]=rec; else arr.push(rec);
+    if(S.tomb[x.k])delete S.tomb[x.k][x.key];
+    S.conflicts.splice(i,1); save(); renderData(); render();
+    return toast("Put back — it will win the next sync")}
+  const cfd=e.target.closest("[data-cdrop]");
+  if(cfd){S.conflicts.splice(+cfd.dataset.cdrop,1);saveLocal();renderData();return}
   if(e.target.closest("#ghoff"))
     return askConfirm("Disconnect sync","The token is removed from this device. Your data stays both in the repo and on this phone.","Disconnect",true,()=>{
       S.gh={owner:"",repo:"",path:"data.json",token:"",sha:"",last:""};store.set(S);

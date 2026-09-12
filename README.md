@@ -20,10 +20,17 @@ device to the van data. Print it and pin it in the van.
 2. Add it to the home screen: Safari → Share → Add to Home Screen; Chrome → menu → Install app or
    Add to Home screen; desktop Chrome or Edge → the install icon at the right of the address bar.
 3. Open it from its icon once while online. From then on it works without a connection.
-4. To share the van list with the other devices, open **Settings** (top of Home), then **Automatic saving**. Owner and repository are
-   already filled in (`drfllcky13-droid` / `van-data`). Paste the unit's access token, set the
-   token's expiry date, tap **Connect**. The list pulls straight away and every change after that
-   saves itself a couple of seconds later. This is done once per device.
+4. To share the van list with the other devices, open **Settings** (top of Home), then
+   **Automatic saving**. Owner and repository are already filled in (`drfllcky13-droid` /
+   `van-data`). Paste the unit's access token and tap **Connect** — that is the whole form.
+   The list merges straight away and every change after that saves itself a couple of seconds
+   later. This is done once per device.
+
+Devices do not overwrite each other. Two people working at the same time, or a device that has
+been out of signal for a week, both keep their work: the app merges item by item rather than
+file by file. The only thing it cannot decide for you is when two devices changed the *same*
+item — then it picks one, and keeps yours in Settings › Automatic saving with a **Put mine
+back** button. Nothing is ever discarded without a copy.
 
 ## The access token (whoever administers the GitHub account)
 
@@ -32,11 +39,19 @@ Devices read and write it with a fine-grained personal access token:
 
 GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token.
 Repository access: **only `van-data`**. Permissions: **Contents: Read and write**, nothing else.
-Expiration: the longest offered. Copy the token once, hand it to the devices, and enter the expiry
-date in the app so it warns before the token lapses. When it lapses, generate a new one and paste it
-on each device under Settings › Automatic saving.
+Expiration: the longest offered. Copy the token once and hand it to the devices; the app reads the
+expiry date from GitHub itself and warns before the token lapses.
 
-The token is stored in the browser on each device only. It is left out of backup files.
+There is no way to move a token from one device to another from inside the app, and there should
+not be: a token that can be copied out is a token that can be photographed off a screen. Setting
+up a second device means pasting the token into it, from wherever the unit keeps it.
+
+When it lapses, saving stops and every device says so, with a **Reconnect** button that asks for
+nothing but the new token. Nothing typed in the meantime is lost — it is held on the device and
+goes up as soon as a working token is pasted.
+
+The token is stored in the browser on each device only. It is left out of backup files, exports
+and case packages.
 
 ## What stays on the device
 
