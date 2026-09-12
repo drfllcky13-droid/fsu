@@ -949,7 +949,7 @@ function renderCompDetail(){
 
 
 /* ---------- item detail ---------- */
-let curItem=null, prevView="home";
+let curItem=null, curForm=null, prevView="home";
 function openSheet(html){$("#sheetbody").innerHTML=html;$("#scrim").classList.add("on");
   const f=()=>{if($("#scrim").classList.contains("on"))$("#sheet").classList.add("on")};
   typeof requestAnimationFrame==="function"?requestAnimationFrame(f):setTimeout(f,16)}

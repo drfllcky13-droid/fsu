@@ -1,0 +1,74 @@
+FSU test tooling — what exists now, and what else is worth building
+2026-09-12
+
+
+BUILT TODAY
+
+crawl.js          Presses every control in every view, one level into any sheet a
+                  control opens. Reports a nav control whose target view is missing or
+                  that lands somewhere else, a button that changed nothing at all, and
+                  anything a handler throws. Saved state and the open item/sketch/
+                  incident pointers are snapshotted and put back after every click, and
+                  controls that delete, export, send or sign are named, not pressed.
+
+visible.js        Layout audit per view at the current window size, checked at the top
+                  of the page and again at the bottom. Reports elements outside the
+                  window horizontally, content cut off by a hidden overflow, a control
+                  with something on top of it, a control with text that takes no space,
+                  and controls under 44px (advisory).
+
+fsu-tests/tests/ui.spec.js
+                  Runs the crawl at 1500 and 393px and the layout audit at 1500, 1194,
+                  393 and 320px in both colour schemes. It seeds an incident, a scaled
+                  sketch, an open bay, compartment and item first, because those views
+                  have no controls until something is open.
+
+Both files run in the console with the app open, the same way sweep.js does, so they
+are usable on the iPad without the test harness.
+
+First finding: app.js declared no `curForm`, and app.js is in strict mode, so opening
+any form in Templates threw "curForm is not defined" and the sheet never opened. Fixed
+by declaring it alongside curItem. That bug was invisible to the old suite.
+
+Still reported, all correct behaviour rather than defects: Undo and Redo with an empty
+history, zoom out at the minimum, a tab that is already active, and Home while on Home.
+They would read better disabled at their limit, which is a design call, not a bug.
+
+
+WORTH BUILDING NEXT, ROUGHLY IN ORDER OF WHAT IT WOULD CATCH
+
+1. Offline check. The whole promise of the app is that it works in a dead spot. Load it,
+   let the service worker install, go offline, reload, and drive one real flow. Also
+   assert the service worker's cache list covers every file the page asks for, so a new
+   asset can never ship uncached. Playwright does offline in one line.
+
+2. Data round trip across versions. Take a saved state from an older STOCKV, load it,
+   and assert the migration leaves every item, compartment and sketch intact, then
+   export a case package and read it back. A silent migration bug loses van data, which
+   is the one failure with no undo.
+
+3. Storage-full behaviour. Fill localStorage to the quota, then save. The app already
+   has a save-failure bar; this proves it appears instead of losing a scene halfway
+   through documenting one. Worth pairing with a big-data run: 600 items and 40 sketches,
+   asserting render stays under a budget on an iPad-class CPU throttle.
+
+4. Print and PDF layout. Reports, the printable map, the labels sheet and install.html
+   are paper deliverables. Render each with Playwright's print media emulation and
+   assert nothing lands off the page and no row splits across a page break.
+
+5. Contrast and focus. Every text colour against its background at the WCAG AA ratio in
+   both schemes, and a keyboard pass that tabs through each view asserting focus is
+   visible and never trapped in a sheet. Cheap to write, and the van is used in daylight.
+
+6. Sync conflict drill. Two browser contexts pointed at the same van-data repo, both
+   editing, one pushing first. Assert the second gets the conflict path and no write is
+   silently lost.
+
+7. Screenshot baselines. Playwright's toHaveScreenshot per view per width, so a CSS
+   change that shifts a layout shows up as a picture rather than as nothing. Only worth
+   it once the layout has settled, otherwise the baselines churn.
+
+8. A real iPad pass. The crawl and the layout audit now run in WebKit as well, which is
+   the engine Safari uses, and both are clean. That is the cheap 80%; the last 20% is
+   holding the actual iPad, where the home-screen shell, the on-screen keyboard and the
+   pencil are not something a desktop WebKit build reproduces.

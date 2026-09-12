@@ -1,5 +1,17 @@
 # FSU change log
 
+## 2026.09.12.1
+Opening a form in Templates did nothing: the sheet threw before it could show, because the app
+runs in strict mode and nothing had declared the variable holding the open form. Fixed.
+
+Two checks added, both runnable from the console on the iPad the way the render sweep is. The
+click crawl presses every control in every view, and one level into any sheet a control opens,
+and says so when a Back or a tab lands somewhere other than where its attribute points, when a
+handler throws, or when a button does nothing. The layout audit looks for anything outside the
+window, cut off by a hidden overflow, covered by something on top of it, or under the tap size.
+Both run at desktop and iPad widths, either way up, in Chromium and in WebKit, which is the
+engine Safari uses.
+
 ## 2026.09.04.20
 Tapping a bin on the bay wall no longer moves the page. On a wide screen (iPad, desktop) the bin's
 items open in a panel to the right of the wall and stay in view while the wall scrolls; on a phone
