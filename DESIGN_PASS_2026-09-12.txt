@@ -1,0 +1,183 @@
+FSU — interface tidy-up, 12 Sep 2026
+Presentation only. No behaviour, wording or control changed. All edits are in src/app.css;
+no render function or markup was touched. Built with `node build.js`.
+
+
+WHAT THE PASS WAS FOR
+
+Three things had accumulated: per-rule padding and font sizes (every component carried its
+own 13px / 13.5px / 14px / 14.5px / 16.5px and its own 9px / 10px / 11px / 13px / 18px), a
+lot of chrome per row (filled panel headers, cards nested inside cards, heavy badges), and
+tap targets under the 44px guideline nearly everywhere at iPad width.
+
+
+1. ONE SPACING SCALE, ONE TYPE SCALE
+
+Added to :root in src/app.css, above the theme blocks. They carry no colour, so they need no
+matching entry in the three theme overrides:
+
+  --s1..--s6   4 8 12 16 24 32
+  --f0..--f6   11 12.5 13.5 15 17 21 26
+  --r1..--r3   10 14 20
+  --tap        44
+
+Every shared component is now sized from these instead of from its own number: rows, panels,
+tiles, badges, headings, fields, and every bar of buttons. The odd sizes that were in the file
+(13px, 14px, 14.5px, 15px, 16.5px, 19px, 22px, 24px, 26px, 28px, 30px) collapse onto seven
+steps. Sketch-canvas SVG classes, the print sheet and the label sheet keep their own numbers —
+those are drawing and paper geometry, not interface, and forcing them onto a screen scale would
+be wrong.
+
+A side effect worth naming: the header title had three competing `body.wide .hdr h1` rules
+(30px, 26px, 24px) where only the last had any effect. The two dead rules are deleted and the
+title is one size, --f6.
+
+
+2. VIEW BY VIEW
+
+HOME — the screen the brief singled out.
+  · The four stat tiles now only carry colour when something is wrong. "Stock: Fine",
+    "Expiring: None", "Gaps: None" were all printed in green, so three green tiles competed
+    with the one amber tile that actually needed the technician. .stile.t-calm .sv is now
+    --ink. The amber SWEEP tile is the only coloured thing above the fold.
+  · Panel headers ("Scenes", "Next actions", "Units", "Quick find") were filled grey bars with
+    a rule under them — a band of chrome per panel. They are now the same quiet caption as the
+    `.sect` headings used everywhere else: same size, same weight, same colour, no fill, no
+    rule. One heading treatment in the app instead of two.
+  · The Units panel held three bordered, rounded bay cards inside a bordered, rounded panel —
+    boxes in boxes. They are now flush rows separated by a hairline, matching the "Next actions"
+    rows directly opposite them. The panel is the box; the units are rows in it.
+  · The meta strip (van name, date, initials, sweep, vehicle check, Settings) is on the scale
+    and is 44px tall, so "Set your initials" and the Settings button are properly tappable.
+  · Tile weight 800 -> 700 and letter-spacing eased; 800 at 21px was shouting.
+
+STORAGE / COMPARTMENTS
+  · The bay card wasted its right half. The status badge was centred on a full-width second row
+    while the van diagram sat in a 122px column on row one only, leaving a hole under it. The
+    diagram now spans both rows and the badge sits left, under the text it describes. Card
+    padding 18/20 -> 16, radius 20 -> 14, title 22px/800 -> 21px/700. Same information, about
+    15px shorter and with no dead centre.
+  · The four action buttons (Printable map, Printable labels, Scan a label, Vehicle check) were
+    42px tall; they are 44 now and on the scale.
+
+BAY
+  · Inherits the bay-card change above and the .row change below. Untouched otherwise — the
+    compartment grid is a plan of a physical wall and its container queries are load-bearing.
+
+INVENTORY / ITEMS
+  · The desktop table was 14px with 11px cells, giving 43px rows. Now 15px with --s3/--s4
+    cells and a 1.45 line-height: 46px rows, readable across the seven columns, and past the
+    tap guideline for the iPad.
+  · Column headers went 11.5px -> 11px with slightly more tracking, so they read as labels
+    rather than as small text.
+  · The five grouping chips (Compartment, Category, ...) were 42px; 44 now.
+  · The list-row form used on the narrower layouts: compartment code 16.5px -> 17px with a
+    tightened line-height, description 13.5px -> --f2. Rows gained about 6px each. On a 62-row
+    sweep list that is real scroll, and it is the one place I deliberately spent height rather
+    than saved it — a gloved thumb is the reason the brief exists.
+
+SWEEP
+  · The next-compartment bar, the "Swept, next" / "Change" buttons, the Quick add / Full details
+    switch and every field are all 44px now. The fields in particular were 41px.
+  · Section headings ("Bin wall — 0 of 27 swept") on the scale.
+
+INCIDENT / SCENES
+  · The incident tile is the same family as the bay card and got the same treatment: padding,
+    radius, title weight, and the plan badges moved from centred to left-aligned so they line up
+    with the case number above them.
+  · The document rows (Entry log, Evidence log, ...) are the shared .row, so they picked up the
+    scale and the 44px minimum.
+
+SETTINGS (data)
+  · .setgroups is a two-column grid and its panels were stretching to the tallest in the row,
+    so "You" was a 130px-tall white box containing one 52px row. align-items:start — the panels
+    are now the height of their contents.
+
+GUIDE, FORMS, TEMPLATES, FILL, ACTIVE, TIDY, REORDER
+  · No structural change; they are built from the shared primitives (.row, .panel, .filters,
+    .editbar, .chips, .fld, .btn, .back) and inherit the whole pass.
+
+SKETCH
+  · Only the shared controls: .polybar, .objbar, .zoombar and the symbol filter chips are 44px
+    now. Canvas geometry, the symbol palette previews, the layer rail and the ink swatches are
+    untouched — see "left alone".
+
+PRINT / LABELS
+  · Untouched. These render onto paper at fixed sizes.
+
+
+3. WHAT I DELIBERATELY LEFT ALONE
+
+  · The sketch canvas SVG classes (.k-*), the print sheet (.psheet, .pgrid, .ptab) and the
+    label sheet. Paper and drawing geometry; a screen type scale does not belong there.
+  · The ink swatches in the sketch rail (34x34) and the layer-row preview buttons. Taking them
+    to 44 would push the tool rail past its column at 1194 and they are a precision control
+    used with the same finger that is already on the canvas. They are the one family still
+    under the guideline and I would rather flag them than break the rail.
+  · The van illustration, the cargo-slot container queries and the bay-plan container queries.
+    They are carefully tuned to degrade from a 104-inch shelf down to a 16px slot and they work.
+  · The compartment grid density in Bay. Making those cells bigger would mean fewer on screen,
+    which is the opposite of what a wall map is for.
+  · The bottom tab bar (.tabs). It only appears below 1000px, which is outside the two targets.
+  · Colour tokens. Every value in the four theme blocks is unchanged. The only colour edit in
+    the pass is which token a calm tile's number uses.
+
+
+4. THINGS I THINK SHOULD CHANGE BUT DID NOT, BECAUSE THEY ARE BEHAVIOUR
+
+  · Home says the same thing twice. The SWEEP tile reads "62 left / 0 of 62 checked" and four
+    rows below it "Next actions" reads "Sweep 62 compartments". Same for Stock/low, Expiring
+    and Gaps: all four tiles have a matching row. Either the tiles or those four rows could go
+    and the screen would lose nothing and gain a lot of calm. That is a content decision.
+  · The view name is printed twice on every tab: once as the header <h1> and again as the bold
+    word starting the meta strip ("Storage / 62 compartments in 3 bays / no sweep yet"). The
+    meta strip could start with the facts.
+  · "Settings" appears twice on home — the button at the end of the meta strip and the row at
+    the bottom of the side bar. Both are wanted on a phone; on the two target machines one is
+    redundant.
+  · Two-column grids (Settings, and the home dashboard) leave a gap when one column's panel is
+    much shorter. A masonry or column-flow layout fixes it but changes reading order, which
+    changes where a technician expects to find things.
+
+
+5. NUMBERS AFTER THE PASS
+
+  Contrast (npx playwright test tests/contrast.spec.js --project=chromium)
+      light   0 of 1505 under AA   (worst ratio 4.56, was 4.40)
+      dark    0 of 1505 under AA   (worst ratio 4.93, unchanged)
+    Zero failures before, zero after, and the worst light-mode case improved — the panel
+    captions moved off the --card2 fill onto --card.
+
+  Tap targets under 44px, from the layout audit in tests/ui.spec.js
+      1194x834 light    199  ->  0
+      1194x834 dark     199  ->  0
+      834x1194 light     (same families)  ->  0
+    The four named in the brief specifically:
+      sidebar toggle      36x34  ->  44x44
+      "Set your initials" 91x19  ->  91x44
+      header gear         87x31  ->  87x44
+      side-nav rows      231x43  -> 231x45
+    The 199 was dominated by the side-nav rows (114 instances across 19 views), the desktop
+    inventory table rows (30) and the sidebar toggle (19).
+
+  Suite
+      npx playwright test — 154 passed, 0 failed (chromium + webkit).
+      Picture baselines regenerated at the end with
+      `npx playwright test tests/visual.spec.js --update-snapshots`, as instructed; the six
+      files in tests/visual.spec.js-snapshots/ are supposed to differ.
+      `node build.js --check` — index.html matches src/.
+
+  Offline
+      No web font, no CDN, no dependency, no build step added. System font stack unchanged.
+
+
+6. FILES
+
+  src/app.css                       the only source file changed
+  index.html                        rebuilt from src/
+  fsu-tests/design-before/*.png     home, inventory, compartments, sweep, incident at
+  fsu-tests/design-after/*.png      1194x834, light and dark, plus x-*.png for the other
+                                    views and p834/d1500 checks
+  fsu-tests/shots.js                the script that takes them: node serve.js 8795, then
+                                    node shots.js design-after
+  fsu-tests/tests/visual.spec.js-snapshots/   six regenerated baselines

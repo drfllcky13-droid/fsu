@@ -1,5 +1,16 @@
 # FSU change log
 
+## 2026.09.12.4
+The interface is quieter. One spacing and type scale runs through every panel, row, tile and
+button instead of each carrying its own numbers; panel headers are captions rather than filled
+grey bars; the unit cards on Home are flush rows; a stat tile only carries colour when it wants
+something. Every control now meets the 44px touch size on an iPad, which it did not before,
+including the sidebar toggle, the header gear and the side-bar rows. Nothing moved, nothing was
+renamed, nothing behaves differently.
+
+The delete paths are now covered by checks: deleting an incident, a sketch, an item or a
+compartment takes what it says and leaves everything beside it standing.
+
 ## 2026.09.12.3
 Text that was too faint to read has been darkened. The small grey print everywhere, the
 warning strip, the Sweep tile and the blue buttons in dark mode all now clear the contrast
