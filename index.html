@@ -7971,9 +7971,18 @@ function repairSketch(sk){
     // v3: a marker's measurement refers to its spike, not the middle of its card. The tape
     // distances are the record, so the drawing is put back where they say — which for a
     // marker moves it by about half its height. Nothing in .meas is touched.
-    // v4 redraws the marker as a card on a full-width point, so its tip moved again. Same
-    // rule as v3: the tape distances are the record and the drawing is put back onto them.
-    if(!(sk.v>=4)&&resolveMeas(sk))saveLocal();
+    // v4 redraws the marker as a card on a full-width point. Markers drawn at the old
+    // proportions are stretched to the new ones about their tip, so the point stays on the
+    // spot it was put on, and then the tape distances put the measured ones back as in v3.
+    if(!(sk.v>=4)){
+      (sk.objs||[]).forEach(o=>{
+        if(o.t!=="marker")return;
+        const want=Math.round(o.w*92/48);
+        if(Math.abs(o.h-want)<2)return;
+        const tip=objPt(o,.5,.96); o.h=want; placeAnchor(o,tip);
+      });
+      resolveMeas(sk); saveLocal();
+    }
     sk.v=SKETCH_V;
   }
   return fixed;
