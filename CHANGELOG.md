@@ -1,5 +1,11 @@
 # FSU change log
 
+## 2026.09.12.2
+Offline checks: the app opens with the network cut, an incident started and a compartment
+checked offline survive a reload, and every file the page asks for is in the cache. A
+contrast report lists text under the WCAG AA ratio in both schemes; it prints, it never
+fails a run.
+
 ## 2026.09.12.1
 Opening a form in Templates did nothing: the sheet threw before it could show, because the app
 runs in strict mode and nothing had declared the variable holding the open form. Fixed.

@@ -22,5 +22,9 @@ The crawl and the layout audit run twice, once in Chromium and once in WebKit, w
 engine the iPad runs. The sketch flows stay on Chromium. Widths are the two machines it is
 used on: 1500 and 1280 for a desktop, 1194x834 and 834x1194 for an iPad either way up.
 
+The offline checks cut the network and prove the app still opens, that work done offline
+survives a reload, and that every file the page asks for is cached. The contrast check
+prints every piece of text under WCAG AA in both schemes and never fails the run.
+
 Run it before and after any change to `index.html`. A failing sweep names the view, symbol or
 attribute; a failing flow names the step.

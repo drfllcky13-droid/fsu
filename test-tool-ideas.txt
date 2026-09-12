@@ -37,10 +37,11 @@ They would read better disabled at their limit, which is a design call, not a bu
 
 WORTH BUILDING NEXT, ROUGHLY IN ORDER OF WHAT IT WOULD CATCH
 
-1. Offline check. The whole promise of the app is that it works in a dead spot. Load it,
-   let the service worker install, go offline, reload, and drive one real flow. Also
-   assert the service worker's cache list covers every file the page asks for, so a new
-   asset can never ship uncached. Playwright does offline in one line.
+1. Offline check. DONE, fsu-tests/tests/offline.spec.js. The worker takes over, the page
+   opens with the network cut, an incident started and a compartment checked offline are
+   still there after an offline reload, and every same-origin file the page asks for is in
+   the cache. That last list is one entry, index.html, because the app is one file on
+   purpose; it earns its keep the day something external gets added and never cached.
 
 2. Data round trip across versions. Take a saved state from an older STOCKV, load it,
    and assert the migration leaves every item, compartment and sketch intact, then
@@ -56,9 +57,10 @@ WORTH BUILDING NEXT, ROUGHLY IN ORDER OF WHAT IT WOULD CATCH
    are paper deliverables. Render each with Playwright's print media emulation and
    assert nothing lands off the page and no row splits across a page break.
 
-5. Contrast and focus. Every text colour against its background at the WCAG AA ratio in
-   both schemes, and a keyboard pass that tabs through each view asserting focus is
-   visible and never trapped in a sheet. Cheap to write, and the van is used in daylight.
+5. Contrast DONE, contrast.js and fsu-tests/tests/contrast.spec.js; it reports and never
+   fails a run, because which colour to change is a design call. Findings below. The
+   keyboard half is still open: tab through each view asserting focus is visible and never
+   trapped in a sheet.
 
 6. Sync conflict drill. Two browser contexts pointed at the same van-data repo, both
    editing, one pushing first. Assert the second gets the conflict path and no write is
@@ -72,3 +74,32 @@ WORTH BUILDING NEXT, ROUGHLY IN ORDER OF WHAT IT WOULD CATCH
    the engine Safari uses, and both are clean. That is the cheap 80%; the last 20% is
    holding the actual iPad, where the home-screen shell, the on-screen keyboard and the
    pencil are not something a desktop WebKit build reproduces.
+
+
+WHAT THE CONTRAST CHECK FOUND, AND THE FOUR COLOURS BEHIND IT
+
+51 of 1503 pieces of text under AA in light, 24 in dark, nearly all of it four tokens in
+app.css. None of this is changed: it is your look, and the numbers are here so the call is
+yours.
+
+--ink3 #8E8E93, the secondary label grey, is nearly all of it. On white it reads 3.26 where
+body text needs 4.5; in dark it is fine on the page and on a card (6.44 and 5.22) and fails
+only on the #2C2C2E panels, at 4.27. It carries the small print everywhere: "27 not
+checked", "Not placed yet", every column heading. Light could take #6C6C70, which is what
+--ink2 already is, for 5.23. Dark could take #AEAEB2, again --ink2, for 6.30 on those
+panels.
+
+--ambersolid #E8890B with white text, the Sweep tile on Home. 2.62 light, 3.85 dark. The
+amber badge a few lines up in the same stylesheet already uses near-black text (#1a1200) on
+amber; the same choice here reads 7.09.
+
+--blue #57A6FF with white text in dark, on "Start an incident". 2.53, the worst number in
+the app, and it is the primary action. Either near-black text on that blue, or keep white
+text and darken the blue to #1A6FD0, which gives 4.97. Near-black on the blue as it
+stands gives 7.47.
+
+--amber #A96400 as text on --amberbg #FDF2E0, the unverified warning strip. 4.20, just
+under. #8F5400 clears it at 5.52.
+
+The muted grey is the one worth doing regardless of taste: it is used for small text at
+10-13px, which is where a low ratio actually costs you a reading in a van in daylight.
