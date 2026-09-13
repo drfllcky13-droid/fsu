@@ -395,7 +395,7 @@ function quickAdd(){
 }
 function paintJust(){
   const box=$("#qjust"); if(!box)return;
-  const rows=justAdded.map(id=>S.items.find(i=>i.id===id)).filter(Boolean);
+  const rows=justAdded.map(id=>S.items.find(i=>i.id===id)).filter(Boolean).filter(i=>i.loc===S.curLoc);
   box.innerHTML=rows.length?`<p class="hint" style="margin:14px 0 6px">Just added</p>`
     +rows.map(i=>`<div class="justrow${i.dupOf?" dup":""}">
       <span class="jn">${esc(i.name)}${i.dupOf?`<span class="jdup">also in ${esc(i.dupOf)}</span>`:""}</span>
