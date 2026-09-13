@@ -9343,7 +9343,7 @@ document.addEventListener("fullscreenchange",()=>{
 });
 function redrawCanvas(){
   const sk=S.sketches.find(x=>x.id===curSketch); if(!sk)return;
-  const w=document.querySelector(".canvaswrap"); if(w)w.innerHTML=canvasSVG(sk)+zoomBar();
+  const w=document.querySelector(".canvaswrap"); if(w)w.innerHTML=canvasSVG(sk)+zoomBar()+objsetFloat(sk,objAt(selObj));
 }
 
 document.addEventListener("input",e=>{
@@ -9360,9 +9360,14 @@ document.addEventListener("input",e=>{
     return}
   const on=e.target.closest("#oname"), num=e.target.closest("#onum");
   if(on||num){const o=objAt(selObj); if(o){
+      const fEl=on||num, fid=fEl.id, at=fEl.selectionStart;
       if(on)o.label=on.value;
       if(num)o.n=num.value.trim();
       saveLocal();redrawCanvas();
+      // redrawCanvas rebuilds the field itself (the label previews live on the canvas) —
+      // put the caret back or every keystroke past the first drops focus to the page
+      const el=document.getElementById(fid);
+      if(el){el.focus(); try{el.setSelectionRange(at,at)}catch(_){}}
       const skNow=S.sketches.find(x=>x.id===curSketch);
       if(skNow&&skNow.incidentId&&(o.t==="marker"||o.t==="photopoint")){
         clearTimeout(window.__mkT);
