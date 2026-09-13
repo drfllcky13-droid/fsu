@@ -1132,6 +1132,10 @@ body.xwide .cellwrap .sweepcard .ch{display:none}
 .zoombar{position:absolute;right:14px;bottom:14px;display:flex;gap:4px;align-items:center;
   background:var(--card);border:.5px solid var(--line2);border-radius:12px;padding:4px;
   box-shadow:0 2px 8px rgba(0,0,0,.18)}
+/* the selected object's settings float over the canvas, so the rail stays dedicated to symbols and layers */
+.floatcard{position:absolute;left:14px;bottom:14px;width:280px;max-width:calc(100% - 28px);
+  max-height:calc(100% - 28px);overflow-y:auto;box-shadow:0 10px 26px -12px rgba(0,0,0,.45);z-index:3}
+@media (max-width:640px){.floatcard{left:8px;right:8px;bottom:8px;width:auto;max-width:none}}
 .zoombar button{min-width:var(--tap);min-height:var(--tap);border:0;border-radius:var(--r1);background:var(--card2);
   color:var(--ink);font-size:18px;font-weight:600;font-family:var(--sys);padding:0 var(--s2)}
 .zoombar .zoomlvl{font-size:12px;color:var(--ink2);min-width:38px;text-align:center}
@@ -7315,46 +7319,8 @@ function keepScroll(fn){
   if(typeof requestAnimationFrame==="function")requestAnimationFrame(()=>{put();requestAnimationFrame(put)});
   setTimeout(put,60); setTimeout(put,160);
 }
-function renderSketch(){
-  const sk=S.sketches.find(x=>x.id===curSketch);
-  if(!sk){view="active";return renderActive()}
-  const repaired=repairSketch(sk);
-  if(!UNDO[sk.id])loadUndo(sk);
-  if(!S.sketchGuideSeen&&!(sk.objs||[]).length&&!window.__guideHinted){window.__guideHinted=true;setTimeout(()=>toast("New here? Draw \u203a How to sketch a scene"),900)}
-  if(repaired){saveLocal();toast("Repaired "+repaired+" damaged value"+(repaired===1?"":"s")+" in this sketch")}
-  (sk.objs||[]).forEach(o=>{if(!o.ar&&o.h)o.ar=o.w/o.h});
-  $("#title").textContent=sk.caseNo||"Sketch";
-  const sel=objAt(selObj);
-  const legend=(sk.objs||[]).filter(o=>o.label&&o.t!=="text");
-  const __html=`<div id="skhead">
-    <button class="back" data-navback="${sk.incidentId&&incidentOf(sk.incidentId)?"incident":"active"}">&#8249; ${
-      sk.incidentId&&incidentOf(sk.incidentId)?esc(incidentOf(sk.incidentId).caseNo||"Incident"):"Scenes"}</button>
-    ${typeof docTabs==="function"?docTabs("sketch",sk.id):""}
-    <div class="cdhead"><h2>${esc(sk.caseNo||"Untitled sketch")}</h2>
-      <div class="sub">${esc(sk.addr||"No address")} · ${esc((sk.when||"").replace("T"," "))}${sk.by?" · "+esc(sk.by):""}</div></div></div>
-    <div class="skgrid${skFull?" full":""}${skFull&&!skTools?" notools":""}${skRailMin?" railmin":""}"><div class="skmain">
-    <div class="editbar" id="skedit">${skFull
-      ? `<button data-skfull="0" class="on">Exit full screen</button>
-         <button data-skundo="1"${canUndo(sk)?'':' disabled'}>Undo</button>
-         <button data-skredo="1"${canRedo(sk)?'':' disabled'}>Redo</button>
-         <button data-skgrp="draw">Draw</button>
-         <button data-skgrp="view">View</button>
-         <button data-sktools="${skTools?0:1}">${skTools?"Hide tools":"Show tools"}</button>`
-      : `<button data-skundo="1"${canUndo(sk)?'':' disabled'}>Undo</button>
-         <button data-skredo="1"${canRedo(sk)?'':' disabled'}>Redo</button>
-         <button data-skgrp="draw">Draw</button>
-         <button data-skgrp="view">View</button>
-         <button data-skgrp="scene">Setup</button>
-         <button data-sksym="1" class="phoneonly">Symbols</button>
-         <button data-skfull="1">Full screen</button>
-         <button data-skexport="1">Export</button>`}</div>
-    <div id="skbars">${caseNag(sk)}${polyBar()}${placeBar()}${measPickBar()}${layerMoveBar()}${inkBar()}${multiBar()}</div><div class="canvaswrap">${canvasSVG(sk)}${zoomBar()}</div>
-
-    <p class="kbdhint">Arrow keys nudge, shift for bigger steps. D duplicates, Delete removes, Escape deselects.</p>
-    </div><div class="skrail" id="skrail">
-    <button class="railcaret" data-skrailtog="1" aria-label="${skRailMin?"Show the panel":"Collapse the panel"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <div class="railbody">
-    <div id="skpanel">${(sel&&showSet)?`<div class="objset">
+function objsetFloat(sk,sel){
+  return (sel&&showSet)?`<div class="objset floatcard">
         <div class="oshead"><b>${esc(SHAPENAME(sel.t))}</b>
           <span class="osr">Rotation <span id="rotval">${sel.r||0}\u00b0</span></span>
           <button class="osclose" id="osx" aria-label="Close">&#215;</button></div>
@@ -7390,7 +7356,49 @@ function renderSketch(){
         </div>
         <p class="hint" style="margin:8px 0 0">Drag to move, corner to ${LOCKED.has(sel.t)?"scale":"resize"}, ${sel.lockR?"rotation is locked so it cannot turn by accident.":"the circle above it to rotate. Hold shift while rotating to snap to 15&#176;. Lock rotation keeps a placed object square."}</p>
       </div>`
-      :`<p class="hint" style="margin-top:6px">Tap an object to select it. Tap the page to deselect.</p>`}</div>
+      :`<p class="hint" style="margin-top:6px">Tap an object to select it. Tap the page to deselect.</p>`;
+}
+
+function renderSketch(){
+  const sk=S.sketches.find(x=>x.id===curSketch);
+  if(!sk){view="active";return renderActive()}
+  const repaired=repairSketch(sk);
+  if(!UNDO[sk.id])loadUndo(sk);
+  if(!S.sketchGuideSeen&&!(sk.objs||[]).length&&!window.__guideHinted){window.__guideHinted=true;setTimeout(()=>toast("New here? Draw \u203a How to sketch a scene"),900)}
+  if(repaired){saveLocal();toast("Repaired "+repaired+" damaged value"+(repaired===1?"":"s")+" in this sketch")}
+  (sk.objs||[]).forEach(o=>{if(!o.ar&&o.h)o.ar=o.w/o.h});
+  $("#title").textContent=sk.caseNo||"Sketch";
+  const sel=objAt(selObj);
+  const legend=(sk.objs||[]).filter(o=>o.label&&o.t!=="text");
+  const __html=`<div id="skhead">
+    <button class="back" data-navback="${sk.incidentId&&incidentOf(sk.incidentId)?"incident":"active"}">&#8249; ${
+      sk.incidentId&&incidentOf(sk.incidentId)?esc(incidentOf(sk.incidentId).caseNo||"Incident"):"Scenes"}</button>
+    ${typeof docTabs==="function"?docTabs("sketch",sk.id):""}
+    <div class="cdhead"><h2>${esc(sk.caseNo||"Untitled sketch")}</h2>
+      <div class="sub">${esc(sk.addr||"No address")} · ${esc((sk.when||"").replace("T"," "))}${sk.by?" · "+esc(sk.by):""}</div></div></div>
+    <div class="skgrid${skFull?" full":""}${skFull&&!skTools?" notools":""}${skRailMin?" railmin":""}"><div class="skmain">
+    <div class="editbar" id="skedit">${skFull
+      ? `<button data-skfull="0" class="on">Exit full screen</button>
+         <button data-skundo="1"${canUndo(sk)?'':' disabled'}>Undo</button>
+         <button data-skredo="1"${canRedo(sk)?'':' disabled'}>Redo</button>
+         <button data-skgrp="draw">Draw</button>
+         <button data-skgrp="view">View</button>
+         <button data-sktools="${skTools?0:1}">${skTools?"Hide tools":"Show tools"}</button>`
+      : `<button data-skundo="1"${canUndo(sk)?'':' disabled'}>Undo</button>
+         <button data-skredo="1"${canRedo(sk)?'':' disabled'}>Redo</button>
+         <button data-skgrp="draw">Draw</button>
+         <button data-skgrp="view">View</button>
+         <button data-skgrp="scene">Setup</button>
+         <button data-sksym="1" class="phoneonly">Symbols</button>
+         <button data-skfull="1">Full screen</button>
+         <button data-skexport="1">Export</button>`}</div>
+    <div id="skbars">${caseNag(sk)}${polyBar()}${placeBar()}${measPickBar()}${layerMoveBar()}${inkBar()}${multiBar()}</div><div class="canvaswrap">${canvasSVG(sk)}${zoomBar()}${objsetFloat(sk,sel)}</div>
+
+    <p class="kbdhint">Arrow keys nudge, shift for bigger steps. D duplicates, Delete removes, Escape deselects.</p>
+    </div><div class="skrail" id="skrail">
+    <button class="railcaret" data-skrailtog="1" aria-label="${skRailMin?"Show the panel":"Collapse the panel"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="railbody">
+    <div id="skpanel"><p class="hint" style="margin-top:6px">Tap an object to select it. Tap the page to deselect.</p></div>
     <div class="palsearch"><input type="text" id="palq" placeholder="Search symbols"
       value="${esc(palQ||"")}" autocomplete="off" autocapitalize="off">
       ${palQ?`<button id="palqx" aria-label="Clear">&#215;</button>`:""}</div>

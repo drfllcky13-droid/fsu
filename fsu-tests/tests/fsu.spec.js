@@ -288,11 +288,11 @@ test.describe("van flows",()=>{
     await page.evaluate(()=>placeStart("rect"));
     expect(await page.evaluate(()=>!!inkDraw)).toBe(false);
     await page.evaluate(()=>{PLACE=null;addObj("rect");showSet=true;renderSketch()});
-    await expect(page.locator("#skrail .objset [data-orotlock]")).toBeVisible();
+    await expect(page.locator(".floatcard.objset [data-orotlock]")).toBeVisible();
     expect(await page.evaluate(()=>document.querySelectorAll("#skcanvas [data-rot]").length)).toBe(1);
-    await page.click("#skrail .objset [data-orotlock]");
+    await page.click(".floatcard.objset [data-orotlock]");
     expect(await page.evaluate(()=>document.querySelectorAll("#skcanvas [data-rot]").length)).toBe(0);
-    await expect(page.locator("#skrail .objset [data-orot]")).toHaveCount(0);
+    await expect(page.locator(".floatcard.objset [data-orot]")).toHaveCount(0);
     await expect(page.locator("#v-sketch #skedit [data-skfull]")).toBeVisible();
   });
 
