@@ -4,15 +4,6 @@ document.addEventListener("click",e=>{
   const nb=e.target.closest("[data-navback]");
   if(nb){e.stopPropagation();return navBack(nb.dataset.navback)}
   const g=e.target.closest("[data-go]"); if(g)return go(g.dataset.go);
-  if(e.target.closest("#parall")){
-    const n=live().filter(i=>(i.loc||"").trim()&&!String(i.par||"").trim());
-    if(!n.length)return;
-    return askConfirm("Set par to 1","Every placed item without a par level gets 1. "
-      +"Change any of them afterwards.","Set "+n.length+" to 1",false,()=>{
-        n.forEach(i=>{i.par="1"}); save(); renderTidy();
-        toast(n.length+" set to 1")})}
-  const tf=e.target.closest("[data-tidyf]");
-  if(tf){S.tidyOnly=tf.dataset.tidyf==="1";save();renderTidy();return}
   if(e.target.closest("#gotidy")){view="tidy";window.scrollTo&&window.scrollTo(0,0);return render()}
   if(e.target.closest("#goreorder")){view="reorder";window.scrollTo&&window.scrollTo(0,0);return render()}
   if(e.target.closest("#rocopy")){

@@ -306,15 +306,6 @@ body.skfull .skgrid.full.notools{grid-template-columns:minmax(0,1fr);grid-templa
 .sug:first-child{border-top:.5px solid var(--line);border-radius:11px 11px 0 0}
 .sug:last-child{border-radius:0 0 11px 11px}
 .sug:only-child{border-radius:11px}
-.tidylist{display:flex;flex-direction:column;gap:9px}
-.tidyrow{background:var(--card);border:.5px solid var(--line);border-radius:12px;
-  padding:11px 13px;display:grid;grid-template-columns:1fr 88px;gap:8px 12px;align-items:end}
-.tidyrow .tn{grid-column:1/-1}
-.tidyrow .tn b{display:block;font-size:15px}
-.tidyrow .tn span{font-size:12.5px;color:var(--ink3)}
-.tidyrow .fld{margin:0}
-@media (min-width:700px){ .tidyrow{grid-template-columns:1fr 110px 230px}
-  .tidyrow .tn{grid-column:auto} }
 .palsearch{position:relative;margin:0 0 10px}
 .palsearch input{width:100%;padding:10px 34px 10px 12px;font-size:15px}
 .palsearch button{position:absolute;right:6px;top:50%;transform:translateY(-50%);
@@ -512,6 +503,51 @@ body.skfull .skgrid.full.notools{grid-template-columns:minmax(0,1fr);grid-templa
 .acts{display:flex;gap:var(--s2);margin-bottom:var(--s4)}
 .acts button{flex:1;padding:var(--s3) var(--s1);min-height:var(--tap);border-radius:var(--r1);
   border:.5px solid var(--line);background:var(--card);color:var(--blue);font-size:var(--f3);font-weight:600}
+/* compartment detail: info and actions pinned left, the item list scrolls on the right */
+.cd2{display:grid;grid-template-columns:260px minmax(0,1fr);gap:var(--s5);align-items:start}
+.cdleft{position:sticky;top:0}
+.cdacts{flex-direction:column}
+.cdacts button{flex:none;width:100%}
+@media (max-width:820px){.cd2{grid-template-columns:minmax(0,1fr)}.cdleft{position:static}.cdacts{flex-direction:row}.cdacts button{flex:1;width:auto}}
+/* items, grouped by status: a column per status instead of stacked sections */
+.kanban{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3)}
+@media (max-width:900px){.kanban{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.kanban{grid-template-columns:1fr}}
+.kcol h3{font-size:var(--f0);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);
+  display:flex;justify-content:space-between;margin:0 2px var(--s2)}
+.kcol h3 .n{background:var(--card2);border-radius:20px;padding:1px var(--s2);font-size:var(--f0)}
+.kcard{display:block;width:100%;text-align:left;background:var(--card);border:.5px solid var(--line2);
+  border-radius:var(--r1);padding:var(--s3);margin-bottom:var(--s2);font-family:inherit;color:inherit}
+.kcard b{display:block;font-size:var(--f2);font-weight:600}
+.kcard span{display:block;font-size:var(--f1);color:var(--ink3);margin-top:2px}
+/* item detail: identity, location and actions pinned left; everything else scrolls on the right */
+.id2{display:grid;grid-template-columns:300px minmax(0,1fr);gap:var(--s5);align-items:start}
+.idleft{position:sticky;top:0}
+@media (max-width:820px){.id2{grid-template-columns:minmax(0,1fr)}.idleft{position:static}}
+/* sweep, one compartment at a time */
+.focuswrap{display:flex;flex-direction:column;align-items:center;padding:var(--s5) 0}
+.focuscard{width:100%;max-width:480px;background:var(--card);border:.5px solid var(--line2);
+  border-radius:var(--r3);padding:var(--s5);text-align:center}
+.focuseyebrow{font-size:var(--f0);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-bottom:var(--s2)}
+.focuscard .nowinfo{margin-bottom:var(--s4)}
+.focuscard .nc{font-size:34px}
+.focuscard .fld,.focuscard .two{text-align:left}
+.focusline{margin-top:var(--s3);color:var(--ink3)}
+/* reorder: progress toward everything being ordered */
+.ropct{background:var(--card);border:.5px solid var(--line2);border-radius:var(--r2);padding:var(--s3) var(--s4);margin-bottom:var(--s4)}
+.ropctlab{display:flex;justify-content:space-between;font-size:var(--f2);margin-bottom:var(--s2);color:var(--ink2)}
+.ropctbar{height:8px;border-radius:5px;background:var(--card2);overflow:hidden}
+.ropctbar i{display:block;height:100%;background:var(--greensolid);border-radius:5px}
+/* search: filters alongside results */
+.searchsplit{display:grid;grid-template-columns:200px minmax(0,1fr);gap:var(--s5);align-items:start}
+.searchrail{flex-direction:column;align-items:stretch;background:var(--card);border:.5px solid var(--line2);
+  border-radius:var(--r2);padding:var(--s2);position:sticky;top:0}
+.searchrail button{display:flex;justify-content:space-between;background:none;border-radius:var(--r1);
+  padding:var(--s2) var(--s3);font-size:var(--f2);color:var(--ink2);font-weight:500}
+.searchrail button.sel{background:var(--bluebg);color:var(--blue);font-weight:600}
+.searchrail button .n{color:var(--ink3);font-weight:400}
+.searchrail button.sel .n{color:var(--blue)}
+@media (max-width:720px){.searchsplit{grid-template-columns:minmax(0,1fr)}.searchrail{position:static;flex-direction:row;overflow-x:auto}}
 .ph.ok{background:var(--greenbg);color:var(--green)}
 .ph{background:var(--bluebg);color:var(--blue);border-radius:var(--r1);padding:var(--s3) var(--s4);
   font-size:var(--f2);line-height:1.5;margin-bottom:var(--s3)}
@@ -837,8 +873,6 @@ body.xwide .canvaswrap{padding:10px}
 body.xwide .palette{grid-template-columns:repeat(auto-fill,minmax(104px,1fr))}
 body.xwide .strip{gap:16px}
 
-#modebtn{background:none;border:0;color:var(--blue);padding:4px;flex:0 0 auto}
-#modebtn svg{width:23px;height:23px;display:block}
 .modeopt{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left;
   background:var(--card);border:.5px solid var(--line);border-radius:11px;padding:12px 14px;
   margin-bottom:8px;position:relative}
@@ -1221,18 +1255,20 @@ body.wide .baystage.picked .bayzoom{max-height:calc(100vh - 200px)}
   color:var(--blue);font:inherit;font-size:var(--f2);font-weight:600}
 .hhead .hgear .gi{width:17px;height:17px;display:block}
 @media (hover:hover) and (pointer:fine){.hhead .hgear:hover{border-color:var(--blue)}}
-.setgroups{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--s4);max-width:720px;align-items:start}
-@media (min-width:1000px){.setgroups{grid-template-columns:1fr 1fr;max-width:none}}
-.srow{display:flex;align-items:center;gap:var(--s3);width:100%;text-align:left;background:none;border:0;
-  border-bottom:.5px solid var(--line2);padding:var(--s3) var(--s4);color:var(--ink);font:inherit;
-  min-height:52px;cursor:pointer}
-.srow:last-child{border-bottom:0}
-.srow:active{background:var(--card2)}
-.srow .sn{font-size:var(--f3);font-weight:600;flex:0 0 auto;letter-spacing:-.01em}
-.srow .ss{margin-left:auto;font-size:var(--f2);color:var(--ink2);text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.srow.warn .ss{color:var(--amber);font-weight:600}
-.srow.bad .ss{color:var(--red);font-weight:600}
-.srow.danger .sn{color:var(--red)}
+.setblocks{max-width:960px}
+.scardgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3);margin-bottom:var(--s4)}
+@media (max-width:820px){.scardgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.scardgrid{grid-template-columns:1fr}}
+.scard{display:flex;flex-direction:column;gap:4px;text-align:left;background:var(--card);border:.5px solid var(--line2);
+  border-radius:var(--r2);padding:var(--s4);color:var(--ink);font:inherit;min-height:76px;cursor:pointer}
+.scard:active{background:var(--card2)}
+.scard .sn{font-size:var(--f3);font-weight:600;letter-spacing:-.01em}
+.scard .ss{font-size:var(--f1);color:var(--ink2)}
+.scard.warn{border-color:var(--amber)}
+.scard.warn .ss{color:var(--amber);font-weight:600}
+.scard.bad{border-color:var(--red)}
+.scard.bad .ss{color:var(--red);font-weight:600}
+.scard.danger .sn{color:var(--red)}
 .setsec{max-width:640px}
 .setsec textarea{width:100%;box-sizing:border-box}
 body.wide .side .sset{margin-top:auto}
@@ -1253,6 +1289,9 @@ body.wide.sidemin .side button .pill{position:absolute;top:6px;right:8px;min-wid
 body.wide.sidemin .side button{position:relative}
 .stiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3);margin-bottom:var(--s4)}
 @media (max-width:640px){.stiles{grid-template-columns:1fr 1fr}}
+.stiles.stiles6{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media (max-width:900px){.stiles.stiles6{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:520px){.stiles.stiles6{grid-template-columns:1fr 1fr}}
 .stile{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s1);text-align:left;
   border-radius:var(--r2);padding:var(--s3) var(--s4);
   border:.5px solid var(--line2);background:var(--card);color:var(--ink);min-height:84px;font:inherit}
@@ -1267,24 +1306,6 @@ body.wide.sidemin .side button{position:relative}
 .stile.t-red .sk,.stile.t-red .ss{color:rgba(255,255,255,.88)}
 .stile.t-amber .sk,.stile.t-amber .ss{color:rgba(18,16,10,.82)}
 .stile.t-dark .sk,.stile.t-dark .ss{color:inherit;opacity:.8}
-/* home: today's sweep as a ring, everything else as chips */
-.ringcard{display:flex;flex-wrap:wrap;gap:var(--s4);align-items:center;background:var(--card);
-  border:.5px solid var(--line2);border-radius:var(--r3);padding:var(--s4) var(--s5);margin-bottom:var(--s4)}
-.ring{position:relative;width:120px;height:120px;flex:0 0 auto}
-.ring .n{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.ring .n b{font-size:var(--f6);font-weight:800;letter-spacing:-.02em;line-height:1}
-.ring .n span{font-size:var(--f0);color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
-.ringbody{min-width:200px}
-.ringbody h2{font-size:var(--f4);font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
-.ringbody p{margin:0 0 var(--s3);font-size:var(--f2);color:var(--ink2)}
-.ringcta{background:var(--blue);color:var(--onblue);border:0;border-radius:var(--r1);padding:var(--s3) var(--s4);
-  font-size:var(--f3);font-weight:600;font-family:inherit;min-height:var(--tap);cursor:pointer}
-.chipsrow{display:flex;gap:var(--s2);flex-wrap:wrap;margin-left:auto}
-.chip{display:flex;align-items:center;gap:4px;border-radius:20px;padding:var(--s2) var(--s3);
-  font-size:var(--f1);font-weight:600;white-space:nowrap;border:0;font-family:inherit;min-height:36px}
-.chip.b-good{background:var(--greenbg);color:var(--green)}
-.chip.b-attn{background:var(--amberbg);color:var(--amber)}
-@media (max-width:640px){.ringcard{justify-content:center;text-align:center}.chipsrow{margin-left:0;width:100%;justify-content:center}}
 /* scenes home, iPad: one card for the incident you were last in */
 .hero2{background:var(--blue);color:var(--onblue);border-radius:var(--r3);padding:var(--s5) var(--s4);
   margin-bottom:var(--s3);display:flex;flex-direction:column;gap:var(--s2)}
@@ -2536,12 +2557,6 @@ function go(v){
   render();restoreScroll(v)}
 document.addEventListener("click",e=>{const b=e.target.closest("#tabs button,#side button");if(b&&b.dataset.v)go(b.dataset.v)});
 document.addEventListener("input",e=>{
-  const tp=e.target.closest("[data-tpar]");
-  if(tp){const i=S.items.find(x=>x.id===tp.dataset.tpar);
-    if(i){i.par=tp.value.replace(/[^0-9]/g,"");saveLocal()} return}
-  const tc=e.target.closest("[data-tcat]");
-  if(tc){const i=S.items.find(x=>x.id===tc.dataset.tcat);
-    if(i){i.cat=tc.value;saveLocal();toast("Set to "+catName(i.cat))} return}
   const r=S.fills.find(x=>x.id===curFill); if(!r)return;
   const fv=e.target.closest("[data-fv]");
   if(fv){r.values[fv.dataset.fv]=fv.value;return saveLocal()}
@@ -2594,30 +2609,18 @@ function renderHome(){
     <span>${esc(sweepTxt)}</span><span>${lastVeh()?"Vehicle checked "+esc(lastVeh().t.slice(0,10)):"No vehicle check yet"}</span>
     <button class="hgear" id="gear">${ic("gear","gi")}<span>Settings</span></button></div>`;
 
-  // how is the van \u2014 today's sweep as a progress ring, everything else as chips
-  const R=52, CIRC=2*Math.PI*R;
-  const frac=cs.length?checked/cs.length:0;
-  const ringOff=(CIRC*(1-frac)).toFixed(1);
-  const ringLabel=!cs.length?"Add compartments"
-    :unchk===0?"Sweep finished"+(lastMark?" "+lastMark:""):checked?"Continue sweep":"Start sweep";
-  const chip=(ok,label,attr)=>`<button class="chip ${ok?"b-good":"b-attn"}" ${attr}>${ok?"&#10003; ":""}${esc(label)}</button>`;
-  const tiles=`<div class="ringcard">
-    <div class="ring"><svg width="120" height="120" viewBox="0 0 120 120">
-      <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--line2)" stroke-width="12"/>
-      <circle cx="60" cy="60" r="${R}" fill="none" stroke="${unchk?"var(--ambersolid)":"var(--greensolid)"}" stroke-width="12"
-        stroke-linecap="round" stroke-dasharray="${CIRC.toFixed(1)}" stroke-dashoffset="${ringOff}"
-        transform="rotate(-90 60 60)"/></svg>
-      <div class="n"><b>${cs.length?unchk:"\u2014"}</b><span>Left</span></div></div>
-    <div class="ringbody">
-      <h2>${cs.length?"Today's sweep":"No compartments yet"}</h2>
-      <p>${cs.length?checked+" of "+cs.length+" compartments checked":"Add your first compartment to start a sweep"}</p>
-      <button class="ringcta" data-go="sweep">${esc(ringLabel)} &rarr;</button>
-    </div>
-    <div class="chipsrow">
-      ${chip(!bad.length,bad.length?bad.length+" short":"Stock fine",'data-list="low"')}
-      ${chip(!soon.length,soon.length?soon.length+" expiring":"Nothing expiring",'data-list="expiring"')}
-      ${chip(!gp.length,gp.length?gp.length+" gap"+(gp.length===1?"":"s"):"No gaps",'data-list="gaps"')}
-    </div>
+  // how is the van \u2014 a status card per topic, colour doing the talking
+  const lvEarly=lastVeh();
+  const bays=[...new Set(cs.map(c=>bayOf(c.code)))];
+  const bayUnchk=bays.filter(bay=>cs.some(c=>bayOf(c.code)===bay&&compState(c.code).k==="unchecked")).length;
+  const card=(ok,k,v,s,attr)=>`<button class="stile ${ok?"t-calm":"t-amber"}" ${attr}><span class="sk">${k}</span><span class="sv">${v}</span><span class="ss">${s}</span></button>`;
+  const tiles=`<div class="stiles stiles6">
+    ${card(!unchk,"Sweep",cs.length?(unchk?unchk+" left":"Done"):"\u2014",cs.length?checked+" of "+cs.length+" checked":"add compartments",'data-go="sweep"')}
+    ${card(!bad.length,"Stock",bad.length?bad.length+" short":"Fine",bad.length?"low or out":"nothing low or out",'data-list="low"')}
+    ${card(!soon.length,"Expiring",soon.length?String(soon.length):"None",soon.length?"within 90 days or due":"all dates clear",'data-list="expiring"')}
+    ${card(!gp.length,"Gaps",gp.length?String(gp.length):"None",gp.length?"not in the van":"nothing outstanding",'data-list="gaps"')}
+    ${card(!!lvEarly&&!vehDue(),"Vehicle",lvEarly?"Checked":"Unchecked",lvEarly?lvEarly.t.slice(0,10):"no check on record",'data-vehcheck="1"')}
+    ${card(!bayUnchk,"Units",bays.length?(bays.length-bayUnchk)+" of "+bays.length:"\u2014",bayUnchk?"not fully checked":"all fully checked",'data-go="compartments"')}
   </div>`;
 
   // what needs doing
@@ -2638,25 +2641,23 @@ function renderHome(){
   ].filter(r=>r[0]>0).map(r=>{const [one,many,rest]=r[1].split("|");return ["setup",r[0]+" "+(r[0]===1?one:many)+" "+rest,r[2],""]});
   rows.push(...setup);
   if(cs.length&&!unchk)rows.push(["","Count the stock",'data-countrun="1"',""]);
-  const todo=`<div class="panel todo"><div class="ph2">Next actions${rows.length?" \u2014 "+rows.length:""}</div><div class="pb">
-    ${rows.length?rows.map(([k,t,attr,lc])=>`<button class="act${k?" "+k:""}" ${attr}>${k==="setup"?`<span class="tag">Setup</span>`:""}<span>${esc(t)}</span>${lc?`<span class="lc">${lc}</span>`:`<span class="chev">&#8250;</span>`}</button>`).join("")
+  const needRows=need.slice(0,10).map(i=>{const s=itemStatus(i);
+    return `<button class="act" data-item="${i.id}"><span>${esc(i.name)}<span class="lc" style="margin-left:6px">${esc(i.loc||"\u2014")}</span></span><span class="badge b-${s[0]}">${esc(s[1])}</span></button>`});
+  const feedCount=rows.length+needRows.length;
+  const todo=`<div class="panel todo"><div class="ph2">Everything, most urgent first${feedCount?" \u2014 "+feedCount:""}</div><div class="pb">
+    ${feedCount?rows.map(([k,t,attr,lc])=>`<button class="act${k?" "+k:""}" ${attr}>${k==="setup"?`<span class="tag">Setup</span>`:""}<span>${esc(t)}</span>${lc?`<span class="lc">${lc}</span>`:`<span class="chev">&#8250;</span>`}</button>`).join("")+needRows.join("")
+      +(need.length>10?`<button class="act" data-list="all"><span>Show all ${need.length} that need attention</span><span class="chev">&#8250;</span></button>`:"")
       :`<p class="hint" style="margin:0">Nothing outstanding.</p>`}
   </div></div>`;
-
-  const attention=need.length?`<div class="panel"><div class="ph2">Needs attention \u2014 ${need.length}</div>
-    <div class="pb narrowlist">${need.slice(0,10).map(i=>{const s=itemStatus(i);
-      return `<button class="nrow" data-item="${i.id}"><span class="nn">${esc(i.name)}</span>
-        <span class="nm2"><span class="lc">${esc(i.loc||"\u2014")}</span><span class="badge b-${s[0]}">${esc(s[1])}</span></span></button>`}).join("")}
-      ${need.length>10?`<button class="act" data-list="all"><span>Show all ${need.length}</span><span class="chev">&#8250;</span></button>`:""}</div></div>`:"";
 
   const pop=L.slice().sort((a,b)=>((b.fav?1e6:0)+(b.uses||[]).length)-((a.fav?1e6:0)+(a.uses||[]).length)).slice(0,3);
   const quick=pop.length?`<div class="panel"><div class="ph2">Quick find</div><div class="pb"><div class="qf">${pop.map(i=>
       `<button data-item="${i.id}"><span class="nm">${esc(i.name)}</span><span class="lc">${esc(i.loc||"\u2014")}</span></button>`).join("")}</div>
       <p class="hint" style="margin:8px 0 0">Star an item and it appears here.</p></div></div>`:"";
 
-  $("#v-home").innerHTML=head+tiles+`<div class="dash2">
-    <div class="col">${todo}${handoverPanel()}${attention}</div>
-    <div class="col">${unitPanel()}${quick}</div></div>`;
+  $("#v-home").innerHTML=head+tiles+todo+`<div class="dash2">
+    <div class="col">${handoverPanel()}</div>
+    <div class="col">${quick}</div></div>`;
   $$("#v-home [data-gosec]").forEach(b=>b.onclick=()=>openSettings(b.dataset.gosec));
 }
 /* ---------- compartments ---------- */
@@ -2885,30 +2886,35 @@ function renderCompDetail(){
   const sorted=it.slice().sort((a,b)=>{
     const r=i=>isOut(i)||isExpired(i)?0:(isLow(i)||isExpiring(i)||isService(i))?1:2;
     return r(a)-r(b)||a.name.localeCompare(b.name)});
-  $("#v-compdetail").innerHTML=`
-    <button class="back" data-navback="compartments">&#8249; Storage</button>
-    <div class="cdhead">
-      <h2>${esc(c.code)}</h2>
-      <div class="sub">${esc(c.desc||"No description")}${c.side?" · "+esc(c.side):""}</div>
-      <div class="cdstats">${counts.map(([k,v,l])=>
-        `<span class="badge b-${k}">${v} ${l}</span>`).join("")}
-        ${c.checked?`<span class="badge b-unchecked">Swept ${esc(c.checked)}</span>`:""}</div>
+  $("#v-compdetail").innerHTML=`<div class="cd2">
+    <div class="cdleft">
+      <button class="back" data-navback="compartments">&#8249; Storage</button>
+      <div class="cdhead">
+        <h2>${esc(c.code)}</h2>
+        <div class="sub">${esc(c.desc||"No description")}${c.side?" · "+esc(c.side):""}</div>
+        <div class="cdstats">${counts.map(([k,v,l])=>
+          `<span class="badge b-${k}">${v} ${l}</span>`).join("")}
+          ${c.checked?`<span class="badge b-unchecked">Swept ${esc(c.checked)}</span>`:""}</div>
+      </div>
+      <div class="acts cdacts">
+        <button data-addhere="${esc(c.code)}">Add an item</button>
+        <button data-check="${esc(c.code)}">${c.checked?"Swept again":"Mark swept"}</button>
+        <button data-editcomp="${esc(c.code)}">Edit</button>
+        ${it.some(i=>i.cls==="Regulated")?`<button data-countall="${esc(c.code)}">Count regulated</button>`:""}
+      </div>
     </div>
-    <div class="acts">
-      <button data-addhere="${esc(c.code)}">Add an item</button>
-      <button data-check="${esc(c.code)}">${c.checked?"Swept again":"Mark swept"}</button>
-      <button data-editcomp="${esc(c.code)}">Edit</button>
-      ${it.some(i=>i.cls==="Regulated")?`<button data-countall="${esc(c.code)}">Count regulated</button>`:""}
+    <div class="cdright">
+      ${sorted.length?`<div class="rows">`+sorted.map(i=>{const f=flag(i);
+        return `<button class="row" data-item="${i.id}">
+          <span><span class="code">${esc(i.name)}</span>
+          <span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}${
+            i.cls?" · "+esc(i.cls):""}${i.date?" · "+esc(i.date):""}<br>${esc(catName(i.cat))}</span></span>
+          <span class="rt"><span class="badge b-${f[0]}">${esc(f[1])}</span><span class="chev">&#8250;</span></span></button>`
+        }).join("")+`</div>`
+      :`<div class="empty"><strong>Nothing logged here</strong>
+         <p>${c.checked?"Swept and confirmed empty.":"Open it, log what's inside, then mark it swept."}</p></div>`}
     </div>
-    ${sorted.length?`<div class="rows">`+sorted.map(i=>{const f=flag(i);
-      return `<button class="row" data-item="${i.id}">
-        <span><span class="code">${esc(i.name)}</span>
-        <span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}${
-          i.cls?" · "+esc(i.cls):""}${i.date?" · "+esc(i.date):""}<br>${esc(catName(i.cat))}</span></span>
-        <span class="rt"><span class="badge b-${f[0]}">${esc(f[1])}</span><span class="chev">&#8250;</span></span></button>`
-      }).join("")+`</div>`
-    :`<div class="empty"><strong>Nothing logged here</strong>
-       <p>${c.checked?"Swept and confirmed empty.":"Open it, log what's inside, then mark it swept."}</p></div>`}`;
+  </div>`;
 }
 
 
@@ -2951,6 +2957,7 @@ function renderItemDetail(){
     home:"Home",sweep:"Sweep",search:"Search"}[prevView]||"Back";
   $("#v-itemdetail").innerHTML=`
     <button class="back" data-back="1">&#8249; ${esc(backLabel)}</button>
+    <div class="id2"><div class="idleft">
     <div style="display:flex;align-items:flex-start;gap:10px">
       <div style="flex:1;min-width:0">
         <span class="chip">${esc(catName(i.cat))}</span>
@@ -2978,8 +2985,9 @@ function renderItemDetail(){
     ${miniWall(i.loc)}
     <div class="parrow"><span>Par level <b>${esc(i.par||"not set")}</b></span>
       <span>Status <b style="color:var(--${st[0]==="action"?"red":st[0]==="attn"?"amber":"green"})">${esc(st[1])}</b></span></div>`}
+    </div><div class="idright">
 
-    <div class="idsect">How to use</div>
+    <div class="idsect" style="margin-top:0">How to use</div>
     ${steps.length?`<div class="steps">${steps.map((s,x)=>
       `<div class="step"><i>${x+1}</i><p>${esc(s)}</p></div>`).join("")}</div>
       ${!i.verified?`<div class="unver">No verified date on these instructions. Check them against the manufacturer sheet or your SOP before relying on them at a scene.</div>`
@@ -3059,7 +3067,8 @@ function renderItemDetail(){
       <button data-adjust="${i.id}">Adjust qty</button>`}
       ${isRequest(i)?`<button class="primary" data-editreq="${i.id}">Request details</button>`:""}
       <button data-edititem="${i.id}">Edit</button>
-    </div>`;
+    </div>
+    </div></div>`;
 }
 
 function openItem(id,from){rememberScroll();curItem=id;prevView=from||view;view="itemdetail";
@@ -3557,9 +3566,18 @@ function renderInventory(){
       </tbody></table></div>`;
     return;
   }
+  const kcard=i=>{const s=itemStatus(i);
+    return `<button class="kcard" data-item="${i.id}"><b>${esc(i.name)}</b>
+      <span>${esc(i.loc||"—")} &middot; ${esc(i.qty)} in stock</span></button>`};
   const body=invGroup==="az"
     ? `<div class="rows">`+L.slice().sort((a,b)=>a.name.localeCompare(b.name))
         .filter(()=>shown++<CAP).map(rowOf).join("")+`</div>`
+    : invGroup==="status"
+    ? `<div class="kanban">`+["Out of stock","Expired","Below par","Service due","Expiring soon","Good"]
+        .filter(k=>g[k]&&g[k].length).map(k=>{
+          const rows=g[k].slice().sort((a,b)=>a.name.localeCompare(b.name));
+          return `<div class="kcol"><h3>${esc(k)}<span class="n">${rows.length}</span></h3>${rows.map(kcard).join("")}</div>`
+        }).join("")+`</div>`
     : Object.keys(g).sort().map(k=>{
         if(shown>=CAP)return "";
         const rows=g[k].slice().sort((a,b)=>a.name.localeCompare(b.name)).filter(()=>shown++<CAP);
@@ -3935,9 +3953,9 @@ function settingsMenu(){
   const L=live();
   const stale=!S.lastBackup||(Date.now()-Date.parse(S.lastBackup))/86400000>7;
   const td=tokenDays();
-  const row=(attr,name,sum,cls)=>`<button class="srow${cls?" "+cls:""}" ${attr}><span class="sn">${name}</span><span class="ss">${sum}</span><span class="chev">&#8250;</span></button>`;
+  const row=(attr,name,sum,cls)=>`<button class="scard${cls?" "+cls:""}" ${attr}><span class="sn">${name}</span><span class="ss">${sum}</span></button>`;
   const sec=(k,name,sum,cls)=>row(`data-setsec="${k}"`,name,sum,cls);
-  const group=(t,rows)=>rows.length?`<div class="panel sgroup"><div class="ph2">${t}</div><div class="pb narrowlist">${rows.join("")}</div></div>`:"";
+  const group=(t,rows)=>rows.length?`<div class="sect">${t}</div><div class="scardgrid">${rows.join("")}</div>`:"";
   const whoTxt=S.who?esc(S.who)+(S.whoName?" \u00b7 "+esc(S.whoName):""):"Not set";
   let syncTxt="Not connected", syncCls="";
   if(ghOn()){
@@ -3963,7 +3981,7 @@ function settingsMenu(){
   // so they only appear in FSU's Settings; Scenes gets its own case/forms group instead.
   return `<div class="hhead"><b>${PAGE==="van"?esc(S.vanName||"Forensic Services Unit"):"Scenes"}</b><span>Version ${esc(APP_VERSION)}</span>
       <span>${S.who?"Signed in as "+esc(S.who):"No initials set"}</span></div>
-    <div class="setgroups">
+    <div class="setblocks">
     ${group("You",[sec("who","Initials and name",whoTxt,S.who?"":"warn")])}
     ${PAGE==="van"?group("Van data",[
       sec("sync","Automatic saving",syncTxt,syncCls),
@@ -4146,34 +4164,37 @@ function tidyRows(){
   return live().filter(i=>(i.loc||"").trim())
     .sort((a,b)=>(a.loc||"").localeCompare(b.loc||"")||a.name.localeCompare(b.name));
 }
+let tidyIdx=0;
 function renderTidy(){
   $("#title").textContent="Fill in the gaps";
-  const rows=tidyRows();
-  const noPar=rows.filter(i=>!String(i.par||"").trim()).length;
-  const only=S.tidyOnly!==false;
-  const show=only?rows.filter(i=>!String(i.par||"").trim()):rows;
+  const queue=tidyRows().filter(i=>!String(i.par||"").trim());
+  if(tidyIdx>=queue.length)tidyIdx=0;
+  if(!queue.length){
+    $("#v-tidy").innerHTML=`<button class="back" data-navback="inventory">&#8249; Inventory</button>
+      <div class="empty"><strong>Nothing to fill in</strong><p>Every placed item has a par level.</p></div>`;
+    return;
+  }
+  const i=queue[tidyIdx];
   $("#v-tidy").innerHTML=`<button class="back" data-navback="inventory">&#8249; Inventory</button>
-    <p class="hint" style="margin:0 0 12px">Par is the level you want to keep on the shelf. Without
-      one, nothing can be reported low and nothing reaches the reorder list.
-      ${noPar?`<b>${noPar} of ${rows.length}</b> still need one.`:"Every item has one."}</p>
-    ${noPar?`<button class="btn" id="parall" style="max-width:none;margin:0 0 14px">Set the
-      ${noPar} blank one${noPar===1?"":"s"} to 1</button>`:""}
-    <div class="filters" style="margin:0 0 14px">
-      <button data-tidyf="1" class="${only?"sel":""}">Needs a par level</button>
-      <button data-tidyf="0" class="${only?"":"sel"}">Everything placed</button></div>
-    ${show.length?`<div class="tidylist">`+show.map(i=>`
-      <div class="tidyrow">
-        <div class="tn"><b>${esc(i.name)}</b>
-          <span>${esc(i.loc)} &middot; ${esc(i.qty)} in stock</span></div>
-        <label class="fld"><span>Par</span>
-          <input type="text" inputmode="numeric" data-tpar="${i.id}"
-            value="${esc(i.par||"")}" placeholder="&mdash;"></label>
-        <label class="fld"><span>Category</span>
-          <select data-tcat="${i.id}">${CATS.map(c=>
-            `<option value="${c[0]}"${c[0]===i.cat?" selected":""}>${c[0]} &middot; ${c[1]}</option>`).join("")}</select></label>
-      </div>`).join("")+`</div>`
-      :`<div class="empty"><strong>Nothing to fill in</strong>
-         <p>Every placed item has a par level.</p></div>`}`;
+    <div class="focuswrap"><div class="focuscard">
+      <div class="focuseyebrow">Item ${tidyIdx+1} of ${queue.length}</div>
+      <div class="nowinfo"><span class="nc" style="font-size:19px;font-family:var(--sys)">${esc(i.name)}</span>
+        <span class="nd">${esc(i.loc)} &middot; ${esc(i.qty)} in stock</span></div>
+      <label class="fld"><span>Par level</span>
+        <input type="text" inputmode="numeric" id="tf-par" placeholder="How many to keep on hand"></label>
+      <label class="fld"><span>Category</span>
+        <select id="tf-cat">${CATS.map(c=>
+          `<option value="${c[0]}"${c[0]===i.cat?" selected":""}>${c[0]} &middot; ${c[1]}</option>`).join("")}</select></label>
+      <button class="btn" id="tsave" style="max-width:none;margin-top:4px">Save, next &rarr;</button>
+      <button class="btn sec" id="tskip" style="max-width:none">Skip for now</button>
+    </div>
+    <p class="hint focusline">${queue.length} item${queue.length===1?"":"s"} still need a par level</p></div>`;
+  const parEl=$("#tf-par"); if(parEl)parEl.focus();
+  $("#tsave").onclick=()=>{
+    const par=$("#tf-par").value.trim(); if(!par)return toast("Enter a par level, or Skip");
+    i.par=par; i.cat=$("#tf-cat").value; save();
+    renderTidy(); toast("Saved")};
+  $("#tskip").onclick=()=>{tidyIdx++; renderTidy()};
 }
 function renderReorder(){
   $("#title").textContent="Reorder";
@@ -4187,10 +4208,15 @@ function renderReorder(){
     <div class="iq">${r.i.ordered
       ?`<button data-received="${r.i.id}">Received</button><button data-unordered="${r.i.id}">Not ordered after all</button>`
       :`<button data-ordered="${r.i.id}">Ordered</button>`}</div></div>`;
+  const total=all.length, done=onOrder.length, pct=total?Math.round(100*done/total):0;
+  const progress=total?`<div class="ropct">
+      <div class="ropctlab"><span>${done} of ${total} ordered</span><span>${rows.length?"Copy list &middot; Send":"All in hand"}</span></div>
+      <div class="ropctbar"><i style="width:${pct}%"></i></div>
+    </div>`:"";
   $("#v-reorder").innerHTML=`<button class="back" data-navback="home">&#8249; Home</button>`
+    +progress
     +(rows.length?`
-      <p class="hint" style="margin:0 0 14px">${rows.length} item${rows.length===1?"":"s"} to order.
-        Quantities are what it takes to reach par. Mark each one Ordered once it has gone in, and Received when it arrives.</p>
+      <p class="hint" style="margin:0 0 14px">Quantities are what it takes to reach par. Mark each one Ordered once it has gone in, and Received when it arrives.</p>
       <div class="editbar">
         <button id="rocopy" class="on">Copy list</button>
         <button id="roshare">Send</button></div>`
@@ -4223,6 +4249,7 @@ function renderList(key){
 }
 
 /* ---------- search ---------- */
+let searchScope="all";
 function renderSearch(){
   $("#title").textContent="Search";
   const q=query.toLowerCase();
@@ -4232,10 +4259,21 @@ function renderSearch(){
     +" "+(i.note||"")+" "+(i.steps||[]).join(" ")
     +" "+((S.comps.find(c=>c.code===i.loc)||{}).desc||"")).toLowerCase();
   const all=pool.filter(i=>hay(i).includes(q));
-  const hits=all.slice(0,40);
-  const fhits=S.forms.filter(f=>((f.name||"")+" "+(f.desc||"")+" "+(f.cat||"")+" "+(f.rev||"")).toLowerCase().includes(q)).slice(0,8);
-  $("#v-search").innerHTML=hits.length
-    ? `<div class="sect">${all.length>hits.length?"Showing "+hits.length+" of "+all.length:hits.length+" result"+(hits.length===1?"":"s")}</div><div class="rows">`
+  const placedAll=all.filter(i=>(i.loc||"").trim());
+  const fhitsAll=S.forms.filter(f=>((f.name||"")+" "+(f.desc||"")+" "+(f.cat||"")+" "+(f.rev||"")).toLowerCase().includes(q));
+  if(searchScope==="compartment"&&!placedAll.length&&(all.length||fhitsAll.length))searchScope="all";
+  if(searchScope==="forms"&&!fhitsAll.length&&all.length)searchScope="all";
+  const scoped=searchScope==="compartment"?placedAll:all;
+  const hits=scoped.slice(0,40);
+  const fhits=(searchScope==="forms"||searchScope==="all")?fhitsAll.slice(0,8):[];
+  const filt=(k,l,n)=>`<button data-searchscope="${k}" class="${searchScope===k?"sel":""}">${l}<span class="n">${n}</span></button>`;
+  const rail=`<div class="filters searchrail">
+    ${filt("all","All results",all.length+fhitsAll.length)}
+    ${filt("compartment","By compartment",placedAll.length)}
+    ${filt("forms","Forms",fhitsAll.length)}
+  </div>`;
+  let body=(searchScope!=="forms"&&hits.length)
+    ? `<div class="sect">${scoped.length>hits.length?"Showing "+hits.length+" of "+scoped.length:hits.length+" result"+(hits.length===1?"":"s")}</div><div class="rows">`
       +hits.map(i=>{const cp=S.comps.find(c=>c.code===i.loc);
         return `<button class="row" data-item="${i.id}">
           <span><span class="code">${esc(i.name)}</span>
@@ -4245,15 +4283,16 @@ function renderSearch(){
           <span class="rt">${isRequest(i)?`<span class="badge b-req">On request</span>`
             :i.status==="Not carried"?`<span class="badge b-${i.gapType==="deliberate"?"unchecked":"action"}">${i.gapType==="deliberate"?"Not carried":"Gap"}</span>`
             :""}<span class="chev">&#8250;</span></span></button>`}).join("")+`</div>`
-    : `<div class="empty"><strong>Nothing found</strong><p>No item, compartment, or category matches that.</p></div>`;
-  if(fhits.length)$("#v-search").insertAdjacentHTML("beforeend",
-    `<div class="sect">Forms — ${fhits.length}</div><div class="rows">`+fhits.map(f=>
+    : (searchScope==="forms"?"":`<div class="empty"><strong>Nothing found</strong><p>No item, compartment, or category matches that.</p></div>`);
+  if(fhits.length)body+=`<div class="sect">Forms — ${fhits.length}</div><div class="rows">`+fhits.map(f=>
       `<button class="row" data-form="${f.id}">
         <span><span class="code">${esc(f.name)}</span>
         <span class="desc">${esc(f.rev?"Rev "+f.rev+" · ":"")}${esc(f.cat||"")}</span></span>
-        <span class="rt"><span class="badge b-req">Form</span><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`);
-  if(all.length>hits.length)$("#v-search").insertAdjacentHTML("beforeend",
-    `<p class="hint">Add another word to narrow it down.</p>`);
+        <span class="rt"><span class="badge b-req">Form</span><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`;
+  if(searchScope==="forms"&&!fhits.length)body=`<div class="empty"><strong>No forms found</strong><p>No form name, revision, or category matches that.</p></div>`;
+  if(all.length>hits.length&&searchScope!=="forms")body+=`<p class="hint">Add another word to narrow it down.</p>`;
+  $("#v-search").innerHTML=`<div class="searchsplit">${rail}<div>${body}</div></div>`;
+  $$("#v-search [data-searchscope]").forEach(b=>b.onclick=()=>{searchScope=b.dataset.searchscope;renderSearch()});
 }
 
 /* ---------- sweep ---------- */
@@ -4268,14 +4307,12 @@ function renderSweep(){
       <span class="hint" style="margin:0 0 0 auto;font-size:12.5px">${
         S.comps.filter(c=>c.checked).length} of ${S.comps.length} swept</span>
     </div>
-    ${sweepNextBar(cs,cur)}${cur?`<div class="nowbar">
+    ${(!cur||S.pick)?sweepNextBar(cs,cur):""}
+    ${(!cur||S.pick)?sweepList(cs,cur):""}
+    ${cur?`<div class="focuswrap"><div class="focuscard">
+      <div class="focuseyebrow">Compartment</div>
       <div class="nowinfo"><span class="nc">${esc(cur)}</span>
         <span class="nd">${esc((cs.find(c=>c.code===cur)||{}).desc||"Not named yet")}</span></div>
-      <button class="nowsw" data-sweepdone="${esc(cur)}">Swept, next</button>
-      <button class="nowsw" data-pick="${S.pick?0:1}">${S.pick?"Done":"Change"}</button>
-    </div>`:""}
-    ${(!cur||S.pick)?sweepList(cs,cur):""}
-    ${cur?`<div class="card">
       <div class="modebar">
         <button data-qa="1" class="${S.quick!==false?"on":""}">Quick add</button>
         <button data-qa="0" class="${S.quick===false?"on":""}">Full details</button></div>
@@ -4302,11 +4339,15 @@ function renderSweep(){
           <label class="fld"><span>Class</span><select id="f-cls">${CLASSES.map(c=>`<option${c===S.lastCls?" selected":""}>${c}</option>`).join("")}</select></label></div>
         <label class="fld"><span>Expiry or service date</span><input type="date" id="f-date"></label>
         <button class="btn" id="add" style="margin:4px 0 0;max-width:none">Add to ${esc(cur)}</button>`}
-      </div>
       <div id="sweeplist">${here.length?`<div class="sect">In ${esc(cur)} — ${here.length}</div><div class="rows">`
         +here.slice().reverse().map(i=>`<button class="row" data-item="${i.id}">
           <span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span>
-          <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:""}</div>`
+          <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:""}</div>
+      <button class="btn" data-sweepdone="${esc(cur)}" style="max-width:none;margin-top:12px">Swept, next &rarr;</button>
+      <button class="btn sec" data-pick="${S.pick?0:1}" style="max-width:none">${S.pick?"Done choosing":"Pick a different compartment"}</button>
+    </div>
+    <p class="hint focusline">${cs.filter(c=>!c.checked).length} of ${cs.length} still to check</p>
+    </div>`
     :`<div class="empty"><strong>Pick a compartment</strong><p>Choose one above, then log what's inside it.</p></div>`}`;
   paintJust();
 }
@@ -4317,15 +4358,6 @@ document.addEventListener("click",e=>{
   const nb=e.target.closest("[data-navback]");
   if(nb){e.stopPropagation();return navBack(nb.dataset.navback)}
   const g=e.target.closest("[data-go]"); if(g)return go(g.dataset.go);
-  if(e.target.closest("#parall")){
-    const n=live().filter(i=>(i.loc||"").trim()&&!String(i.par||"").trim());
-    if(!n.length)return;
-    return askConfirm("Set par to 1","Every placed item without a par level gets 1. "
-      +"Change any of them afterwards.","Set "+n.length+" to 1",false,()=>{
-        n.forEach(i=>{i.par="1"}); save(); renderTidy();
-        toast(n.length+" set to 1")})}
-  const tf=e.target.closest("[data-tidyf]");
-  if(tf){S.tidyOnly=tf.dataset.tidyf==="1";save();renderTidy();return}
   if(e.target.closest("#gotidy")){view="tidy";window.scrollTo&&window.scrollTo(0,0);return render()}
   if(e.target.closest("#goreorder")){view="reorder";window.scrollTo&&window.scrollTo(0,0);return render()}
   if(e.target.closest("#rocopy")){

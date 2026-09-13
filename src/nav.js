@@ -46,12 +46,6 @@ function go(v){
   render();restoreScroll(v)}
 document.addEventListener("click",e=>{const b=e.target.closest("#tabs button,#side button");if(b&&b.dataset.v)go(b.dataset.v)});
 document.addEventListener("input",e=>{
-  const tp=e.target.closest("[data-tpar]");
-  if(tp){const i=S.items.find(x=>x.id===tp.dataset.tpar);
-    if(i){i.par=tp.value.replace(/[^0-9]/g,"");saveLocal()} return}
-  const tc=e.target.closest("[data-tcat]");
-  if(tc){const i=S.items.find(x=>x.id===tc.dataset.tcat);
-    if(i){i.cat=tc.value;saveLocal();toast("Set to "+catName(i.cat))} return}
   const r=S.fills.find(x=>x.id===curFill); if(!r)return;
   const fv=e.target.closest("[data-fv]");
   if(fv){r.values[fv.dataset.fv]=fv.value;return saveLocal()}

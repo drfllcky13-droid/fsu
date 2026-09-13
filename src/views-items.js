@@ -44,9 +44,18 @@ function renderInventory(){
       </tbody></table></div>`;
     return;
   }
+  const kcard=i=>{const s=itemStatus(i);
+    return `<button class="kcard" data-item="${i.id}"><b>${esc(i.name)}</b>
+      <span>${esc(i.loc||"—")} &middot; ${esc(i.qty)} in stock</span></button>`};
   const body=invGroup==="az"
     ? `<div class="rows">`+L.slice().sort((a,b)=>a.name.localeCompare(b.name))
         .filter(()=>shown++<CAP).map(rowOf).join("")+`</div>`
+    : invGroup==="status"
+    ? `<div class="kanban">`+["Out of stock","Expired","Below par","Service due","Expiring soon","Good"]
+        .filter(k=>g[k]&&g[k].length).map(k=>{
+          const rows=g[k].slice().sort((a,b)=>a.name.localeCompare(b.name));
+          return `<div class="kcol"><h3>${esc(k)}<span class="n">${rows.length}</span></h3>${rows.map(kcard).join("")}</div>`
+        }).join("")+`</div>`
     : Object.keys(g).sort().map(k=>{
         if(shown>=CAP)return "";
         const rows=g[k].slice().sort((a,b)=>a.name.localeCompare(b.name)).filter(()=>shown++<CAP);
@@ -422,9 +431,9 @@ function settingsMenu(){
   const L=live();
   const stale=!S.lastBackup||(Date.now()-Date.parse(S.lastBackup))/86400000>7;
   const td=tokenDays();
-  const row=(attr,name,sum,cls)=>`<button class="srow${cls?" "+cls:""}" ${attr}><span class="sn">${name}</span><span class="ss">${sum}</span><span class="chev">&#8250;</span></button>`;
+  const row=(attr,name,sum,cls)=>`<button class="scard${cls?" "+cls:""}" ${attr}><span class="sn">${name}</span><span class="ss">${sum}</span></button>`;
   const sec=(k,name,sum,cls)=>row(`data-setsec="${k}"`,name,sum,cls);
-  const group=(t,rows)=>rows.length?`<div class="panel sgroup"><div class="ph2">${t}</div><div class="pb narrowlist">${rows.join("")}</div></div>`:"";
+  const group=(t,rows)=>rows.length?`<div class="sect">${t}</div><div class="scardgrid">${rows.join("")}</div>`:"";
   const whoTxt=S.who?esc(S.who)+(S.whoName?" \u00b7 "+esc(S.whoName):""):"Not set";
   let syncTxt="Not connected", syncCls="";
   if(ghOn()){
@@ -450,7 +459,7 @@ function settingsMenu(){
   // so they only appear in FSU's Settings; Scenes gets its own case/forms group instead.
   return `<div class="hhead"><b>${PAGE==="van"?esc(S.vanName||"Forensic Services Unit"):"Scenes"}</b><span>Version ${esc(APP_VERSION)}</span>
       <span>${S.who?"Signed in as "+esc(S.who):"No initials set"}</span></div>
-    <div class="setgroups">
+    <div class="setblocks">
     ${group("You",[sec("who","Initials and name",whoTxt,S.who?"":"warn")])}
     ${PAGE==="van"?group("Van data",[
       sec("sync","Automatic saving",syncTxt,syncCls),
@@ -633,34 +642,37 @@ function tidyRows(){
   return live().filter(i=>(i.loc||"").trim())
     .sort((a,b)=>(a.loc||"").localeCompare(b.loc||"")||a.name.localeCompare(b.name));
 }
+let tidyIdx=0;
 function renderTidy(){
   $("#title").textContent="Fill in the gaps";
-  const rows=tidyRows();
-  const noPar=rows.filter(i=>!String(i.par||"").trim()).length;
-  const only=S.tidyOnly!==false;
-  const show=only?rows.filter(i=>!String(i.par||"").trim()):rows;
+  const queue=tidyRows().filter(i=>!String(i.par||"").trim());
+  if(tidyIdx>=queue.length)tidyIdx=0;
+  if(!queue.length){
+    $("#v-tidy").innerHTML=`<button class="back" data-navback="inventory">&#8249; Inventory</button>
+      <div class="empty"><strong>Nothing to fill in</strong><p>Every placed item has a par level.</p></div>`;
+    return;
+  }
+  const i=queue[tidyIdx];
   $("#v-tidy").innerHTML=`<button class="back" data-navback="inventory">&#8249; Inventory</button>
-    <p class="hint" style="margin:0 0 12px">Par is the level you want to keep on the shelf. Without
-      one, nothing can be reported low and nothing reaches the reorder list.
-      ${noPar?`<b>${noPar} of ${rows.length}</b> still need one.`:"Every item has one."}</p>
-    ${noPar?`<button class="btn" id="parall" style="max-width:none;margin:0 0 14px">Set the
-      ${noPar} blank one${noPar===1?"":"s"} to 1</button>`:""}
-    <div class="filters" style="margin:0 0 14px">
-      <button data-tidyf="1" class="${only?"sel":""}">Needs a par level</button>
-      <button data-tidyf="0" class="${only?"":"sel"}">Everything placed</button></div>
-    ${show.length?`<div class="tidylist">`+show.map(i=>`
-      <div class="tidyrow">
-        <div class="tn"><b>${esc(i.name)}</b>
-          <span>${esc(i.loc)} &middot; ${esc(i.qty)} in stock</span></div>
-        <label class="fld"><span>Par</span>
-          <input type="text" inputmode="numeric" data-tpar="${i.id}"
-            value="${esc(i.par||"")}" placeholder="&mdash;"></label>
-        <label class="fld"><span>Category</span>
-          <select data-tcat="${i.id}">${CATS.map(c=>
-            `<option value="${c[0]}"${c[0]===i.cat?" selected":""}>${c[0]} &middot; ${c[1]}</option>`).join("")}</select></label>
-      </div>`).join("")+`</div>`
-      :`<div class="empty"><strong>Nothing to fill in</strong>
-         <p>Every placed item has a par level.</p></div>`}`;
+    <div class="focuswrap"><div class="focuscard">
+      <div class="focuseyebrow">Item ${tidyIdx+1} of ${queue.length}</div>
+      <div class="nowinfo"><span class="nc" style="font-size:19px;font-family:var(--sys)">${esc(i.name)}</span>
+        <span class="nd">${esc(i.loc)} &middot; ${esc(i.qty)} in stock</span></div>
+      <label class="fld"><span>Par level</span>
+        <input type="text" inputmode="numeric" id="tf-par" placeholder="How many to keep on hand"></label>
+      <label class="fld"><span>Category</span>
+        <select id="tf-cat">${CATS.map(c=>
+          `<option value="${c[0]}"${c[0]===i.cat?" selected":""}>${c[0]} &middot; ${c[1]}</option>`).join("")}</select></label>
+      <button class="btn" id="tsave" style="max-width:none;margin-top:4px">Save, next &rarr;</button>
+      <button class="btn sec" id="tskip" style="max-width:none">Skip for now</button>
+    </div>
+    <p class="hint focusline">${queue.length} item${queue.length===1?"":"s"} still need a par level</p></div>`;
+  const parEl=$("#tf-par"); if(parEl)parEl.focus();
+  $("#tsave").onclick=()=>{
+    const par=$("#tf-par").value.trim(); if(!par)return toast("Enter a par level, or Skip");
+    i.par=par; i.cat=$("#tf-cat").value; save();
+    renderTidy(); toast("Saved")};
+  $("#tskip").onclick=()=>{tidyIdx++; renderTidy()};
 }
 function renderReorder(){
   $("#title").textContent="Reorder";
@@ -674,10 +686,15 @@ function renderReorder(){
     <div class="iq">${r.i.ordered
       ?`<button data-received="${r.i.id}">Received</button><button data-unordered="${r.i.id}">Not ordered after all</button>`
       :`<button data-ordered="${r.i.id}">Ordered</button>`}</div></div>`;
+  const total=all.length, done=onOrder.length, pct=total?Math.round(100*done/total):0;
+  const progress=total?`<div class="ropct">
+      <div class="ropctlab"><span>${done} of ${total} ordered</span><span>${rows.length?"Copy list &middot; Send":"All in hand"}</span></div>
+      <div class="ropctbar"><i style="width:${pct}%"></i></div>
+    </div>`:"";
   $("#v-reorder").innerHTML=`<button class="back" data-navback="home">&#8249; Home</button>`
+    +progress
     +(rows.length?`
-      <p class="hint" style="margin:0 0 14px">${rows.length} item${rows.length===1?"":"s"} to order.
-        Quantities are what it takes to reach par. Mark each one Ordered once it has gone in, and Received when it arrives.</p>
+      <p class="hint" style="margin:0 0 14px">Quantities are what it takes to reach par. Mark each one Ordered once it has gone in, and Received when it arrives.</p>
       <div class="editbar">
         <button id="rocopy" class="on">Copy list</button>
         <button id="roshare">Send</button></div>`
@@ -710,6 +727,7 @@ function renderList(key){
 }
 
 /* ---------- search ---------- */
+let searchScope="all";
 function renderSearch(){
   $("#title").textContent="Search";
   const q=query.toLowerCase();
@@ -719,10 +737,21 @@ function renderSearch(){
     +" "+(i.note||"")+" "+(i.steps||[]).join(" ")
     +" "+((S.comps.find(c=>c.code===i.loc)||{}).desc||"")).toLowerCase();
   const all=pool.filter(i=>hay(i).includes(q));
-  const hits=all.slice(0,40);
-  const fhits=S.forms.filter(f=>((f.name||"")+" "+(f.desc||"")+" "+(f.cat||"")+" "+(f.rev||"")).toLowerCase().includes(q)).slice(0,8);
-  $("#v-search").innerHTML=hits.length
-    ? `<div class="sect">${all.length>hits.length?"Showing "+hits.length+" of "+all.length:hits.length+" result"+(hits.length===1?"":"s")}</div><div class="rows">`
+  const placedAll=all.filter(i=>(i.loc||"").trim());
+  const fhitsAll=S.forms.filter(f=>((f.name||"")+" "+(f.desc||"")+" "+(f.cat||"")+" "+(f.rev||"")).toLowerCase().includes(q));
+  if(searchScope==="compartment"&&!placedAll.length&&(all.length||fhitsAll.length))searchScope="all";
+  if(searchScope==="forms"&&!fhitsAll.length&&all.length)searchScope="all";
+  const scoped=searchScope==="compartment"?placedAll:all;
+  const hits=scoped.slice(0,40);
+  const fhits=(searchScope==="forms"||searchScope==="all")?fhitsAll.slice(0,8):[];
+  const filt=(k,l,n)=>`<button data-searchscope="${k}" class="${searchScope===k?"sel":""}">${l}<span class="n">${n}</span></button>`;
+  const rail=`<div class="filters searchrail">
+    ${filt("all","All results",all.length+fhitsAll.length)}
+    ${filt("compartment","By compartment",placedAll.length)}
+    ${filt("forms","Forms",fhitsAll.length)}
+  </div>`;
+  let body=(searchScope!=="forms"&&hits.length)
+    ? `<div class="sect">${scoped.length>hits.length?"Showing "+hits.length+" of "+scoped.length:hits.length+" result"+(hits.length===1?"":"s")}</div><div class="rows">`
       +hits.map(i=>{const cp=S.comps.find(c=>c.code===i.loc);
         return `<button class="row" data-item="${i.id}">
           <span><span class="code">${esc(i.name)}</span>
@@ -732,15 +761,16 @@ function renderSearch(){
           <span class="rt">${isRequest(i)?`<span class="badge b-req">On request</span>`
             :i.status==="Not carried"?`<span class="badge b-${i.gapType==="deliberate"?"unchecked":"action"}">${i.gapType==="deliberate"?"Not carried":"Gap"}</span>`
             :""}<span class="chev">&#8250;</span></span></button>`}).join("")+`</div>`
-    : `<div class="empty"><strong>Nothing found</strong><p>No item, compartment, or category matches that.</p></div>`;
-  if(fhits.length)$("#v-search").insertAdjacentHTML("beforeend",
-    `<div class="sect">Forms — ${fhits.length}</div><div class="rows">`+fhits.map(f=>
+    : (searchScope==="forms"?"":`<div class="empty"><strong>Nothing found</strong><p>No item, compartment, or category matches that.</p></div>`);
+  if(fhits.length)body+=`<div class="sect">Forms — ${fhits.length}</div><div class="rows">`+fhits.map(f=>
       `<button class="row" data-form="${f.id}">
         <span><span class="code">${esc(f.name)}</span>
         <span class="desc">${esc(f.rev?"Rev "+f.rev+" · ":"")}${esc(f.cat||"")}</span></span>
-        <span class="rt"><span class="badge b-req">Form</span><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`);
-  if(all.length>hits.length)$("#v-search").insertAdjacentHTML("beforeend",
-    `<p class="hint">Add another word to narrow it down.</p>`);
+        <span class="rt"><span class="badge b-req">Form</span><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`;
+  if(searchScope==="forms"&&!fhits.length)body=`<div class="empty"><strong>No forms found</strong><p>No form name, revision, or category matches that.</p></div>`;
+  if(all.length>hits.length&&searchScope!=="forms")body+=`<p class="hint">Add another word to narrow it down.</p>`;
+  $("#v-search").innerHTML=`<div class="searchsplit">${rail}<div>${body}</div></div>`;
+  $$("#v-search [data-searchscope]").forEach(b=>b.onclick=()=>{searchScope=b.dataset.searchscope;renderSearch()});
 }
 
 /* ---------- sweep ---------- */
@@ -755,14 +785,12 @@ function renderSweep(){
       <span class="hint" style="margin:0 0 0 auto;font-size:12.5px">${
         S.comps.filter(c=>c.checked).length} of ${S.comps.length} swept</span>
     </div>
-    ${sweepNextBar(cs,cur)}${cur?`<div class="nowbar">
+    ${(!cur||S.pick)?sweepNextBar(cs,cur):""}
+    ${(!cur||S.pick)?sweepList(cs,cur):""}
+    ${cur?`<div class="focuswrap"><div class="focuscard">
+      <div class="focuseyebrow">Compartment</div>
       <div class="nowinfo"><span class="nc">${esc(cur)}</span>
         <span class="nd">${esc((cs.find(c=>c.code===cur)||{}).desc||"Not named yet")}</span></div>
-      <button class="nowsw" data-sweepdone="${esc(cur)}">Swept, next</button>
-      <button class="nowsw" data-pick="${S.pick?0:1}">${S.pick?"Done":"Change"}</button>
-    </div>`:""}
-    ${(!cur||S.pick)?sweepList(cs,cur):""}
-    ${cur?`<div class="card">
       <div class="modebar">
         <button data-qa="1" class="${S.quick!==false?"on":""}">Quick add</button>
         <button data-qa="0" class="${S.quick===false?"on":""}">Full details</button></div>
@@ -789,11 +817,15 @@ function renderSweep(){
           <label class="fld"><span>Class</span><select id="f-cls">${CLASSES.map(c=>`<option${c===S.lastCls?" selected":""}>${c}</option>`).join("")}</select></label></div>
         <label class="fld"><span>Expiry or service date</span><input type="date" id="f-date"></label>
         <button class="btn" id="add" style="margin:4px 0 0;max-width:none">Add to ${esc(cur)}</button>`}
-      </div>
       <div id="sweeplist">${here.length?`<div class="sect">In ${esc(cur)} — ${here.length}</div><div class="rows">`
         +here.slice().reverse().map(i=>`<button class="row" data-item="${i.id}">
           <span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span>
-          <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:""}</div>`
+          <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:""}</div>
+      <button class="btn" data-sweepdone="${esc(cur)}" style="max-width:none;margin-top:12px">Swept, next &rarr;</button>
+      <button class="btn sec" data-pick="${S.pick?0:1}" style="max-width:none">${S.pick?"Done choosing":"Pick a different compartment"}</button>
+    </div>
+    <p class="hint focusline">${cs.filter(c=>!c.checked).length} of ${cs.length} still to check</p>
+    </div>`
     :`<div class="empty"><strong>Pick a compartment</strong><p>Choose one above, then log what's inside it.</p></div>`}`;
   paintJust();
 }

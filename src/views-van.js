@@ -26,30 +26,18 @@ function renderHome(){
     <span>${esc(sweepTxt)}</span><span>${lastVeh()?"Vehicle checked "+esc(lastVeh().t.slice(0,10)):"No vehicle check yet"}</span>
     <button class="hgear" id="gear">${ic("gear","gi")}<span>Settings</span></button></div>`;
 
-  // how is the van \u2014 today's sweep as a progress ring, everything else as chips
-  const R=52, CIRC=2*Math.PI*R;
-  const frac=cs.length?checked/cs.length:0;
-  const ringOff=(CIRC*(1-frac)).toFixed(1);
-  const ringLabel=!cs.length?"Add compartments"
-    :unchk===0?"Sweep finished"+(lastMark?" "+lastMark:""):checked?"Continue sweep":"Start sweep";
-  const chip=(ok,label,attr)=>`<button class="chip ${ok?"b-good":"b-attn"}" ${attr}>${ok?"&#10003; ":""}${esc(label)}</button>`;
-  const tiles=`<div class="ringcard">
-    <div class="ring"><svg width="120" height="120" viewBox="0 0 120 120">
-      <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--line2)" stroke-width="12"/>
-      <circle cx="60" cy="60" r="${R}" fill="none" stroke="${unchk?"var(--ambersolid)":"var(--greensolid)"}" stroke-width="12"
-        stroke-linecap="round" stroke-dasharray="${CIRC.toFixed(1)}" stroke-dashoffset="${ringOff}"
-        transform="rotate(-90 60 60)"/></svg>
-      <div class="n"><b>${cs.length?unchk:"\u2014"}</b><span>Left</span></div></div>
-    <div class="ringbody">
-      <h2>${cs.length?"Today's sweep":"No compartments yet"}</h2>
-      <p>${cs.length?checked+" of "+cs.length+" compartments checked":"Add your first compartment to start a sweep"}</p>
-      <button class="ringcta" data-go="sweep">${esc(ringLabel)} &rarr;</button>
-    </div>
-    <div class="chipsrow">
-      ${chip(!bad.length,bad.length?bad.length+" short":"Stock fine",'data-list="low"')}
-      ${chip(!soon.length,soon.length?soon.length+" expiring":"Nothing expiring",'data-list="expiring"')}
-      ${chip(!gp.length,gp.length?gp.length+" gap"+(gp.length===1?"":"s"):"No gaps",'data-list="gaps"')}
-    </div>
+  // how is the van \u2014 a status card per topic, colour doing the talking
+  const lvEarly=lastVeh();
+  const bays=[...new Set(cs.map(c=>bayOf(c.code)))];
+  const bayUnchk=bays.filter(bay=>cs.some(c=>bayOf(c.code)===bay&&compState(c.code).k==="unchecked")).length;
+  const card=(ok,k,v,s,attr)=>`<button class="stile ${ok?"t-calm":"t-amber"}" ${attr}><span class="sk">${k}</span><span class="sv">${v}</span><span class="ss">${s}</span></button>`;
+  const tiles=`<div class="stiles stiles6">
+    ${card(!unchk,"Sweep",cs.length?(unchk?unchk+" left":"Done"):"\u2014",cs.length?checked+" of "+cs.length+" checked":"add compartments",'data-go="sweep"')}
+    ${card(!bad.length,"Stock",bad.length?bad.length+" short":"Fine",bad.length?"low or out":"nothing low or out",'data-list="low"')}
+    ${card(!soon.length,"Expiring",soon.length?String(soon.length):"None",soon.length?"within 90 days or due":"all dates clear",'data-list="expiring"')}
+    ${card(!gp.length,"Gaps",gp.length?String(gp.length):"None",gp.length?"not in the van":"nothing outstanding",'data-list="gaps"')}
+    ${card(!!lvEarly&&!vehDue(),"Vehicle",lvEarly?"Checked":"Unchecked",lvEarly?lvEarly.t.slice(0,10):"no check on record",'data-vehcheck="1"')}
+    ${card(!bayUnchk,"Units",bays.length?(bays.length-bayUnchk)+" of "+bays.length:"\u2014",bayUnchk?"not fully checked":"all fully checked",'data-go="compartments"')}
   </div>`;
 
   // what needs doing
@@ -70,25 +58,23 @@ function renderHome(){
   ].filter(r=>r[0]>0).map(r=>{const [one,many,rest]=r[1].split("|");return ["setup",r[0]+" "+(r[0]===1?one:many)+" "+rest,r[2],""]});
   rows.push(...setup);
   if(cs.length&&!unchk)rows.push(["","Count the stock",'data-countrun="1"',""]);
-  const todo=`<div class="panel todo"><div class="ph2">Next actions${rows.length?" \u2014 "+rows.length:""}</div><div class="pb">
-    ${rows.length?rows.map(([k,t,attr,lc])=>`<button class="act${k?" "+k:""}" ${attr}>${k==="setup"?`<span class="tag">Setup</span>`:""}<span>${esc(t)}</span>${lc?`<span class="lc">${lc}</span>`:`<span class="chev">&#8250;</span>`}</button>`).join("")
+  const needRows=need.slice(0,10).map(i=>{const s=itemStatus(i);
+    return `<button class="act" data-item="${i.id}"><span>${esc(i.name)}<span class="lc" style="margin-left:6px">${esc(i.loc||"\u2014")}</span></span><span class="badge b-${s[0]}">${esc(s[1])}</span></button>`});
+  const feedCount=rows.length+needRows.length;
+  const todo=`<div class="panel todo"><div class="ph2">Everything, most urgent first${feedCount?" \u2014 "+feedCount:""}</div><div class="pb">
+    ${feedCount?rows.map(([k,t,attr,lc])=>`<button class="act${k?" "+k:""}" ${attr}>${k==="setup"?`<span class="tag">Setup</span>`:""}<span>${esc(t)}</span>${lc?`<span class="lc">${lc}</span>`:`<span class="chev">&#8250;</span>`}</button>`).join("")+needRows.join("")
+      +(need.length>10?`<button class="act" data-list="all"><span>Show all ${need.length} that need attention</span><span class="chev">&#8250;</span></button>`:"")
       :`<p class="hint" style="margin:0">Nothing outstanding.</p>`}
   </div></div>`;
-
-  const attention=need.length?`<div class="panel"><div class="ph2">Needs attention \u2014 ${need.length}</div>
-    <div class="pb narrowlist">${need.slice(0,10).map(i=>{const s=itemStatus(i);
-      return `<button class="nrow" data-item="${i.id}"><span class="nn">${esc(i.name)}</span>
-        <span class="nm2"><span class="lc">${esc(i.loc||"\u2014")}</span><span class="badge b-${s[0]}">${esc(s[1])}</span></span></button>`}).join("")}
-      ${need.length>10?`<button class="act" data-list="all"><span>Show all ${need.length}</span><span class="chev">&#8250;</span></button>`:""}</div></div>`:"";
 
   const pop=L.slice().sort((a,b)=>((b.fav?1e6:0)+(b.uses||[]).length)-((a.fav?1e6:0)+(a.uses||[]).length)).slice(0,3);
   const quick=pop.length?`<div class="panel"><div class="ph2">Quick find</div><div class="pb"><div class="qf">${pop.map(i=>
       `<button data-item="${i.id}"><span class="nm">${esc(i.name)}</span><span class="lc">${esc(i.loc||"\u2014")}</span></button>`).join("")}</div>
       <p class="hint" style="margin:8px 0 0">Star an item and it appears here.</p></div></div>`:"";
 
-  $("#v-home").innerHTML=head+tiles+`<div class="dash2">
-    <div class="col">${todo}${handoverPanel()}${attention}</div>
-    <div class="col">${unitPanel()}${quick}</div></div>`;
+  $("#v-home").innerHTML=head+tiles+todo+`<div class="dash2">
+    <div class="col">${handoverPanel()}</div>
+    <div class="col">${quick}</div></div>`;
   $$("#v-home [data-gosec]").forEach(b=>b.onclick=()=>openSettings(b.dataset.gosec));
 }
 /* ---------- compartments ---------- */
@@ -317,30 +303,35 @@ function renderCompDetail(){
   const sorted=it.slice().sort((a,b)=>{
     const r=i=>isOut(i)||isExpired(i)?0:(isLow(i)||isExpiring(i)||isService(i))?1:2;
     return r(a)-r(b)||a.name.localeCompare(b.name)});
-  $("#v-compdetail").innerHTML=`
-    <button class="back" data-navback="compartments">&#8249; Storage</button>
-    <div class="cdhead">
-      <h2>${esc(c.code)}</h2>
-      <div class="sub">${esc(c.desc||"No description")}${c.side?" · "+esc(c.side):""}</div>
-      <div class="cdstats">${counts.map(([k,v,l])=>
-        `<span class="badge b-${k}">${v} ${l}</span>`).join("")}
-        ${c.checked?`<span class="badge b-unchecked">Swept ${esc(c.checked)}</span>`:""}</div>
+  $("#v-compdetail").innerHTML=`<div class="cd2">
+    <div class="cdleft">
+      <button class="back" data-navback="compartments">&#8249; Storage</button>
+      <div class="cdhead">
+        <h2>${esc(c.code)}</h2>
+        <div class="sub">${esc(c.desc||"No description")}${c.side?" · "+esc(c.side):""}</div>
+        <div class="cdstats">${counts.map(([k,v,l])=>
+          `<span class="badge b-${k}">${v} ${l}</span>`).join("")}
+          ${c.checked?`<span class="badge b-unchecked">Swept ${esc(c.checked)}</span>`:""}</div>
+      </div>
+      <div class="acts cdacts">
+        <button data-addhere="${esc(c.code)}">Add an item</button>
+        <button data-check="${esc(c.code)}">${c.checked?"Swept again":"Mark swept"}</button>
+        <button data-editcomp="${esc(c.code)}">Edit</button>
+        ${it.some(i=>i.cls==="Regulated")?`<button data-countall="${esc(c.code)}">Count regulated</button>`:""}
+      </div>
     </div>
-    <div class="acts">
-      <button data-addhere="${esc(c.code)}">Add an item</button>
-      <button data-check="${esc(c.code)}">${c.checked?"Swept again":"Mark swept"}</button>
-      <button data-editcomp="${esc(c.code)}">Edit</button>
-      ${it.some(i=>i.cls==="Regulated")?`<button data-countall="${esc(c.code)}">Count regulated</button>`:""}
+    <div class="cdright">
+      ${sorted.length?`<div class="rows">`+sorted.map(i=>{const f=flag(i);
+        return `<button class="row" data-item="${i.id}">
+          <span><span class="code">${esc(i.name)}</span>
+          <span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}${
+            i.cls?" · "+esc(i.cls):""}${i.date?" · "+esc(i.date):""}<br>${esc(catName(i.cat))}</span></span>
+          <span class="rt"><span class="badge b-${f[0]}">${esc(f[1])}</span><span class="chev">&#8250;</span></span></button>`
+        }).join("")+`</div>`
+      :`<div class="empty"><strong>Nothing logged here</strong>
+         <p>${c.checked?"Swept and confirmed empty.":"Open it, log what's inside, then mark it swept."}</p></div>`}
     </div>
-    ${sorted.length?`<div class="rows">`+sorted.map(i=>{const f=flag(i);
-      return `<button class="row" data-item="${i.id}">
-        <span><span class="code">${esc(i.name)}</span>
-        <span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}${
-          i.cls?" · "+esc(i.cls):""}${i.date?" · "+esc(i.date):""}<br>${esc(catName(i.cat))}</span></span>
-        <span class="rt"><span class="badge b-${f[0]}">${esc(f[1])}</span><span class="chev">&#8250;</span></span></button>`
-      }).join("")+`</div>`
-    :`<div class="empty"><strong>Nothing logged here</strong>
-       <p>${c.checked?"Swept and confirmed empty.":"Open it, log what's inside, then mark it swept."}</p></div>`}`;
+  </div>`;
 }
 
 
@@ -383,6 +374,7 @@ function renderItemDetail(){
     home:"Home",sweep:"Sweep",search:"Search"}[prevView]||"Back";
   $("#v-itemdetail").innerHTML=`
     <button class="back" data-back="1">&#8249; ${esc(backLabel)}</button>
+    <div class="id2"><div class="idleft">
     <div style="display:flex;align-items:flex-start;gap:10px">
       <div style="flex:1;min-width:0">
         <span class="chip">${esc(catName(i.cat))}</span>
@@ -410,8 +402,9 @@ function renderItemDetail(){
     ${miniWall(i.loc)}
     <div class="parrow"><span>Par level <b>${esc(i.par||"not set")}</b></span>
       <span>Status <b style="color:var(--${st[0]==="action"?"red":st[0]==="attn"?"amber":"green"})">${esc(st[1])}</b></span></div>`}
+    </div><div class="idright">
 
-    <div class="idsect">How to use</div>
+    <div class="idsect" style="margin-top:0">How to use</div>
     ${steps.length?`<div class="steps">${steps.map((s,x)=>
       `<div class="step"><i>${x+1}</i><p>${esc(s)}</p></div>`).join("")}</div>
       ${!i.verified?`<div class="unver">No verified date on these instructions. Check them against the manufacturer sheet or your SOP before relying on them at a scene.</div>`
@@ -491,7 +484,8 @@ function renderItemDetail(){
       <button data-adjust="${i.id}">Adjust qty</button>`}
       ${isRequest(i)?`<button class="primary" data-editreq="${i.id}">Request details</button>`:""}
       <button data-edititem="${i.id}">Edit</button>
-    </div>`;
+    </div>
+    </div></div>`;
 }
 
 function openItem(id,from){rememberScroll();curItem=id;prevView=from||view;view="itemdetail";
