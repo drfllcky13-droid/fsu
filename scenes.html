@@ -5294,7 +5294,11 @@ function appExtraClick(e){
   const el=t.closest("[data-editlot]"); if(el){const i=S.items.find(x=>x.id===el.dataset.editlot); if(i)lotSheet(i); return true}
   const od=t.closest("[data-ordered]"); if(od){const i=S.items.find(x=>x.id===od.dataset.ordered); if(i){i.ordered=today(); logAct("reorder","Ordered "+i.name); save(); renderReorder()} return true}
   const rc=t.closest("[data-received]"); if(rc){const i=S.items.find(x=>x.id===rc.dataset.received); if(i){
-      const need=Math.max(n(i.par)-n(i.qty),1); setQty(i,n(i.qty)+need); if(i.status==="Expired")i.status="Stocked"; delete i.ordered;
+      const need=Math.max(n(i.par)-n(i.qty),1); setQty(i,n(i.qty)+need);
+      if(i.status==="Expired"||i.status==="Service due")i.status="Stocked";
+      // new stock in hand means the old expiry/service date no longer applies until re-set
+      if(i.date&&daysOut(i.date)!==null&&daysOut(i.date)<=0)i.date="";
+      delete i.ordered;
       logAct("reorder","Received "+i.name); save(); renderReorder(); toast(i.name+" now "+i.qty+" in stock")} return true}
   const uo=t.closest("[data-unordered]"); if(uo){const i=S.items.find(x=>x.id===uo.dataset.unordered); if(i){delete i.ordered; save(); renderReorder()} return true}
   if(t.closest("[data-doprint]")){window.print&&window.print(); return true}
