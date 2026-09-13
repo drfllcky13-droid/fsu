@@ -1267,6 +1267,53 @@ body.wide.sidemin .side button{position:relative}
 .stile.t-red .sk,.stile.t-red .ss{color:rgba(255,255,255,.88)}
 .stile.t-amber .sk,.stile.t-amber .ss{color:rgba(18,16,10,.82)}
 .stile.t-dark .sk,.stile.t-dark .ss{color:inherit;opacity:.8}
+/* home: today's sweep as a ring, everything else as chips */
+.ringcard{display:flex;flex-wrap:wrap;gap:var(--s4);align-items:center;background:var(--card);
+  border:.5px solid var(--line2);border-radius:var(--r3);padding:var(--s4) var(--s5);margin-bottom:var(--s4)}
+.ring{position:relative;width:120px;height:120px;flex:0 0 auto}
+.ring .n{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .n b{font-size:var(--f6);font-weight:800;letter-spacing:-.02em;line-height:1}
+.ring .n span{font-size:var(--f0);color:var(--ink3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+.ringbody{min-width:200px}
+.ringbody h2{font-size:var(--f4);font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+.ringbody p{margin:0 0 var(--s3);font-size:var(--f2);color:var(--ink2)}
+.ringcta{background:var(--blue);color:var(--onblue);border:0;border-radius:var(--r1);padding:var(--s3) var(--s4);
+  font-size:var(--f3);font-weight:600;font-family:inherit;min-height:var(--tap);cursor:pointer}
+.chipsrow{display:flex;gap:var(--s2);flex-wrap:wrap;margin-left:auto}
+.chip{display:flex;align-items:center;gap:4px;border-radius:20px;padding:var(--s2) var(--s3);
+  font-size:var(--f1);font-weight:600;white-space:nowrap;border:0;font-family:inherit;min-height:36px}
+.chip.b-good{background:var(--greenbg);color:var(--green)}
+.chip.b-attn{background:var(--amberbg);color:var(--amber)}
+@media (max-width:640px){.ringcard{justify-content:center;text-align:center}.chipsrow{margin-left:0;width:100%;justify-content:center}}
+/* scenes home, iPad: one card for the incident you were last in */
+.hero2{background:var(--blue);color:var(--onblue);border-radius:var(--r3);padding:var(--s5) var(--s4);
+  margin-bottom:var(--s3);display:flex;flex-direction:column;gap:var(--s2)}
+.hero2 .k{font-size:var(--f1);font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.82}
+.hero2 h2{font-size:var(--f5);font-weight:800;letter-spacing:-.01em;margin:0;line-height:1.2}
+.hero2 .s{font-size:var(--f2);opacity:.9}
+.hero2 .bar{height:8px;border-radius:5px;background:rgba(255,255,255,.28);margin-top:var(--s1);overflow:hidden}
+.hero2 .bar i{display:block;height:100%;background:#fff;border-radius:5px}
+.hero2 .barlab{font-size:var(--f1);opacity:.85}
+.hero2 .herocta{margin-top:var(--s2);background:rgba(255,255,255,.95);color:var(--blue);border:0;border-radius:var(--r1);
+  padding:var(--s3);font-size:var(--f3);font-weight:700;font-family:inherit;min-height:var(--tap);cursor:pointer}
+.startln{margin-bottom:var(--s3)}
+.startln button{width:100%;background:none;border:1.4px dashed var(--line);border-radius:var(--r1);padding:var(--s3);
+  color:var(--blue);font-size:var(--f2);font-weight:600;font-family:inherit;min-height:var(--tap);cursor:pointer}
+.card2{background:var(--card);border:.5px solid var(--line2);border-radius:var(--r2);padding:var(--s3) var(--s4);margin-bottom:var(--s3)}
+.card2 h4{font-size:var(--f1);font-weight:600;color:var(--ink2);margin:0 0 var(--s2)}
+.urow{display:flex;justify-content:space-between;align-items:center;gap:var(--s2);font-size:var(--f2);
+  padding:var(--s2) 0;border-bottom:.5px solid var(--line2);min-height:var(--tap)}
+.urow:last-child{border-bottom:0}
+.urow .lc{color:var(--blue);font-weight:600;white-space:nowrap}
+/* scenes home, desktop: one dense table */
+.datatable{width:100%;border-collapse:collapse;font-size:var(--f2)}
+.datatable th{text-align:left;font-size:var(--f0);font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--ink3);padding:var(--s2) var(--s3);border-bottom:1px solid var(--line)}
+.datatable td{padding:var(--s3);border-bottom:.5px solid var(--line2);vertical-align:middle}
+.datatable tr:last-child td{border-bottom:0}
+.datatable .lc{color:var(--blue);font-weight:600;cursor:pointer;white-space:nowrap}
+.datatable .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.datatable .dot.a{background:var(--ambersolid)}.datatable .dot.g{background:var(--greensolid)}.datatable .dot.n{background:var(--grey)}
 .dash2{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:var(--s4);align-items:start}
 .dash2 .col{display:flex;flex-direction:column;gap:var(--s4);min-width:0}
 @media (max-width:999px){.dash2{grid-template-columns:minmax(0,1fr)}}
@@ -2547,13 +2594,30 @@ function renderHome(){
     <span>${esc(sweepTxt)}</span><span>${lastVeh()?"Vehicle checked "+esc(lastVeh().t.slice(0,10)):"No vehicle check yet"}</span>
     <button class="hgear" id="gear">${ic("gear","gi")}<span>Settings</span></button></div>`;
 
-  // how is the van
-  const tile=(cls,k,v,s,attr)=>`<button class="stile ${cls}" ${attr}><span class="sk">${k}</span><span class="sv">${v}</span><span class="ss">${s}</span></button>`;
-  const tiles=`<div class="stiles">
-    ${tile(unchk?"t-amber":"t-calm","Sweep",cs.length?(unchk?unchk+" left":"Done"):"\u2014",cs.length?(unchk?checked+" of "+cs.length+" checked":cs.length+" compartments checked"):"Add compartments",'data-go="sweep"')}
-    ${tile(bad.length?"t-red":"t-calm","Stock",bad.length?bad.length+" short":"Fine",bad.length?"low or out, tap to review":"nothing low or out",'data-list="low"')}
-    ${tile(soon.length?"t-amber":"t-calm","Expiring",soon.length?String(soon.length):"None",soon.length?"within 90 days or service due":"all dates clear",'data-list="expiring"')}
-    ${tile(gp.length?"t-dark":"t-calm","Gaps",gp.length?String(gp.length):"None",gp.length?"not in the van, to decide":"nothing outstanding",'data-list="gaps"')}
+  // how is the van \u2014 today's sweep as a progress ring, everything else as chips
+  const R=52, CIRC=2*Math.PI*R;
+  const frac=cs.length?checked/cs.length:0;
+  const ringOff=(CIRC*(1-frac)).toFixed(1);
+  const ringLabel=!cs.length?"Add compartments"
+    :unchk===0?"Sweep finished"+(lastMark?" "+lastMark:""):checked?"Continue sweep":"Start sweep";
+  const chip=(ok,label,attr)=>`<button class="chip ${ok?"b-good":"b-attn"}" ${attr}>${ok?"&#10003; ":""}${esc(label)}</button>`;
+  const tiles=`<div class="ringcard">
+    <div class="ring"><svg width="120" height="120" viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--line2)" stroke-width="12"/>
+      <circle cx="60" cy="60" r="${R}" fill="none" stroke="${unchk?"var(--ambersolid)":"var(--greensolid)"}" stroke-width="12"
+        stroke-linecap="round" stroke-dasharray="${CIRC.toFixed(1)}" stroke-dashoffset="${ringOff}"
+        transform="rotate(-90 60 60)"/></svg>
+      <div class="n"><b>${cs.length?unchk:"\u2014"}</b><span>Left</span></div></div>
+    <div class="ringbody">
+      <h2>${cs.length?"Today's sweep":"No compartments yet"}</h2>
+      <p>${cs.length?checked+" of "+cs.length+" compartments checked":"Add your first compartment to start a sweep"}</p>
+      <button class="ringcta" data-go="sweep">${esc(ringLabel)} &rarr;</button>
+    </div>
+    <div class="chipsrow">
+      ${chip(!bad.length,bad.length?bad.length+" short":"Stock fine",'data-list="low"')}
+      ${chip(!soon.length,soon.length?soon.length+" expiring":"Nothing expiring",'data-list="expiring"')}
+      ${chip(!gp.length,gp.length?gp.length+" gap"+(gp.length===1?"":"s"):"No gaps",'data-list="gaps"')}
+    </div>
   </div>`;
 
   // what needs doing
@@ -3761,56 +3825,53 @@ function renderActive(){
       <button class="btn" data-newinc="1">Start an incident</button></div>`;
     return;
   }
-  const tile=inc=>{
-    const plan=(inc.plan||[]).map(k=>planState(inc,k)).filter(Boolean);
-    const done=plan.filter(p=>p.state==="done").length;
-    const open=plan.filter(p=>p.state==="open").length;
-    return `<button class="acttile" data-inc="${inc.id}">
-      <div class="ai">
-        <h2>${esc(inc.caseNo||"No case number")}</h2>
-        <div class="sub">${esc(inc.offence||"No offence recorded")}</div>
-        <div class="sub">${esc(inc.addr||"No address")}</div>
-      </div>
-      <div class="ak">${docIcon("report")}</div>
-      <div class="am">
-        <span class="badge ${done===plan.length?"b-good":"b-attn"}">${done} of ${plan.length} done</span>
-        ${open?`<span class="badge b-unchecked">${open} in progress</span>`:""}
-      </div></button>`;
-  };
   $("#v-active").innerHTML=scenesHead()+scenesSeg()
-    +`<div class="editbar"><button data-newinc="1" class="on">Start an incident</button></div>`
-    +(incs.length?`<div class="sect">Incidents</div>`+incs.map(tile).join(""):"")
-    +(loose.length?`<div class="sect">Not filed to an incident</div>`
-        +`<p class="hint" style="margin:0 0 12px">Open these and attach them, or export and clear them.</p>`
-        +loose.map(looseTile).join(""):"");
+    +(isIPadLike()?activeSpotlightHTML(incs,loose):activeTableHTML(incs,loose));
 }
-function looseTile(d){
-  const rec = d.kind==="fill" ? (S.fills||[]).find(x=>x.id===d.id)
-                              : (S.sketches||[]).find(x=>x.id===d.id);
-  if(!rec)return "";
-  let meta="", detail="";
-  if(d.kind==="fill"){
-    const f=S.forms.find(x=>x.id===rec.formId)||{fields:[]};
-    const done=(f.fields||[]).filter(x=>{
-      const v=rec.values[x.id];
-      return x.type==="table" ? (Array.isArray(v)&&v.some(row=>Object.values(row||{}).some(s=>String(s||"").trim())))
-                              : String(v||"").trim()!=="";
-    }).length;
-    meta=done+" of "+(f.fields||[]).length+" filled in";
-    const addr=(f.fields||[]).find(x=>/address/i.test(x.label));
-    detail=(addr&&String(rec.values[addr.id]||"").trim())
-      || ("Started "+String(rec.started||"").slice(0,16).replace("T"," "));
-  }else{
-    const objs=(rec.objs||[]).length, marks=(rec.objs||[]).filter(o=>o.t==="marker").length;
-    meta=objs+" object"+(objs===1?"":"s")+(marks?" \u00b7 "+marks+" marker"+(marks===1?"":"s"):"");
-    detail=rec.addr||"No address";
-  }
-  return `<button class="acttile" data-doc="${d.kind}:${d.id}">
-    <div class="ai"><h2>${esc(d.caseNo||"No case number")}</h2>
-      <div class="sub">${esc(d.type)}</div><div class="sub">${esc(detail)}</div></div>
-    <div class="ak">${docIcon(docKind(d.kind,d.type))}</div>
-    <div class="am"><span class="badge b-attn">${esc(meta)}</span>
-      <span class="badge b-unchecked">Not exported</span></div></button>`;
+function incProgress(inc){
+  const plan=(inc.plan||[]).map(k=>planState(inc,k)).filter(Boolean);
+  const done=plan.filter(p=>p.state==="done").length;
+  const open=plan.filter(p=>p.state==="open").length;
+  return {plan,done,open};
+}
+/* iPad: one big card for the incident you were last working, everything else a plain list below */
+function activeSpotlightHTML(incs,loose){
+  const withP=incs.map(inc=>Object.assign({inc},incProgress(inc)));
+  withP.sort((a,b)=>(b.open-a.open)||((a.done/(a.plan.length||1))-(b.done/(b.plan.length||1))));
+  const top=withP[0], rest=withP.slice(1);
+  const pct=top&&top.plan.length?Math.round(100*top.done/top.plan.length):0;
+  const hero=top?`<div class="hero2">
+      <span class="k">Continue where you left off</span>
+      <h2>${esc(top.inc.caseNo||"No case number")} &middot; ${esc(top.inc.offence||"No offence recorded")}</h2>
+      <span class="s">${esc(top.inc.addr||"No address")}</span>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <span class="barlab">${top.done} of ${top.plan.length} done${top.open?", "+top.open+" in progress":""}</span>
+      <button class="herocta" data-inc="${top.inc.id}">Continue &rarr;</button>
+    </div>`:"";
+  const restRow=x=>`<div class="urow"><span>${esc(x.inc.caseNo||"No case number")} &middot; ${esc(x.inc.offence||"No offence recorded")}</span>
+    <span class="lc" data-inc="${x.inc.id}">${x.done===x.plan.length&&x.plan.length?"Done":x.done+" of "+x.plan.length}</span></div>`;
+  const looseRow=d=>`<div class="urow"><span>${esc(d.caseNo||"No case number")} &middot; ${esc(d.type)}</span>
+    <span class="lc" data-doc="${d.kind}:${d.id}">Open</span></div>`;
+  const also=(rest.length||loose.length)?`<div class="card2"><h4>Also open</h4>
+    ${rest.map(restRow).join("")}${loose.map(looseRow).join("")}</div>`:"";
+  return hero+`<div class="startln"><button data-newinc="1">Start a new incident</button></div>`+also;
+}
+/* desktop: everything as one dense table, built for the back office */
+function activeTableHTML(incs,loose){
+  const withP=incs.map(inc=>Object.assign({inc},incProgress(inc)));
+  const incRow=x=>`<tr><td>${esc(x.inc.caseNo||"No case number")}</td><td>${esc(x.inc.offence||"No offence recorded")}</td>
+    <td>${esc(x.inc.addr||"No address")}</td>
+    <td><span class="dot ${x.open?"a":(x.done===x.plan.length&&x.plan.length?"g":"n")}"></span>${x.done} of ${x.plan.length} done${x.open?", "+x.open+" in progress":""}</td>
+    <td class="lc" data-inc="${x.inc.id}">Open &rsaquo;</td></tr>`;
+  const looseRow=d=>`<tr><td>${esc(d.caseNo||"No case number")}</td><td>${esc(d.type)}</td>
+    <td>Not filed to an incident</td>
+    <td><span class="dot a"></span>Not exported</td>
+    <td class="lc" data-doc="${d.kind}:${d.id}">Open &rsaquo;</td></tr>`;
+  return `<div class="editbar"><button data-newinc="1" class="on">Start an incident</button></div>
+    <div class="panel"><div class="ph2">Incidents and documents</div><div class="pb flush">
+      <table class="datatable"><thead><tr><th>Case</th><th>Type</th><th>Detail</th><th>Progress</th><th></th></tr></thead>
+      <tbody>${withP.map(incRow).join("")}${loose.map(looseRow).join("")}</tbody></table>
+    </div></div>`;
 }
 function renderIncident(){
   if(!document.getElementById("v-incident"))return;   // that view is on the other page

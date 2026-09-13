@@ -26,13 +26,30 @@ function renderHome(){
     <span>${esc(sweepTxt)}</span><span>${lastVeh()?"Vehicle checked "+esc(lastVeh().t.slice(0,10)):"No vehicle check yet"}</span>
     <button class="hgear" id="gear">${ic("gear","gi")}<span>Settings</span></button></div>`;
 
-  // how is the van
-  const tile=(cls,k,v,s,attr)=>`<button class="stile ${cls}" ${attr}><span class="sk">${k}</span><span class="sv">${v}</span><span class="ss">${s}</span></button>`;
-  const tiles=`<div class="stiles">
-    ${tile(unchk?"t-amber":"t-calm","Sweep",cs.length?(unchk?unchk+" left":"Done"):"\u2014",cs.length?(unchk?checked+" of "+cs.length+" checked":cs.length+" compartments checked"):"Add compartments",'data-go="sweep"')}
-    ${tile(bad.length?"t-red":"t-calm","Stock",bad.length?bad.length+" short":"Fine",bad.length?"low or out, tap to review":"nothing low or out",'data-list="low"')}
-    ${tile(soon.length?"t-amber":"t-calm","Expiring",soon.length?String(soon.length):"None",soon.length?"within 90 days or service due":"all dates clear",'data-list="expiring"')}
-    ${tile(gp.length?"t-dark":"t-calm","Gaps",gp.length?String(gp.length):"None",gp.length?"not in the van, to decide":"nothing outstanding",'data-list="gaps"')}
+  // how is the van \u2014 today's sweep as a progress ring, everything else as chips
+  const R=52, CIRC=2*Math.PI*R;
+  const frac=cs.length?checked/cs.length:0;
+  const ringOff=(CIRC*(1-frac)).toFixed(1);
+  const ringLabel=!cs.length?"Add compartments"
+    :unchk===0?"Sweep finished"+(lastMark?" "+lastMark:""):checked?"Continue sweep":"Start sweep";
+  const chip=(ok,label,attr)=>`<button class="chip ${ok?"b-good":"b-attn"}" ${attr}>${ok?"&#10003; ":""}${esc(label)}</button>`;
+  const tiles=`<div class="ringcard">
+    <div class="ring"><svg width="120" height="120" viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r="${R}" fill="none" stroke="var(--line2)" stroke-width="12"/>
+      <circle cx="60" cy="60" r="${R}" fill="none" stroke="${unchk?"var(--ambersolid)":"var(--greensolid)"}" stroke-width="12"
+        stroke-linecap="round" stroke-dasharray="${CIRC.toFixed(1)}" stroke-dashoffset="${ringOff}"
+        transform="rotate(-90 60 60)"/></svg>
+      <div class="n"><b>${cs.length?unchk:"\u2014"}</b><span>Left</span></div></div>
+    <div class="ringbody">
+      <h2>${cs.length?"Today's sweep":"No compartments yet"}</h2>
+      <p>${cs.length?checked+" of "+cs.length+" compartments checked":"Add your first compartment to start a sweep"}</p>
+      <button class="ringcta" data-go="sweep">${esc(ringLabel)} &rarr;</button>
+    </div>
+    <div class="chipsrow">
+      ${chip(!bad.length,bad.length?bad.length+" short":"Stock fine",'data-list="low"')}
+      ${chip(!soon.length,soon.length?soon.length+" expiring":"Nothing expiring",'data-list="expiring"')}
+      ${chip(!gp.length,gp.length?gp.length+" gap"+(gp.length===1?"":"s"):"No gaps",'data-list="gaps"')}
+    </div>
   </div>`;
 
   // what needs doing

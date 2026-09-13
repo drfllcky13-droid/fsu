@@ -312,56 +312,53 @@ function renderActive(){
       <button class="btn" data-newinc="1">Start an incident</button></div>`;
     return;
   }
-  const tile=inc=>{
-    const plan=(inc.plan||[]).map(k=>planState(inc,k)).filter(Boolean);
-    const done=plan.filter(p=>p.state==="done").length;
-    const open=plan.filter(p=>p.state==="open").length;
-    return `<button class="acttile" data-inc="${inc.id}">
-      <div class="ai">
-        <h2>${esc(inc.caseNo||"No case number")}</h2>
-        <div class="sub">${esc(inc.offence||"No offence recorded")}</div>
-        <div class="sub">${esc(inc.addr||"No address")}</div>
-      </div>
-      <div class="ak">${docIcon("report")}</div>
-      <div class="am">
-        <span class="badge ${done===plan.length?"b-good":"b-attn"}">${done} of ${plan.length} done</span>
-        ${open?`<span class="badge b-unchecked">${open} in progress</span>`:""}
-      </div></button>`;
-  };
   $("#v-active").innerHTML=scenesHead()+scenesSeg()
-    +`<div class="editbar"><button data-newinc="1" class="on">Start an incident</button></div>`
-    +(incs.length?`<div class="sect">Incidents</div>`+incs.map(tile).join(""):"")
-    +(loose.length?`<div class="sect">Not filed to an incident</div>`
-        +`<p class="hint" style="margin:0 0 12px">Open these and attach them, or export and clear them.</p>`
-        +loose.map(looseTile).join(""):"");
+    +(isIPadLike()?activeSpotlightHTML(incs,loose):activeTableHTML(incs,loose));
 }
-function looseTile(d){
-  const rec = d.kind==="fill" ? (S.fills||[]).find(x=>x.id===d.id)
-                              : (S.sketches||[]).find(x=>x.id===d.id);
-  if(!rec)return "";
-  let meta="", detail="";
-  if(d.kind==="fill"){
-    const f=S.forms.find(x=>x.id===rec.formId)||{fields:[]};
-    const done=(f.fields||[]).filter(x=>{
-      const v=rec.values[x.id];
-      return x.type==="table" ? (Array.isArray(v)&&v.some(row=>Object.values(row||{}).some(s=>String(s||"").trim())))
-                              : String(v||"").trim()!=="";
-    }).length;
-    meta=done+" of "+(f.fields||[]).length+" filled in";
-    const addr=(f.fields||[]).find(x=>/address/i.test(x.label));
-    detail=(addr&&String(rec.values[addr.id]||"").trim())
-      || ("Started "+String(rec.started||"").slice(0,16).replace("T"," "));
-  }else{
-    const objs=(rec.objs||[]).length, marks=(rec.objs||[]).filter(o=>o.t==="marker").length;
-    meta=objs+" object"+(objs===1?"":"s")+(marks?" \u00b7 "+marks+" marker"+(marks===1?"":"s"):"");
-    detail=rec.addr||"No address";
-  }
-  return `<button class="acttile" data-doc="${d.kind}:${d.id}">
-    <div class="ai"><h2>${esc(d.caseNo||"No case number")}</h2>
-      <div class="sub">${esc(d.type)}</div><div class="sub">${esc(detail)}</div></div>
-    <div class="ak">${docIcon(docKind(d.kind,d.type))}</div>
-    <div class="am"><span class="badge b-attn">${esc(meta)}</span>
-      <span class="badge b-unchecked">Not exported</span></div></button>`;
+function incProgress(inc){
+  const plan=(inc.plan||[]).map(k=>planState(inc,k)).filter(Boolean);
+  const done=plan.filter(p=>p.state==="done").length;
+  const open=plan.filter(p=>p.state==="open").length;
+  return {plan,done,open};
+}
+/* iPad: one big card for the incident you were last working, everything else a plain list below */
+function activeSpotlightHTML(incs,loose){
+  const withP=incs.map(inc=>Object.assign({inc},incProgress(inc)));
+  withP.sort((a,b)=>(b.open-a.open)||((a.done/(a.plan.length||1))-(b.done/(b.plan.length||1))));
+  const top=withP[0], rest=withP.slice(1);
+  const pct=top&&top.plan.length?Math.round(100*top.done/top.plan.length):0;
+  const hero=top?`<div class="hero2">
+      <span class="k">Continue where you left off</span>
+      <h2>${esc(top.inc.caseNo||"No case number")} &middot; ${esc(top.inc.offence||"No offence recorded")}</h2>
+      <span class="s">${esc(top.inc.addr||"No address")}</span>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <span class="barlab">${top.done} of ${top.plan.length} done${top.open?", "+top.open+" in progress":""}</span>
+      <button class="herocta" data-inc="${top.inc.id}">Continue &rarr;</button>
+    </div>`:"";
+  const restRow=x=>`<div class="urow"><span>${esc(x.inc.caseNo||"No case number")} &middot; ${esc(x.inc.offence||"No offence recorded")}</span>
+    <span class="lc" data-inc="${x.inc.id}">${x.done===x.plan.length&&x.plan.length?"Done":x.done+" of "+x.plan.length}</span></div>`;
+  const looseRow=d=>`<div class="urow"><span>${esc(d.caseNo||"No case number")} &middot; ${esc(d.type)}</span>
+    <span class="lc" data-doc="${d.kind}:${d.id}">Open</span></div>`;
+  const also=(rest.length||loose.length)?`<div class="card2"><h4>Also open</h4>
+    ${rest.map(restRow).join("")}${loose.map(looseRow).join("")}</div>`:"";
+  return hero+`<div class="startln"><button data-newinc="1">Start a new incident</button></div>`+also;
+}
+/* desktop: everything as one dense table, built for the back office */
+function activeTableHTML(incs,loose){
+  const withP=incs.map(inc=>Object.assign({inc},incProgress(inc)));
+  const incRow=x=>`<tr><td>${esc(x.inc.caseNo||"No case number")}</td><td>${esc(x.inc.offence||"No offence recorded")}</td>
+    <td>${esc(x.inc.addr||"No address")}</td>
+    <td><span class="dot ${x.open?"a":(x.done===x.plan.length&&x.plan.length?"g":"n")}"></span>${x.done} of ${x.plan.length} done${x.open?", "+x.open+" in progress":""}</td>
+    <td class="lc" data-inc="${x.inc.id}">Open &rsaquo;</td></tr>`;
+  const looseRow=d=>`<tr><td>${esc(d.caseNo||"No case number")}</td><td>${esc(d.type)}</td>
+    <td>Not filed to an incident</td>
+    <td><span class="dot a"></span>Not exported</td>
+    <td class="lc" data-doc="${d.kind}:${d.id}">Open &rsaquo;</td></tr>`;
+  return `<div class="editbar"><button data-newinc="1" class="on">Start an incident</button></div>
+    <div class="panel"><div class="ph2">Incidents and documents</div><div class="pb flush">
+      <table class="datatable"><thead><tr><th>Case</th><th>Type</th><th>Detail</th><th>Progress</th><th></th></tr></thead>
+      <tbody>${withP.map(incRow).join("")}${loose.map(looseRow).join("")}</tbody></table>
+    </div></div>`;
 }
 function renderIncident(){
   if(!document.getElementById("v-incident"))return;   // that view is on the other page
