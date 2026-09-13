@@ -4,12 +4,12 @@
 const {test,expect}=require("@playwright/test");
 
 async function open(page){
-  await page.goto("/index.html");
-  await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-home"));
+  await page.goto("/scenes.html");
+  await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-active"));
 }
 // the store reads van3, then vaninv2, then vaninv, so each old key still has to load
 async function seedKey(page,key,payload){
-  await page.goto("/index.html");
+  await page.goto("/scenes.html");
   await page.evaluate(([k,v])=>{localStorage.clear();localStorage.setItem(k,JSON.stringify(v))},[key,payload]);
   await open(page);
 }
@@ -57,7 +57,9 @@ test("a case package goes out and comes back whole",async({page})=>{
   await open(page);
   const made=await page.evaluate(async()=>{
     const inc=newIncident(); curInc=inc.id; inc.caseNo="26-001234";
-    const sk=newSketch(); sk.incidentId=inc.id; sk.caseNo=inc.caseNo;
+    const sk={id:"sk"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+      objs:[],layers:[],when:new Date().toISOString(),v:4};
+    (S.sketches=S.sketches||[]).push(sk); sk.incidentId=inc.id; sk.caseNo=inc.caseNo;
     curSketch=sk.id; addObj("refpoint"); saveLocal();
     const pkg=await casePackage({incidentId:inc.id});
     return {pkg:JSON.stringify(pkg), inc:inc.id, sk:sk.id, objs:sk.objs.length};

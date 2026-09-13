@@ -3,6 +3,11 @@
 // a scene. The rule these all share: a flag may only change at local midnight. If a state is
 // true at 6am it must still be true at 10pm the same day.
 const {test,expect}=require("@playwright/test");
+// the sketch lives on the scene page; items, compartments and the settings screen on the van
+async function openScenes(page){
+  await page.goto("/scenes.html");
+  await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-active"));
+}
 
 // the unit is US Eastern, and several of these calculations parse a bare date as UTC, so the
 // timezone has to be pinned or the answers move with whoever runs the suite
@@ -123,12 +128,15 @@ test("the token countdown loses exactly one day per day across the end of daylig
 /* ---------- case package nag ---------- */
 
 test("an unpackaged sketch is nagged about after six hours, not before",async({page})=>{
-  await open(page,"2026-09-12T08:00:00-04:00");
+  await page.clock.setFixedTime(new Date("2026-09-12T08:00:00-04:00"));
+  await openScenes(page);
   await page.evaluate(()=>{localStorage.removeItem("van3")});
-  await open(page,"2026-09-12T08:00:00-04:00");
+  await openScenes(page);
   await page.evaluate(()=>{
     const inc=newIncident(); curInc=inc.id; inc.caseNo="26-001234";
-    const sk=newSketch(); sk.incidentId=inc.id; curSketch=sk.id; addObj("refpoint"); saveLocal();
+    const sk={id:"sk"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+      objs:[],layers:[],when:new Date().toISOString(),v:4};
+    (S.sketches=S.sketches||[]).push(sk); sk.incidentId=inc.id; curSketch=sk.id; addObj("refpoint"); saveLocal();
   });
   const nag=async at=>{await clock(page,at);
     return page.evaluate(()=>caseNag(S.sketches.find(s=>s.id===curSketch)))};

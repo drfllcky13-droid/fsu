@@ -75,7 +75,6 @@ function snippetManage(){
 }
 
 /* ---- the photograph log follows the photo points ---- */
-const compassOf=r=>["N","NE","E","SE","S","SW","W","NW"][Math.round((((+r||0)%360)+360)%360/45)%8];
 /* ---- Word export ---- */
 let ZIPP=null;
 function zipLib(){
@@ -135,28 +134,6 @@ function svgPdfLib(){
     s.onload=res; s.onerror=()=>{SVGP=null;rej(new Error("no network"))}; document.head.appendChild(s)});
   return SVGP;
 }
-async function svgVector(doc,svgStr,x,y,w,h){
-  let host=null;
-  try{
-    await svgPdfLib();
-    host=document.createElement("div"); host.style.cssText="position:fixed;left:-9999px;top:0;width:1200px;height:900px;overflow:hidden";
-    host.innerHTML=svgStr; document.body.appendChild(host);
-    const svg=host.querySelector("svg");
-    const props=["fill","fill-opacity","stroke","stroke-width","stroke-dasharray","stroke-linecap","stroke-linejoin","opacity","font-size","font-family","font-weight","font-style","text-anchor"];
-    svg.querySelectorAll("*").forEach(el=>{
-      if(el.tagName.toLowerCase()==="style"){el.remove();return}
-      const cs=getComputedStyle(el);
-      props.forEach(p=>{const v=cs.getPropertyValue(p); if(v&&v!=="normal")el.setAttribute(p,v)});
-      if(el.tagName.toLowerCase()==="text"){el.setAttribute("stroke","none");el.setAttribute("font-family","Arial, Helvetica, sans-serif")}
-      el.removeAttribute("class"); el.removeAttribute("style");
-    });
-    if(typeof doc.svg==="function")await doc.svg(svg,{x,y,width:w,height:h});
-    else { const fn=window.svg2pdf&&(window.svg2pdf.svg2pdf||window.svg2pdf); if(typeof fn!=="function")throw new Error("svg2pdf not available"); await fn(svg,doc,{x,y,width:w,height:h}) }
-    host.remove(); window.__vecOK=true; return true;
-  }catch(e){ console.error("vector export failed, using the drawing as an image",e); if(host)host.remove(); window.__vecOK=false; return false }
-}
-
-/* ---- vehicle check ---- */
 const VEH_ITEMS=["Lights and indicators","Tyres and pressures","Fuel level","Windscreen, wipers and washer","First aid kit in date","Fire extinguisher in date","Generator or inverter runs","Scene lighting works","Cab and cargo area clean and secure","No warning lights on the dash"];
 const vehChecks=()=>(S.vehicleChecks=S.vehicleChecks||[]);
 const lastVeh=()=>vehChecks()[vehChecks().length-1];
@@ -257,10 +234,6 @@ function helpSheet(){
 }
 
 /* ---- hooks ---- */
-/* ---- landscape only on a tablet ---- */
-const isTablet=()=>Math.min(screen.width||innerWidth||0,screen.height||innerHeight||0)>=700;
-const isIPadLike=()=>/iPad/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
-function landscapeOnly(){ return S.landscapeOnly==null?isIPadLike():!!S.landscapeOnly }
 function appExtraClick10(e){
   const t=e.target;
   if(t.closest("[data-sidetog]")){ S.sideMin=!S.sideMin; saveLocal(); applyMode(); buildTabs(); fitHeader(); return true }

@@ -4,21 +4,31 @@ FSU test tooling — what exists, what it found, what is left
 
 THE CHECKS
 
-Run them all with `npx playwright test` from fsu-tests. 94 checks, about 20 seconds.
-The four console tools also run by hand on the iPad: open the app, paste the file into
-the console. That is how they are meant to be used away from a desk.
+Run them all with `npx playwright test` from fsu-tests. The four console tools also run by
+hand on the iPad: open the app, paste the file into the console. That is how they are meant
+to be used away from a desk.
 
-sweep.js        Was already here. Switches through each view looking for render errors,
-                NaN in a symbol, duplicate ids, page-level overflow, and a data- attribute
-                with no handler behind it.
+The app is two pages now — index.html is the van, scenes.html is the scene — so every
+check below is against one page or the other, and the console tools see only the page
+they are pasted into. They share one record, so a check can seed on one page and read it
+back on the other. Where a check needs a view that lives on the far side, the address
+carries it: scenes.html#v=sketch&ref=new is how every sketch check starts.
+
+sweep.js        Was already here. Switches through each view of the page it is run on,
+                looking for render errors, NaN in a symbol, duplicate ids, page-level
+                overflow, and a data- attribute with no handler behind it. The symbol
+                tables are on the scene page only, so a run against the van page reports
+                zero symbols rather than checking 142 of them — see WHAT IS LEFT.
 
 crawl.js        Presses every control in every view, and one level into any sheet a control
                 opens. Reports a nav control whose target view is missing or that lands
                 somewhere else, a handler that throws, and a button that does nothing.
                 Saved state and the open item, sketch, incident, bay and compartment are
                 snapshotted and put back after every click. Controls that delete, export,
-                send or sign are named, not pressed. 375 controls at desktop width, 474 on
-                an iPad in portrait.
+                send or sign are named, not pressed. Run against each page in turn. It
+                judges a nav control by looking for #v-<target> in the current document,
+                so the tabs that cross to the other page (Scenes from the van, Home from
+                the scene) read as dead routes to it — see WHAT IS LEFT.
 
 visible.js      Layout audit per view at the current window size, checked at the top of the
                 page and again at the bottom. Anything outside the window horizontally,
@@ -30,38 +40,80 @@ visible.js      Layout audit per view at the current window size, checked at the
 contrast.js     The WCAG ratio for every piece of text against the background behind it.
                 Prints, never fails a run: which colour to change is a design call.
 
-fsu-tests/tests/
-  fsu.spec.js       Was already here. The render sweep at four widths in both schemes, and
-                    the sketch flows: measurement maths, walls, placement, ink, marquee,
-                    layers, DXF and PDF export, the save-failure bar, case package round
-                    trip, undo after a reload.
+fsu-tests/tests/          (van = index.html, scene = scenes.html)
+  fsu.spec.js       Was already here. The render sweep at four widths in both schemes on the
+                    van, and the sketch flows on the scene: measurement maths, walls,
+                    placement, ink, marquee, layers, DXF and PDF export, the save-failure
+                    bar, case package round trip, undo after a reload.
   ui.spec.js        The crawl and the layout audit, at 1500 and 1280 for a desktop and
                     1194x834 and 834x1194 for an iPad either way up, in Chromium and in
-                    WebKit, which is the engine Safari uses.
-  contrast.spec.js  The contrast report in both schemes.
+                    WebKit, which is the engine Safari uses. Both run once against the van
+                    and once against the scene, and seed whichever half of the app the page
+                    they are on actually carries.
+  contrast.spec.js  The contrast report in both schemes. Van.
   keyboard.spec.js  Tab moves through every view, focus is visible wherever it lands, a
                     sheet can be left with Escape, and the keyboard stays inside a sheet
-                    while it is up.
+                    while it is up. Van.
   offline.spec.js   The worker takes over, the page opens with the network cut, an incident
                     started and a compartment checked offline survive a reload, and every
-                    file the page asks for is in the cache.
+                    file the page asks for is in the cache. Van; the worker precaches both
+                    pages, so the scene page opens offline too.
   print.spec.js     The compartment map, the labels sheet and the install sheet fit inside
-                    a letter page, and the map really renders as a PDF.
+                    a letter page, and the map really renders as a PDF. Van.
   storage.spec.js   localStorage is filled to the quota: a refused write raises the red bar,
                     nothing disappears from the running app, and the bar clears and the data
-                    saves once there is room again.
+                    saves once there is room again. Van.
   migration.spec.js A record written under van3, vaninv2 or vaninv still loads, an old
                     record gains this version's stock forms without losing the unit's own,
-                    and a case package goes out and comes back whole.
+                    and a case package goes out and comes back whole. Scene, because that is
+                    where the case package lives.
   sync.spec.js      GitHub is stubbed, so no token and no network: a file changed by another
                     device is reported and never silently overwritten, pushing over theirs
                     takes a second deliberate act, pulling takes their version whole, and a
-                    lapsed token says so.
+                    lapsed token says so. Scene, though what it syncs is van data — the two
+                    pages share one record and sync.js is built into both.
+  clock.spec.js     Every warning in the app is a date subtraction, and a flag may only
+                    change at local midnight: expiry, service due, verification a year old,
+                    the token countdown across the end of daylight saving, the six-hour nag
+                    about an unpackaged sketch. Scene.
+  sketch-geom.spec.js  Triangulation, baseline offset and bearing solved against arithmetic
+                    done in the spec, a marker measured at its spike, a rotated object's
+                    anchor, a room typed off a tape, lengths read back as typed. Scene.
+  marker-migrate.spec.js  A marker drawn before the symbol changed is stretched about its
+                    tip and put back on its tape distances. Scene.
+  model.spec.js     Model-based random testing: a plain model of items, compartments,
+                    incidents and one sketch's objects, driven through a few hundred seeded
+                    actions and compared after every one. Fixed seed, printed on every run.
+                    Scene.
+  corrupt.spec.js   A damaged record is written under van3 and the app has to boot anyway,
+                    throw nothing and put something on screen, keeping whatever half of the
+                    record was still readable. Each case loads on the page its damage
+                    belongs to.
+  destructive.spec.js  The delete paths the crawl names but will not press: an incident, a
+                    sketch, an item, a compartment, and clearing the sample van. Each takes
+                    what it says and leaves everything beside it standing. Both pages.
+  security.spec.js  Free text is text — nothing a name contains can run, and punctuation
+                    comes back character for character — and the GitHub token is in no file
+                    the app writes out and on no screen. Both pages.
+  data-lint.spec.js A lint over the record the app ships rather than over the code: no two
+                    compartments sharing a code, no item in a compartment that does not
+                    exist, every date and quantity parsable, every compartment in a named
+                    bay. Van.
+  pages.spec.js     The split itself. Presses every crossing the way a user does — Quick
+                    sketch, the Scenes tab, Settings from the scene, a document row on an
+                    incident — and checks where it lands and that the address carries the
+                    record, so a reload holds. Then: a stale or nonsense #v=/ref= address
+                    opens on something rather than a blank screen; two pages open at once do
+                    not write over each other's record; every view is built into exactly one
+                    page and src/pages.js agrees with both, with no control anywhere naming a
+                    view that does not exist; both manifests resolve and the worker precaches
+                    both pages, which then open with the network cut.
   bulk.spec.js      600 extra items and 40 sketches, rendered at a quarter speed to stand in
-                    for an older iPad. Budget 200ms a view; the worst today is about 85.
-  visual.spec.js    Picture baselines for Home, Storage and Items at iPad width in both
-                    schemes. Skipped on CI, where another machine's font rendering would
-                    fail every run. After a deliberate change:
+                    for an older iPad. Budget 200ms a view; the worst today is about 85. Van.
+  visual.spec.js    Picture baselines at iPad width in both schemes: Home, Storage and Items
+                    on the van, the incident list, an incident and a sketch on the scene.
+                    Skipped on CI, where another machine's font rendering would fail every
+                    run. After a deliberate change:
                     npx playwright test tests/visual.spec.js --update-snapshots
 
 
@@ -101,6 +153,21 @@ disabled at their limit, which is a design call.
 
 
 WHAT IS LEFT
+
+The render sweep on the scene page. It walks the section.view elements of whatever page it
+is loaded on, and fsu.spec.js still loads the van. So the scene page's six views and all 142
+symbols are outside it at the moment, which is exactly the half the sweep was written for.
+One more loop in fsu.spec.js against scenes.html.
+
+The crawl and the cross-page tabs. crawl.js decides a nav control is dead by looking for
+#v-<target> in the current document, and the tabs that cross pages point at a view the other
+page owns, so it reports Scenes on the van (and Home on the scene) as a dead route. It needs
+to ask pages.js — here(v) — before calling a route dead, and to put the page back afterwards,
+since pressing that tab navigates.
+
+Two home-screen icons on a real device. Whether iPadOS treats index.html and scenes.html as
+one installed app or two, and whether the second icon opens standalone rather than in Safari,
+is not something a desktop WebKit build answers.
 
 A real iPad. Everything here runs in Chromium and WebKit on a desktop. The home-screen
 shell, the on-screen keyboard, the pencil and Safari's own scrolling are not reproduced by a

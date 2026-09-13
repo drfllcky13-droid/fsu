@@ -31,16 +31,6 @@ function scenesSeg(){
 }
 
 /* a sketch with a case number and no incident */
-function offerIncident(sk){
-  setTimeout(()=>askConfirm("File it to an incident?",
-    "This sketch has a case number but no incident. An incident keeps the entry log, evidence log, sketch and report together and bundles them at the end.",
-    "Start incident "+sk.caseNo,false,()=>{
-      const inc=newIncident(); inc.caseNo=sk.caseNo; inc.addr=sk.addr||""; inc.offence=sk.offence||"";
-      sk.incidentId=inc.id; let n=0; (sk.objs||[]).forEach(o=>{if(o.t==="marker")n+=syncMarker(sk,o)});
-      logAct("incident","Started incident "+inc.caseNo+" from a sketch"); save(); renderSketch();
-      toast("Incident started"+(n?" — markers written to the evidence log":""))}),450);
-}
-
 /* home: a setup checklist while the unit is still being logged */
 function setupCard(){
   if(S.setupHide&&Date.now()-Date.parse(S.setupHide)<7*86400000)return "";
@@ -265,11 +255,17 @@ function openTarget(kind,val,mode){
   if(kind==="c"){ if(!S.comps.some(c=>c.code===val))return toast("No compartment "+val+" is logged");
     logAct("scan","Opened "+val+" from a label");
     if(mode==="sweep"){S.curLoc=val;S.pick=false;save();renderSweep();const f=$("#q-name")||$("#f-name");if(f)f.focus();return}
+    if(!here("compdetail"))return crossTo("compdetail",val);
     curComp=val; prevView="compartments"; view="compdetail"; window.scrollTo(0,0); render(); return }
   if(kind==="i"){ if(!S.items.some(i=>i.id===val))return toast("That item is no longer logged");
+    if(!here("itemdetail"))return crossTo("itemdetail",val);
     curItem=val; prevView="inventory"; view="itemdetail"; window.scrollTo(0,0); render(); return }
-  if(kind==="s"){ if(!(S.sketches||[]).some(s=>s.id===val))return toast("That sketch is not on this device"); curSketch=val; view="sketch"; render(); return }
-  if(kind==="inc"){ if(!incidents().some(i=>i.id===val))return toast("That incident is not on this device"); curInc=val; view="incident"; render() }
+  if(kind==="s"){ if(!(S.sketches||[]).some(s=>s.id===val))return toast("That sketch is not on this device");
+    if(!here("sketch"))return crossTo("sketch",val);
+    curSketch=val; view="sketch"; render(); return }
+  if(kind==="inc"){ if(!incidents().some(i=>i.id===val))return toast("That incident is not on this device");
+    if(!here("incident"))return crossTo("incident",val);
+    curInc=val; view="incident"; render() }
 }
 function openScanned(text,mode){
   const s=String(text||""); const m=s.match(/#(c|i|s|inc)=([^&]+)/)||s.match(/^fsu:(c|i|s|inc):(.+)$/);

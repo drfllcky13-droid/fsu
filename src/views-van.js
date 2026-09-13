@@ -346,8 +346,6 @@ function renderCompDetail(){
 
 /* ---------- item detail ---------- */
 let curItem=null, curForm=null, prevView="home";
-const today=()=>localISO(new Date());
-
 function itemStatus(i){
   if(!placed(i))return["unchecked","Not placed yet"];
   if(isOut(i))return["action","Out of stock"];
@@ -704,16 +702,6 @@ function renderPrint(){
 
 /* ---------- form fields and filled copies ---------- */
 const FTYPES=["text","textarea","date","time","number","check","table"];
-function parseFields(t){
-  return (t||"").split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map((l,ix)=>{
-    const b=l.split("|").map(x=>x.trim());
-    const label=b[0]; let type=(b[1]||"text").toLowerCase();
-    if(!FTYPES.includes(type))type="text";
-    const cols=type==="table"?(b[2]||"Item").split(",").map(x=>x.trim()).filter(Boolean):null;
-    const def=type==="table"?null:(b[2]||"").trim()||null;
-    return {id:"f"+ix+"_"+label.toLowerCase().replace(/[^a-z0-9]+/g,"").slice(0,12),label,type,cols,def};
-  });
-}
 if(S.formsSeeded!==STOCKV){S.formsSeeded=STOCKV;seedForms();store.set(S)}
 // installs from before built-ins were marked still need flagging
 // compartment names, applied on load and after any restore
@@ -741,12 +729,6 @@ const fieldsText=f=>(f.fields||[]).map(x=>
   :x.def?x.label+" | "+x.type+" | "+x.def
   :x.type==="text"?x.label:x.label+" | "+x.type).join("\n");
 
-function newFill(f){
-  const rec={id:newId(),formId:f.id,formName:f.name,rev:f.rev||"",cat:f.cat||"",
-    started:new Date().toISOString(),values:{}};
-  (f.fields||[]).forEach(x=>{rec.values[x.id]=x.type==="table"?[{}]:x.type==="check"?false:(x.def||"")});
-  S.fills.push(rec); saveLocal(); return rec;
-}
 function fillTitle(r){
   const f=S.forms.find(x=>x.id===r.formId);
   const first=(f&&(f.fields||[]).find(x=>["text","number"].includes(x.type)));

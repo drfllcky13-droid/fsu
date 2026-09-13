@@ -1,8 +1,10 @@
 # FSU — handoff brief
 
-A single-file web app for the Williamsport Bureau of Police Forensic Services Unit. Two halves
-sharing a shell: **van inventory** (compartments, items, sweeps, reorder) and **scene
-documentation** (incidents, forms, sketches, bundled PDF reports).
+A web app for the Williamsport Bureau of Police Forensic Services Unit. Two halves sharing a
+shell: **van inventory** (compartments, items, sweeps, reorder) and **scene documentation**
+(incidents, forms, sketches, bundled PDF reports). Since 12 September 2026 those two halves are
+two pages — `index.html` and `scenes.html` — built from the same `src/` and backed by the same
+one record. See "The page split" in section 2 before you change anything structural.
 
 Built over one long session against a real van and one real sweep. It works. The structure is
 the problem, not the behaviour.
@@ -13,10 +15,11 @@ the problem, not the behaviour.
 
 | | |
 |---|---|
-| `index.html` | 771 KB, built from `src/` by `node build.js` (twelve parts, see `src/README.md`). Libraries loaded on demand from cdnjs: jsPDF, the QR encoder, JSZip for Word export, svg2pdf for the vector option. Beside it: `sw.js`, `manifest.webmanifest`, icons, `sweep.js`, `fsu-tests/`, `CHANGELOG.md`, and a GitHub Actions workflow that checks the build and runs the suite |
-| JavaScript | 635 KB, all global scope. The extensions sit in four blocks just before the init call (sketch rounds one to three, then round four for the van side: guided sweep, item cards, verification, reorder states, labels and deep links, activity log, count mode) and hook into the existing listeners |
-| CSS | 58 KB, one `<style>` block |
-| Views | 20 `<section class="view">` elements, shown and hidden by a `view` string. Tabs are Home, Scenes, Guide, Storage, Items; the old Active and Scenes tabs are one list with an Open and Closed filter, and `forms` is now reached only through it |
+| `index.html` | the van. ~400 KB, built from `src/` by `node build.js` (23 parts). Libraries loaded on demand from cdnjs: jsPDF, the QR encoder, JSZip for Word export, svg2pdf for the vector option. Beside it: `sw.js`, `manifest.webmanifest`, `scenes.webmanifest`, icons, `sweep.js`, `fsu-tests/`, `CHANGELOG.md`, and a GitHub Actions workflow that checks both builds and runs the suite |
+| `scenes.html` | the scene. ~800 KB, built from the same `src/` by the same command (31 parts: the shared set, plus PDF, the symbol tables and the sketch engine, which the van page does not carry) |
+| JavaScript | ~34 parts under `src/`, all global scope, concatenated byte for byte. The extensions sit in blocks just before the init call (sketch rounds one to three on the scene page, then round four for the van side: guided sweep, item cards, verification, reorder states, labels and deep links, activity log, count mode) and hook into the existing listeners |
+| CSS | 81 KB, `src/app.css`, one `<style>` block, the same on both pages |
+| Views | 20 `<section class="view">` elements, shown and hidden by a `view` string: 14 on the van page, 6 on the scene page. Tabs are Home, Scenes, Guide, Storage, Items and are the same on both — a tab whose view is on the other page navigates there. The old Active and Scenes tabs are one list with an Open and Closed filter, and `forms` is now reached only through it |
 | Symbols | 142 SVG shape functions `(w, hh, o?) => string`. Area fills take the object as a third argument for pattern ids and the fill choice |
 | Event handling | 6 delegated listeners on `document`, dispatching by `closest("[data-x]")` |
 
@@ -32,6 +35,38 @@ unit 1. Load it through the app's own restore (Settings › Restore or import), 
 ---
 
 ## 2. Architecture as it stands
+
+**The page split.** `build.js` has two targets. `index.html` is the van: home, compartments and
+bays, items, the sweep, the guide, the printable map and labels, restock, tidy and Settings.
+`scenes.html` is the scene: the incident list, an incident and its document plan, a form being
+filled in, form templates and the sketch. Same origin, same path, so **same `localStorage` — one
+record, nothing copied, nothing to sync between them.** A save on one page is picked up by the
+other through the `storage` event listener in `src/core.js`, which takes their version whole and
+re-renders; do not add a merge there, and do not write a copy of anything into the other page.
+
+`src/pages.js` is the seam and is where you look first:
+- `VIEWS` lists which view belongs to which page, and `PAGE` is set before it by `src/van.js`
+  or `src/scenes.js` (each is one line).
+- `here(v)` is "this page draws that view"; `pageOf(v)` is "which page does".
+- `go(v)` in `src/nav.js` calls `crossTo(v)` when the view is not here, which sets
+  `location.href` to the other page with `#v=<view>&ref=<id>`. `ref` is the incident, sketch,
+  fill, item, compartment or bay the view is about.
+- `openFromHash()` reads that back on load and on `hashchange`, sets the matching `cur*` and
+  `view`, and returns false if the hash names a view that is not on this page.
+- `startSketch()` lives here because either page can start a sketch: only the scene page can
+  actually make one, so from the van it crosses with `ref=new[:incidentId]`.
+
+Adding a view means adding it to `VIEWS`, to that page's body part, and to that page's target in
+`build.js`. `fsu-tests/tests/pages.spec.js` is the guard on all of this: it presses the crossings
+a user presses, checks a reload lands back on the same record, checks a stale or nonsense `#v=`
+address cannot blank the screen, checks two open pages do not write over each other, and checks
+that every view is built into exactly one page and that `pages.js` agrees with both. Run it first
+after anything structural.
+
+Each page has its own manifest (`manifest.webmanifest`, `scenes.webmanifest`) and its own
+`apple-mobile-web-app-title`, so a technician gets two home-screen icons; `sw.js` precaches both
+pages. The two share every part of the shell — header, side nav, tab bar, sheets, toast, the
+rotation gate — because they are literally the same source parts.
 
 **State.** One object `S`, persisted to `localStorage` on every change via `save()`.
 Contains `items`, `comps`, `forms`, `fills`, `sketches`, `incidents`, `walls`, plus settings.
@@ -138,8 +173,9 @@ package.
    string. Anchoring a CSS insert to the wrong one silently does nothing.
 5. **Two headers.** The sketch title block is drawn twice — SVG for screen, jsPDF for export.
    They are separate code and have drifted before.
-6. **The symbol tables** (`SYM`, `VEH`, `FURN`, `WPN`, `SHAPES`) are separate top-level constants
-   after `snapEdges`, about 120 KB of path data. First thing to move into their own file.
+6. **The symbol tables** (`SYM`, `VEH`, `FURN`, `WPN`, `SHAPES`) are now `src/sketch-objects.js`,
+   about 200 KB of path data, and they are on the scene page only. Anything on the van page that
+   reaches for `SHAPES` will find it undefined — the render sweep already does, silently.
 7. **Hooks.** New sketch behaviour is reached through calls placed inside the existing listeners:
    `sketchExtraClick2` then `sketchExtraClick` (click), `extraPointerDown2` then
    `extraPointerDown`, the same for move, and `extraPointerUp`. Round two adds capture-phase
@@ -167,6 +203,11 @@ package.
    address under Settings › Labels. The in-app scanner (`scanSheet` in ext-van.js) uses `BarcodeDetector`
    where it exists and otherwise loads jsQR from jsdelivr on first use; every device also gets a
    photo route through a file input with `capture`, decoded the same way.
+   These are a *second*, older hash scheme, separate from the `#v=<view>&ref=<id>` one that
+   `src/pages.js` uses to cross between the pages, and they are handled by `handleHash` /
+   `openTarget` in `ext-van.js` rather than by `openFromHash`. `openTarget` sets `view` directly
+   without asking `here()`, so a scanned `#s=` or `#inc=` on the van page sets a view that page
+   does not have. Route it through `go()` or `crossTo()` when you next touch it.
 18. **Landscape only.** `applyRotLock` (ext-reports.js) puts `rotlock` on `body` when `landscapeOnly()`
    (default: iPad-like user agent, else `S.landscapeOnly`) and the screen's short side is 700px or
    more; `#rotgate` then covers everything in portrait. iPadOS ignores `screen.orientation.lock` and
@@ -192,8 +233,8 @@ package.
 Every change today was checked by a script that, at **1500 / 1194 / 393 / 320 px** and in
 **both colour schemes**:
 
-- renders all 19 views and fails on any thrown error or console error
-- renders all 107 symbols at 5 sizes each, failing on `NaN`, `undefined` or empty output
+- renders every view on the page it is run on and fails on any thrown error or console error
+- renders every symbol at 5 sizes each, failing on `NaN`, `undefined` or empty output
 - checks horizontal overflow is 0
 - checks no touch target is under 40 px
 - checks for duplicate `id`s, unstyled classes, unbalanced CSS braces
@@ -201,20 +242,27 @@ Every change today was checked by a script that, at **1500 / 1194 / 393 / 320 px
 
 It caught roughly a dozen bugs that reading the code did not. The original script was not in
 the handoff; a rewrite is in `sweep.js` beside this file, and `fsu-tests/` runs it in Chromium at
-all four widths in both schemes plus twelve sketch flows (`npm install`, `npm run
-install-browser`, `npm test`). Twenty checks, all passing on 4 September 2026. Run it before
-and after every change.
+all four widths in both schemes plus the sketch flows (`npm install`, `npm run install-browser`,
+`npm test`). Run it before and after every change.
+
+It walks the `section.view` elements of whatever page it is loaded on, so since the split a run
+against `index.html` sees the van's 14 views and no symbols (`SHAPES` is only on the scene page),
+and a run against `scenes.html` sees the other 6 and all of the symbols. `fsu.spec.js` currently
+points it at `index.html` only — the click crawl and the layout audit in `ui.spec.js` do cover
+both pages. Pointing the sweep at both is the obvious next thing to do to the suite.
 
 ---
 
 ## 6. First refactor, in order
 
-1. **Split the file.** Started: `src/` holds twelve parts and `node build.js` concatenates them
-   byte for byte; CI refuses a commit whose `index.html` disagrees. The parts follow the
-   extension rounds, not the views. Next is moving the symbol tables out of `app.js`, then the
-   views one at a time. The single-file deployment stays.
-2. **Move the symbol tables** into data files.
-3. **CI.** `.github/workflows/fsu.yml` runs the build check and the 36-test suite on every push.
+1. **Split the file.** Done. `app.js` no longer exists: it was cut into a dozen parts along its
+   own section boundaries, the parts both pages need were lifted into `core.js`, `chrome.js`,
+   `incidents.js` and `case-package.js`, and the whole thing then became two pages. `src/` holds
+   34 parts that `node build.js` concatenates byte for byte into `index.html` and `scenes.html`;
+   CI refuses a commit whose built pages disagree with `src/`. No bundler, no modules, no build
+   step beyond concatenation — keep it that way.
+2. **Move the symbol tables** into data files. Done: `src/sketch-objects.js`, scene page only.
+3. **CI.** `.github/workflows/fsu.yml` runs the build check and the suite on every push.
    Pages needs no workflow: it serves the branch. Do not add a `deploy-pages` workflow unless the
    Pages source is switched to GitHub Actions in the repository settings, or every push goes red.
 4. **Then** touch behaviour.

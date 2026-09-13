@@ -4,7 +4,7 @@ const GLYPH={
  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.3l3.4 2"/></svg>',
  gap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/></svg>',
  ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.7 2.7L16 9.5"/></svg>'};
-let curSketch=null, selObj=null, curLayer=null, showSet=false, palCat=0, palQ="", skFull=false, skTools=true;
+let showSet=false, palCat=0, palQ="", skFull=false, skTools=true;
 // shrink on the way in: a reference thumbnail, never the evidential copy
 function shrinkPhoto(file,max=1400,q=0.72){
   return new Promise((res,rej)=>{
@@ -651,7 +651,7 @@ function renderSketch(){
   const __html=`<div id="skhead">
     <button class="back" data-navback="${sk.incidentId&&incidentOf(sk.incidentId)?"incident":"active"}">&#8249; ${
       sk.incidentId&&incidentOf(sk.incidentId)?esc(incidentOf(sk.incidentId).caseNo||"Incident"):"Scenes"}</button>
-    ${docTabs("sketch",sk.id)}
+    ${typeof docTabs==="function"?docTabs("sketch",sk.id):""}
     <div class="cdhead"><h2>${esc(sk.caseNo||"Untitled sketch")}</h2>
       <div class="sub">${esc(sk.addr||"No address")} · ${esc((sk.when||"").replace("T"," "))}${sk.by?" · "+esc(sk.by):""}</div></div></div>
     <div class="skgrid${skFull?" full":""}${skFull&&!skTools?" notools":""}"><div class="skmain">

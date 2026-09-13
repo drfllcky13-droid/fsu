@@ -44,7 +44,8 @@ async function exportCasePackage(scope,label){
   }catch(e){ if(e&&e.name==="AbortError")return; dlBlob(blob,name) }
   const now=new Date().toISOString(); S.lastCase=now;
   pkg.sketches.forEach(s=>{const sk=(S.sketches||[]).find(x=>x.id===s.id); if(sk)sk.packaged=now});
-  saveLocal(); if(view==="data")renderData(); else if(view==="sketch")renderSketch();
+  saveLocal(); if(view==="data"&&typeof renderData==="function")renderData();
+  else if(view==="sketch"&&typeof renderSketch==="function")renderSketch();
   const np=Object.keys(pkg.photos).length;
   logAct("case","Saved a case package"); toast("Case package saved — "+pkg.sketches.length+" sketch"+(pkg.sketches.length===1?"":"es")+", "+np+" photograph"+(np===1?"":"s")+". Put it in the case file.");
 }

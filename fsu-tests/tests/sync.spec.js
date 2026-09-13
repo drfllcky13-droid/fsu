@@ -48,6 +48,11 @@ const it=(id,name,v,d,rest)=>Object.assign({id,name,qty:1,cat:"A",cls:"Consumabl
 const dead=(id,v,d,when)=>({id,name:"",status:"Not carried",gapType:"deliberate",
   _x:1,_v:v,_d:d,_t:when||new Date().toISOString()});
 
+// the scene page, for the one check that needs a sketch to exist
+async function openScenes(page){
+  await page.goto("/scenes.html");
+  await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-active"));
+}
 async function open(page){
   await page.goto("/index.html");
   await page.evaluate(()=>localStorage.clear());
@@ -57,8 +62,8 @@ async function open(page){
 // connect, and take the first sync, so the device has a base to judge later changes against.
 // A device that has never synced defers to the repo on purpose (the virgin rule in the
 // design), so every test about a clash has to get past that first.
-async function connected(page,dev){
-  await open(page);
+async function connected(page,dev,where){
+  await (where==="scenes"?openScenes(page):open(page));
   await page.evaluate(async d=>{
     S.gh={owner:"unit",repo:"van-data",path:"data.json",token:"test-token-not-a-real-one",sha:"",last:""};
     if(d)S.dev=d;
@@ -461,10 +466,12 @@ test("sync still works when the device refuses to write to storage",async({page}
 test("scene material stays on the device and never reaches the repo",async({page})=>{
   const state={sha:"sha1",data:file([])};
   await page.route(FILE,remote(state));
-  await connected(page,"devA");
+  await connected(page,"devA","scenes");
   await page.evaluate(async()=>{
     const inc=newIncident(); inc.caseNo="26-004411";
-    const sk=newSketch(); sk.incidentId=inc.id; curSketch=sk.id; addObj("refpoint");
+    const sk={id:"sk"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+      objs:[],layers:[],when:new Date().toISOString(),v:4};
+    (S.sketches=S.sketches||[]).push(sk); sk.incidentId=inc.id; curSketch=sk.id; addObj("refpoint");
     newFill(S.forms[0]);
     saveLocal(); await ghPush(false);
   });

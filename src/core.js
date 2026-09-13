@@ -98,3 +98,24 @@ function compState(code){
 const comps=()=>S.comps.slice().sort((a,b)=>String(a.code||"").localeCompare(String(b.code||""),undefined,{numeric:true}));
 
 
+
+// which sketch is open, and what is selected in it. Declared here because the main app
+// carries these in its back history even though it no longer draws anything.
+let curSketch=null, selObj=null, curLayer=null;
+
+// Two apps, one record: if the other one saves while this is open, this copy is stale and
+// writing over it would lose their work. The browser tells us; take their version and redraw.
+window.addEventListener("storage",ev=>{
+  if(ev.key!=="van3"||!ev.newValue)return;
+  let o=null; try{o=JSON.parse(ev.newValue)}catch(e){return}
+  if(!o||typeof o!=="object")return;
+  MEM=null;
+  for(const k of Object.keys(S))delete S[k];
+  Object.assign(S,o);
+  if(typeof render==="function")render();
+});
+
+// the date here, not in UTC: see dayStart above
+const today=()=>localISO(new Date());
+
+const compassOf=r=>["N","NE","E","SE","S","SW","W","NW"][Math.round((((+r||0)%360)+360)%360/45)%8];

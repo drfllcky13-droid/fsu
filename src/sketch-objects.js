@@ -1,3 +1,25 @@
+async function svgVector(doc,svgStr,x,y,w,h){
+  let host=null;
+  try{
+    await svgPdfLib();
+    host=document.createElement("div"); host.style.cssText="position:fixed;left:-9999px;top:0;width:1200px;height:900px;overflow:hidden";
+    host.innerHTML=svgStr; document.body.appendChild(host);
+    const svg=host.querySelector("svg");
+    const props=["fill","fill-opacity","stroke","stroke-width","stroke-dasharray","stroke-linecap","stroke-linejoin","opacity","font-size","font-family","font-weight","font-style","text-anchor"];
+    svg.querySelectorAll("*").forEach(el=>{
+      if(el.tagName.toLowerCase()==="style"){el.remove();return}
+      const cs=getComputedStyle(el);
+      props.forEach(p=>{const v=cs.getPropertyValue(p); if(v&&v!=="normal")el.setAttribute(p,v)});
+      if(el.tagName.toLowerCase()==="text"){el.setAttribute("stroke","none");el.setAttribute("font-family","Arial, Helvetica, sans-serif")}
+      el.removeAttribute("class"); el.removeAttribute("style");
+    });
+    if(typeof doc.svg==="function")await doc.svg(svg,{x,y,width:w,height:h});
+    else { const fn=window.svg2pdf&&(window.svg2pdf.svg2pdf||window.svg2pdf); if(typeof fn!=="function")throw new Error("svg2pdf not available"); await fn(svg,doc,{x,y,width:w,height:h}) }
+    host.remove(); window.__vecOK=true; return true;
+  }catch(e){ console.error("vector export failed, using the drawing as an image",e); if(host)host.remove(); window.__vecOK=false; return false }
+}
+
+/* ---- vehicle check ---- */
 /* ---------- sketch objects ---------- */
 const VBW=1000, VBH=750;
 const curSk=()=>S.sketches.find(x=>x.id===curSketch);

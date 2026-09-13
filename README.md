@@ -1,7 +1,7 @@
 # FSU
 
 Scene documentation and van upkeep for the Williamsport Bureau of Police Forensic Services Unit.
-One HTML file, no server, runs offline on an iPad, a phone or a desktop.
+No server, runs offline on an iPad, a phone or a desktop.
 
 ## Where it runs
 
@@ -10,17 +10,34 @@ The app is live at **https://drfllcky13-droid.github.io/van-app/**
 GitHub Pages serves this repository's `main` branch directly. A push to `main` is live within about
 a minute. Nothing needs to be enabled or deployed by hand.
 
+It is two pages, and you can put both on the home screen:
+
+- **FSU** (the address above) is the van: Home, Storage, Items, the sweep, the guide, the printed
+  map and labels, restocking, tidying up and Settings.
+- **Scenes** (`.../van-app/scenes.html`) is the scene: the incident list, an incident and the
+  documents it needs, filling a form in, form templates and the sketch.
+
+They are the same app and the same records, not two copies. A sweep logged on one shows up on the
+other, and nothing has to be sent between them. The tabs down the side are the same on both, so
+tapping Scenes from the van, or Home from a scene, just goes to the other page; you do not have to
+know which one you are on.
+
 **Install sheet:** https://drfllcky13-droid.github.io/van-app/install.html — one printable page with
 the address as a QR code, the home-screen steps for iPad, Android and desktop, and how to connect a
-device to the van data. Print it and pin it in the van.
+device to the van data. Print it and pin it in the van. It still covers only the first address;
+the second icon is step 3 below and is not on the sheet yet.
 
 ## Getting a device going
 
 1. Open the address above in Safari (iPad or iPhone) or Chrome (Android, desktop).
 2. Add it to the home screen: Safari → Share → Add to Home Screen; Chrome → menu → Install app or
    Add to Home screen; desktop Chrome or Edge → the install icon at the right of the address bar.
-3. Open it from its icon once while online. From then on it works without a connection.
-4. To share the van list with the other devices, open **Settings** (top of Home), then
+   That icon is **FSU**, the van.
+3. Now open `.../van-app/scenes.html` and add that to the home screen the same way. That icon is
+   **Scenes**. Doing both gives the technician one icon for the van and one for the scene; the
+   sketch and the forms open straight from the second without going through the first.
+4. Open each icon once while online. From then on they work without a connection.
+5. To share the van list with the other devices, open **Settings** (top of Home), then
    **Automatic saving**. Owner and repository are already filled in (`drfllcky13-droid` /
    `van-data`). Paste the unit's access token and tap **Connect** — that is the whole form.
    The list merges straight away and every change after that saves itself a couple of seconds
@@ -61,11 +78,14 @@ repository is public; nothing in it is case material.
 
 ## For whoever maintains it
 
-- `index.html` is the app. It is built from `src/` by `node build.js`; edit the parts, not the file.
-- `sw.js`, `manifest.webmanifest` and the icons make it installable from a web address.
+- `index.html` (the van) and `scenes.html` (the scene) are the app. Both are built from `src/` by
+  `node build.js`; edit the parts, not the built files. `src/pages.js` says which view lives on
+  which page.
+- `sw.js`, `manifest.webmanifest`, `scenes.webmanifest` and the icons make both pages installable
+  from a web address.
 - `fsu-tests/` is the Playwright suite (`npm install`, `npm run install-browser`, `npm test`).
 - `HANDOFF.md` explains the structure and the things that bite. `CHANGELOG.md` is the version history.
 - `.github/workflows/fsu.yml` checks the build and runs the suite on every push.
 
-To ship a change: edit under `src/`, run `node build.js`, run the suite, commit `src/` and
-`index.html` together, push to `main`.
+To ship a change: edit under `src/`, run `node build.js`, run the suite, commit `src/`,
+`index.html` and `scenes.html` together, push to `main`.

@@ -1,9 +1,15 @@
 SKETCH SECTION — SURVEY AND PLAN
 2026-09-12
 
-Read first: renderSketch, SHAPES/SYM/PALETTE and the sketch keydown handler in src/app.js;
-all of src/ext-sketch-1.js (parseLen, solveMeas, buildWalls, DXF), ext-sketch-2.js (zoom,
-place, repairSketch) and ext-sketch-3.js (ink, multi, undo persistence).
+NOTE, 12 Sep 2026, later the same day: src/app.js no longer exists, and the sketch now lives on
+its own page, scenes.html, which the van page (index.html) does not carry. Nothing in the plan
+below changes; the file names in the next paragraph do.
+
+Read first: renderSketch and the sketch keydown handler in src/sketch-canvas.js, SHAPES / SYM /
+PALETTE in src/sketch-objects.js, the toolbar in src/sketch-controls.js; all of
+src/ext-sketch-1.js (parseLen, solveMeas, buildWalls, DXF), ext-sketch-2.js (zoom, place,
+repairSketch) and ext-sketch-3.js (ink, multi, undo persistence). All of those are on the scene
+page only — see src/pages.js for which views live where.
 
 Ordered by what it costs the technician. Geometry first, because a measurement that is
 subtly wrong is the one failure this tool cannot recover from once the sketch is in a file.

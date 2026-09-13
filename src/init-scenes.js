@@ -1,5 +1,6 @@
-applyTheme();applyMode();applyRotLock();openFromHash();render();fitHeader();
+applyTheme();applyMode();applyRotLock();
+if(!openFromHash())view="active";
+render();fitHeader();
 if(typeof requestAnimationFrame==='function')requestAnimationFrame(fitHeader);
-claimStorage();
 window.addEventListener("hashchange",()=>{if(openFromHash())render()});
-if(ghOn())ghPull(true).then(()=>renderSyncPill());
+claimStorage();

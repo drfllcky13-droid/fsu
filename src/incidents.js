@@ -85,3 +85,40 @@ function syncMarker(sk,o){
   saveLocal();
   return 1;
 }
+
+function offerIncident(sk){
+  setTimeout(()=>askConfirm("File it to an incident?",
+    "This sketch has a case number but no incident. An incident keeps the entry log, evidence log, sketch and report together and bundles them at the end.",
+    "Start incident "+sk.caseNo,false,()=>{
+      const inc=newIncident(); inc.caseNo=sk.caseNo; inc.addr=sk.addr||""; inc.offence=sk.offence||"";
+      sk.incidentId=inc.id; let n=0; (sk.objs||[]).forEach(o=>{if(o.t==="marker")n+=syncMarker(sk,o)});
+      logAct("incident","Started incident "+inc.caseNo+" from a sketch"); save(); if(typeof renderSketch==="function")renderSketch();
+      toast("Incident started"+(n?" — markers written to the evidence log":""))}),450);
+}
+
+
+function parseFields(t){
+  return (t||"").split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map((l,ix)=>{
+    const b=l.split("|").map(x=>x.trim());
+    const label=b[0]; let type=(b[1]||"text").toLowerCase();
+    if(!FTYPES.includes(type))type="text";
+    const cols=type==="table"?(b[2]||"Item").split(",").map(x=>x.trim()).filter(Boolean):null;
+    const def=type==="table"?null:(b[2]||"").trim()||null;
+    return {id:"f"+ix+"_"+label.toLowerCase().replace(/[^a-z0-9]+/g,"").slice(0,12),label,type,cols,def};
+  });
+}
+
+function newFill(f){
+  const rec={id:newId(),formId:f.id,formName:f.name,rev:f.rev||"",cat:f.cat||"",
+    started:new Date().toISOString(),values:{}};
+  (f.fields||[]).forEach(x=>{rec.values[x.id]=x.type==="table"?[{}]:x.type==="check"?false:(x.def||"")});
+  S.fills.push(rec); saveLocal(); return rec;
+}
+
+
+const unsent=()=>[
+  ...(S.fills||[]).filter(f=>!f.exported).map(f=>({name:f.formName||"Filled form",id:f.id})),
+  ...(S.sketches||[]).filter(s=>!s.exported&&(s.objs||[]).length)
+      .map(s=>({name:s.caseNo?"Sketch "+s.caseNo:"Untitled sketch",id:s.id}))];
+
+function markExported(rec){ if(rec){rec.exported=new Date().toISOString();logAct("export","Exported "+(rec.caseNo||rec.name||"a document"));saveLocal()} }

@@ -4,8 +4,8 @@
 const {test,expect}=require("@playwright/test");
 
 async function open(page){
-  await page.goto("/index.html");
-  await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-home"));
+  await page.goto("/scenes.html#v=sketch&ref=new");
+  await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-sketch"));
 }
 
 test("an old marker is stretched to the new shape without leaving its spot",async({page})=>{

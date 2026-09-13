@@ -5,8 +5,17 @@
 // functions for a few hundred seeded actions, and checks the two still agree after every one.
 const {test,expect}=require("@playwright/test");
 
-const SEED=20260912;        // fixed so a failure is reproducible; printed on every run
-const RUNS=400;
+// Two jobs, two pages, so two runs. index.html is the van and owns items and compartments;
+// scenes.html is the scene and owns incidents, their documents and the sketch. They share
+// storage but not controls: a view on the other page is only reachable by navigating there,
+// which would end the run. So each run generates only actions its own page can perform.
+// Both start from the same fresh record, so the invariants that are about the record as a
+// whole are checked by both.
+const HALF={
+  van:   {seed:20260912, url:"/index.html",  ready:"#v-home"},   // seeds fixed so a failure
+  scene: {seed:20260913, url:"/scenes.html", ready:"#v-active"}, // replays; printed every run
+};
+const RUNS=250;             // per run: a few hundred actions, not tens of thousands
 const COMPS=["1A1","1A2","2A","3B"];                      // real codes from the seeded van
 const PLANS=["entrylog","evidence","photolog","report"];  // the form-backed plan keys
 // no marker or photopoint: those write to the evidence log on a timer, so the record would
@@ -20,16 +29,21 @@ const rng=s=>()=>{s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);
 /* ---------- the sequence: a pure function of the seed, so a shrunk run replays exactly ----------
    actions name items, incidents and sketches by the order they were created, not by id, so an
    action still means the same thing after an earlier one has been shrunk away. */
-function generate(seed,count){
+// weights: on the scene page a sketch is started rarely, so the undo history gets deep enough
+// to be interesting before the next one replaces it
+const KINDS={
+  van:["addItem","addItem","addItem","logUse","logUse","adjust","adjust",
+    "place","unplace","delItem","sweep","sweep","reload"],
+  scene:["newInc","attachDoc","attachDoc","closeInc","newSketch",
+    "addObj","addObj","addObj","addObj","delObj","delObj","delObj",
+    "undo","undo","redo","redo","undoRedo","reload"],
+};
+function generate(seed,count,half){
   const r=rng(seed), pick=n=>Math.floor(r()*n), of=a=>a[pick(a.length)];
   let nI=0,nC=0, out=[];
-  // weights: a sketch is started rarely so the undo history gets deep enough to be interesting
-  const KINDS=["addItem","addItem","logUse","logUse","adjust","place","unplace","delItem",
-    "sweep","newInc","attachDoc","attachDoc","closeInc","newSketch",
-    "addObj","addObj","addObj","addObj","delObj","delObj","delObj",
-    "undo","undo","redo","redo","undoRedo","reload"];
+  const KIND=KINDS[half];
   while(out.length<count){
-    const k=of(KINDS);
+    const k=of(KIND);
     if(k==="addItem"){out.push({k,comp:of(COMPS),qty:1+pick(9),name:"Probe "+nI});nI++;continue}
     if(k==="newInc"){out.push({k,caseNo:"26-"+(1000+nC)});nC++;continue}
     if(k==="newSketch"){out.push({k});continue}
@@ -140,7 +154,9 @@ const STEP=(a)=>{
       curInc=a.id; go("incident"); click("[data-incclose]");
       if(document.querySelector("#cfyes"))click("#cfyes"); break;
     case "newSketch":
-      go("home"); click("[data-quicksketch]");
+      // the same call the Quick sketch button and #v=sketch&ref=new both land on; it opens the
+      // scene-details sheet on top of the new sketch, which is dismissed the way Cancel does
+      startSketch(""); closeSheet();
       out.id=curSketch; break;
     case "addObj":
       go("sketch"); addObj(a.t);
@@ -167,8 +183,9 @@ const READ=(ids)=>({
   comps:S.comps.map(c=>[c.code,!!c.checked]),
   incidents:(S.incidents||[]).map(x=>[x.id,!!x.closed,docsFor(x.id).length]),
   sketches:ids.map(id=>{const s=(S.sketches||[]).find(x=>x.id===id); return [id,s?(s.objs||[]).map(o=>o.id):null]}),
-  undo:((curSketch&&UNDO[curSketch])||[]).length,
-  redo:((curSketch&&REDO[curSketch])||[]).length
+  // the undo stacks only exist on the page that draws; the van run never starts a sketch
+  undo:typeof UNDO==="undefined"?0:((curSketch&&UNDO[curSketch])||[]).length,
+  redo:typeof REDO==="undefined"?0:((curSketch&&REDO[curSketch])||[]).length
 });
 
 function invariants(rec){
@@ -192,11 +209,11 @@ function invariants(rec){
 }
 
 /* ---------- running one sequence ---------- */
-async function fresh(page){
-  await page.goto("/index.html");
+async function fresh(page,H){
+  await page.goto(H.url);
   await page.evaluate(()=>localStorage.clear());
-  await page.goto("/index.html");
-  await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-home"));
+  await page.goto(H.url);
+  await page.waitForFunction(sel=>typeof render==="function"&&document.querySelector(sel),H.ready);
   // no initials prompt, and no backup prompt when the last compartment is swept
   await page.evaluate(()=>{S.who="QA"; S.lastBackup=new Date().toISOString().slice(0,10); saveLocal()});
   const rec=await page.evaluate(READ,[]);
@@ -213,8 +230,8 @@ function modelRec(m){
 }
 // returns null when the whole sequence agreed, else {i,why}
 let TALLY={};
-async function runSeq(page,seq,errors){
-  const m=await fresh(page);
+async function runSeq(page,seq,errors,H){
+  const m=await fresh(page,H);
   errors.length=0; TALLY={};
   for(let i=0;i<seq.length;i++){
     const a=resolve(m,seq[i]); if(!a)continue;
@@ -224,7 +241,8 @@ async function runSeq(page,seq,errors){
       if(a.k==="reload"){
         await page.reload();
         await page.waitForFunction(()=>typeof render==="function");
-        // the in-memory pointers are gone; put them back the way reopening the sketch would
+        // the in-memory pointers are gone; put them back the way reopening the sketch would.
+        // Opening it is what reloads the undo history, so this has to happen before the read.
         await page.evaluate(id=>{S.who="QA"; if(id){curSketch=id; selObj=null; go("sketch")}},m.cur);
         got={};
       } else got=await page.evaluate(STEP,a);
@@ -247,33 +265,45 @@ async function runSeq(page,seq,errors){
 }
 
 /* ---------- shrinking: drop actions one at a time while the failure survives ---------- */
-async function shrink(page,seq,errors,budget){
+async function shrink(page,seq,errors,budget,H){
   let best=seq.slice(), spent=0;
   for(let i=best.length-1;i>=0&&spent<budget;i--){
     const trial=best.slice(0,i).concat(best.slice(i+1));
     spent+=trial.length;
-    if(await runSeq(page,trial,errors))best=trial;
+    if(await runSeq(page,trial,errors,H))best=trial;
   }
   return best;
 }
 const show=seq=>seq.map((a,i)=>"  "+(i+1)+". "+JSON.stringify(a)).join("\n");
 
-test("a few hundred random legal actions leave the model and the app agreeing",async({page})=>{
-  test.setTimeout(20*60*1000);
-  const errors=[];
+async function runHalf(page,half){
+  const H=HALF[half], errors=[];
   page.on("pageerror",e=>errors.push(e.message));
-  console.log("model.spec seed: "+SEED+" ("+RUNS+" actions)");
+  console.log("model.spec "+half+" seed: "+H.seed+" ("+RUNS+" actions on "+H.url+")");
 
-  const seq=generate(SEED,RUNS);
-  const fail=await runSeq(page,seq,errors);
-  console.log("ran: "+Object.entries(TALLY).map(([k,v])=>k+" "+v).join(", "));
+  const seq=generate(H.seed,RUNS,half);
+  const fail=await runSeq(page,seq,errors,H);
+  console.log(half+" ran: "+Object.entries(TALLY).map(([k,v])=>k+" "+v).join(", "));
   if(!fail)return;
 
-  const short=await shrink(page,seq.slice(0,fail.i+1),errors,6000);
-  const again=await runSeq(page,short,errors);
-  expect(fail,"seed "+SEED+", failed at action "+(fail.i+1)+": "+fail.why
+  const short=await shrink(page,seq.slice(0,fail.i+1),errors,4000,H);
+  const again=await runSeq(page,short,errors,H);
+  expect(fail,"seed "+H.seed+", failed at action "+(fail.i+1)+": "+fail.why
     +"\nshortest sequence that still fails ("+short.length+" actions):\n"+show(short)
     +"\n"+((again&&again.why)||"")).toBeNull();
+}
+
+// the van: what is carried, where it lives, how much of it there is
+test("a few hundred random actions on the van leave the model and the app agreeing",async({page})=>{
+  test.setTimeout(20*60*1000);
+  await runHalf(page,"van");
+});
+
+// the scene: incidents, the documents planned for them, and one sketch's objects with its
+// undo history — the part where the order of the actions is what breaks things
+test("a few hundred random actions on the scene leave the model and the app agreeing",async({page})=>{
+  test.setTimeout(20*60*1000);
+  await runHalf(page,"scene");
 });
 
 // Found by the run above once the keyboard was added to the action list, then cut back to this.
@@ -282,11 +312,12 @@ test("a few hundred random legal actions leave the model and the app agreeing",a
 // gone for good, and the Undo it leaves behind rolls the sketch back past an earlier change.
 test("an object removed with the Delete key comes back with Undo",async({page})=>{
   const errors=[]; page.on("pageerror",e=>errors.push(e.message));
-  await page.goto("/index.html");
+  await page.goto("/scenes.html");
   await page.evaluate(()=>localStorage.clear());
-  await page.goto("/index.html");
-  await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-home"));
-  await page.evaluate(()=>{document.querySelector("[data-quicksketch]").click()});
+  // a new sketch, opened the way the Quick sketch button on the van opens one across the pages
+  await page.goto("/scenes.html#v=sketch&ref=new");
+  await page.waitForSelector("#sheet.on");         // the scene-details sheet it opens with
+  await page.evaluate(()=>closeSheet());
   await page.waitForSelector("#skcanvas");
   await page.evaluate(()=>{addObj("chair"); addObj("table")});
   await page.keyboard.press("Delete");                      // the table is selected

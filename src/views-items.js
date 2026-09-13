@@ -301,6 +301,7 @@ function docKind(kind,name){
 const docIcon=k=>`<svg class="dg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
   stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${DOCICON[k]||DOCICON.report}</svg>`;
 function renderActive(){
+  if(!document.getElementById("v-active"))return;   // that view is on the other page
   $("#title").textContent="Scenes";
   if(scenesTab==="closed"){ renderForms(); $("#v-active").innerHTML=scenesHead()+scenesSeg()+$("#v-forms").innerHTML; $("#title").textContent="Scenes"; return }
   const incs=openIncidents(), loose=openDocs();
@@ -363,6 +364,7 @@ function looseTile(d){
       <span class="badge b-unchecked">Not exported</span></div></button>`;
 }
 function renderIncident(){
+  if(!document.getElementById("v-incident"))return;   // that view is on the other page
   const inc=incidentOf(curInc);
   if(!inc){view="active";return renderActive()}
   $("#title").textContent=inc.caseNo||"Incident";
@@ -584,6 +586,7 @@ function settingsSection(k){
     <div class="setsec"><div class="idsect" style="margin-top:0">${esc(SET_TITLES[k]||"Settings")}</div>${body}</div>`;
 }
 function renderData(){
+  if(!document.getElementById("v-data"))return;   // that view is on the other page
   $("#title").textContent="Settings";
   if(conflict||tokenBad||badFile)SET_SEC="sync";
   if(SET_SEC&&!SET_TITLES[SET_SEC])SET_SEC=null;

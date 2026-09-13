@@ -15,22 +15,6 @@ function patchSketchView(html){
   if(ca&&cb&&ca.innerHTML!==cb.innerHTML)ca.innerHTML=cb.innerHTML;
 }
 
-/* 2. nothing fails silently: a toast for the user, a list for whoever maintains the app */
-function logErr(msg){
-  try{ S.errors=(S.errors||[]).slice(-19);
-    S.errors.push({t:new Date().toISOString(),m:String(msg).slice(0,300),v:typeof view==="string"?view:""});
-    saveLocal() }catch(_){}
-  try{ toast("Something went wrong and that last action may not have taken. It is noted under Settings.") }catch(_){}
-}
-window.addEventListener("error",e=>logErr((e.message||"Error")+" at "+String(e.filename||"").split("/").pop()+":"+(e.lineno||0)));
-window.addEventListener("unhandledrejection",e=>logErr("Promise: "+((e.reason&&e.reason.message)||e.reason)));
-
-/* 3. installable: a service worker when served over http, so it opens from the home screen and works offline */
-if("serviceWorker" in navigator&&/^https?:/.test(location.protocol)){
-  try{ navigator.serviceWorker.register("sw.js").catch(()=>{}) }catch(_){}
-}
-const isStandalone=()=>!!((window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone);
-
 /* 5. rotation snaps to right angles on touch, where there is no shift key */
 let rotSnap=true;
 
@@ -118,11 +102,6 @@ function multiDelete(){ const sk=curSk(); if(!sk||!multi||!multi.ids.size)return
 
 /* 11. a quiet tick when a save lands */
 var TICKT=null;
-function savedTick(){
-  try{ const el=document.getElementById("savedtick"); if(!el)return;
-    el.textContent="Saved"; el.classList.add("on"); clearTimeout(TICKT); TICKT=setTimeout(()=>el.classList.remove("on"),1400) }catch(_){}
-}
-
 /* 12. undo that survives a reload: the last few snapshots, kept apart from the main store */
 function persistUndo(sk){
   try{ const st=(UNDO[sk.id]||[]).slice(-6), s=JSON.stringify(st);

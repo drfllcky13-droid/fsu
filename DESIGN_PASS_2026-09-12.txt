@@ -175,6 +175,11 @@ PRINT / LABELS
 
   src/app.css                       the only source file changed
   index.html                        rebuilt from src/
+
+  NOTE, later the same day: the app became two pages, index.html (the van) and scenes.html
+  (the scene). src/app.css is still the only stylesheet and is built into both, so everything
+  above applies to both pages unchanged; `node build.js` now writes two files, and the counts
+  and screenshots here were taken before the split.
   fsu-tests/design-before/*.png     home, inventory, compartments, sweep, incident at
   fsu-tests/design-after/*.png      1194x834, light and dark, plus x-*.png for the other
                                     views and p834/d1500 checks

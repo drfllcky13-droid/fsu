@@ -1,5 +1,20 @@
 # FSU change log
 
+## 2026.09.12.6
+The van and the scene are now two icons on the home screen. **FSU** is the van: Home, Storage,
+Items, the sweep, the guide, the printed map and labels, restocking and Settings. **Scenes** is
+the scene: the incident list, the documents an incident needs, filling a form in, the templates
+and the sketch. Put both on the home screen and the sketch opens from its own icon instead of
+through the van.
+
+It is still one app and one set of records. A sweep logged on one icon is there on the other the
+next time you look, nothing is copied and there is nothing to send between them. The tabs down
+the side are the same on both, so tapping Scenes, or Home, goes where it always did; you do not have
+to know which icon you started from.
+
+The scene half no longer has to load with the van half, so the van opens quicker on an older
+iPad. Nothing was renamed, nothing moved, and nothing behaves differently once you are in it.
+
 ## 2026.09.12.5
 Measuring to or from an evidence marker used the middle of its card instead of the spike at the
 bottom, so every such measurement was out by about half the marker height — roughly 2 ft 7 in at

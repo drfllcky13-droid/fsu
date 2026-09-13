@@ -4,12 +4,12 @@
 const {test,expect}=require("@playwright/test");
 
 async function open(page){
-  await page.goto("/index.html");
-  await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-home"));
+  await page.goto("/scenes.html#v=sketch&ref=new");
+  await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-sketch"));
 }
 // a sketch at 100 page units = 10 ft, so 1 ft = 10 page units
 async function sketch(page){
-  await page.evaluate(()=>{document.querySelector("[data-quicksketch]").click()});
+  await page.evaluate(()=>{closeSheet()});   // the new-sketch details sheet
   await page.waitForSelector("#skcanvas");
   await page.evaluate(()=>{const sk=curSk(); sk.scale={px:100,real:10,unit:"ft"}; saveLocal(); renderSketch()});
 }

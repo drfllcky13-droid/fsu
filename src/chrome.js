@@ -46,7 +46,7 @@ async function claimStorage(){
     }
   }catch(e){}
   storageState.asked=true;
-  if(view==="data")renderData();
+  if(view==="data"&&typeof renderData==="function")renderData();
 }
 
 const SHEETABLE='button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
@@ -76,6 +76,10 @@ function askConfirm(title,body,label,danger,fn){
 function closeSheet(){$("#sheet").classList.remove("on");$("#scrim").classList.remove("on")}
 $("#scrim").onclick=closeSheet;
 
+/* ---- landscape only on a tablet ---- */
+const isTablet=()=>Math.min(screen.width||innerWidth||0,screen.height||innerHeight||0)>=700;
+const isIPadLike=()=>/iPad/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
+function landscapeOnly(){ return S.landscapeOnly==null?isIPadLike():!!S.landscapeOnly }
 function applyRotLock(){
   const on=landscapeOnly()&&isTablet();
   document.body.classList.toggle("rotlock",on);
@@ -100,3 +104,28 @@ function applyMode(){
   document.body.classList.toggle("xwide",w2);
   applySideMin();
 }
+
+function savedTick(){
+  try{ const el=document.getElementById("savedtick"); if(!el)return;
+    el.textContent="Saved"; el.classList.add("on"); clearTimeout(TICKT); TICKT=setTimeout(()=>el.classList.remove("on"),1400) }catch(_){}
+}
+
+
+const isStandalone=()=>!!((window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone);
+
+/* ---- nothing fails silently, and both pages install ---- */
+/* 2. nothing fails silently: a toast for the user, a list for whoever maintains the app */
+function logErr(msg){
+  try{ S.errors=(S.errors||[]).slice(-19);
+    S.errors.push({t:new Date().toISOString(),m:String(msg).slice(0,300),v:typeof view==="string"?view:""});
+    saveLocal() }catch(_){}
+  try{ toast("Something went wrong and that last action may not have taken. It is noted under Settings.") }catch(_){}
+}
+window.addEventListener("error",e=>logErr((e.message||"Error")+" at "+String(e.filename||"").split("/").pop()+":"+(e.lineno||0)));
+window.addEventListener("unhandledrejection",e=>logErr("Promise: "+((e.reason&&e.reason.message)||e.reason)));
+
+/* 3. installable: a service worker when served over http, so it opens from the home screen and works offline */
+if("serviceWorker" in navigator&&/^https?:/.test(location.protocol)){
+  try{ navigator.serviceWorker.register("sw.js").catch(()=>{}) }catch(_){}
+}
+

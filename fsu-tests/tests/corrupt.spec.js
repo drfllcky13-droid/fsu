@@ -25,7 +25,7 @@ const BOOT=`({render:typeof render==="function", home:!!document.querySelector("
   tabs:document.querySelectorAll("#tabs button").length,
   ink:(document.body.innerText||"").trim().length})`;
 
-const WALK=["home","compartments","inventory","sweep","active"];
+const WALK=["home","compartments","inventory","sweep","sweep"];
 // `view` and `render` are page globals; this runs inside the page
 const walk=vs=>{const bad=[];
   for(const v of vs){ try{ if(v==="sketch")curSketch="sk1"; view=v; render() }catch(e){ bad.push(v+": "+e.message) } }
@@ -121,14 +121,17 @@ const CASES=[
 
 for(const c of CASES){
   test(`the app opens with ${c.n}`,async({page})=>{
+    // a case about sketches has to be opened by the page that draws them
+    const home=(c.also||[]).includes("sketch")?"/scenes.html":"/index.html";
+    const first=home==="/scenes.html"?"#v-active":"#v-home";
     // an origin has to exist before localStorage will take a write
-    await page.goto("/index.html");
+    await page.goto(home);
     await page.evaluate(v=>{localStorage.clear();localStorage.setItem("van3",v)},c.raw);
     if(c.init)await page.addInitScript(c.init);
     const errs=[];
     page.on("pageerror",e=>errs.push(e.message));
     await page.reload();
-    await page.waitForSelector("#v-home");
+    await page.waitForSelector(first);
 
     const boot=await page.evaluate(BOOT);
     expect(errs,"an uncaught error was thrown while loading").toEqual([]);

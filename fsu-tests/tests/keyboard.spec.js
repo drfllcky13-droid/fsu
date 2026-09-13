@@ -3,7 +3,7 @@
 // where it lands, and a sheet has to be escapable.
 const {test,expect}=require("@playwright/test");
 
-const VIEWS=["home","compartments","inventory","sweep","guide","forms","active","data"];
+const VIEWS=["home","compartments","inventory","sweep","guide","data"];   // the van page
 
 async function open(page){
   await page.goto("/index.html");

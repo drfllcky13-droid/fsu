@@ -4,14 +4,19 @@ const {test,expect}=require("@playwright/test");
 const fs=require("fs"), path=require("path");
 const SWEEP=fs.readFileSync(path.join(__dirname,"..","..","sweep.js"),"utf8");
 
+async function openScenes(page){
+  await page.goto("/scenes.html");
+  await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-active"));
+}
 async function open(page){
   await page.goto("/index.html");
   await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-home"));
 }
+// the sketch is its own page now: open it straight at a new sketch
 async function quickSketch(page){
-  await page.evaluate(()=>{document.querySelector("[data-quicksketch]").click()});
+  await page.goto("/scenes.html#v=sketch&ref=new");
   await page.waitForSelector("#skcanvas");
-  await page.evaluate(()=>{const sk=curSk(); sk.scale={px:100,real:10,unit:"ft"}; saveLocal(); renderSketch()});
+  await page.evaluate(()=>{closeSheet(); const sk=curSk(); sk.scale={px:100,real:10,unit:"ft"}; saveLocal(); renderSketch()});
 }
 const sizes=[[1500,1000],[1194,834],[393,852],[320,700]];
 for(const [w,h] of sizes)for(const scheme of ["light","dark"]){
@@ -27,8 +32,24 @@ for(const [w,h] of sizes)for(const scheme of ["light","dark"]){
   });
 }
 
+// the scene page has its own six views and all the symbol tables, so it gets the sweep too
+for(const scheme of ["light","dark"]){
+  test(`sweep scene ${scheme}`,async({page})=>{
+    await page.setViewportSize({width:1194,height:834});
+    await page.emulateMedia({colorScheme:scheme});
+    const errors=[]; page.on("pageerror",e=>errors.push(e.message));
+    page.on("console",m=>{if(m.type()==="error")errors.push(m.text())});
+    await openScenes(page);
+    const out=await page.evaluate(SWEEP);
+    expect(out.viewErrors).toEqual([]); expect(out.symbolErrors).toEqual([]);
+    expect(out.dupIds).toEqual([]); expect(out.noHandler).toEqual([]); expect(out.overflow).toEqual({});
+    expect(out.symbols,"the symbol tables are on this page").toBeGreaterThan(100);
+    expect(errors.filter(e=>!/failed to draw/.test(e))).toEqual([]);
+  });
+}
+
 test.describe("sketch flows",()=>{
-  test.beforeEach(async({page})=>{ await page.setViewportSize({width:1400,height:1000}); await open(page); await quickSketch(page); });
+  test.beforeEach(async({page})=>{ await page.setViewportSize({width:1400,height:1000}); await quickSketch(page); });
 
   test("measurement maths and typed lengths",async({page})=>{
     const r=await page.evaluate(()=>{
@@ -157,7 +178,7 @@ test("opens offline after the first visit",async({page,context})=>{
   await page.waitForTimeout(800);
   await context.setOffline(true);
   await page.reload();
-  await page.waitForFunction(()=>typeof render==="function"&&document.querySelectorAll("section.view").length>=19);
+  await page.waitForFunction(()=>typeof render==="function"&&document.querySelectorAll("section.view").length>=10);
   await context.setOffline(false);
 });
 
@@ -165,7 +186,7 @@ test.describe("van flows",()=>{
   test.beforeEach(async({page})=>{ await page.setViewportSize({width:1400,height:1000}); await open(page); await page.evaluate(()=>{S.who="TT";save()}); });
 
   test("one Scenes list with open and closed",async({page})=>{
-    await page.evaluate(()=>go("active"));
+    await openScenes(page);
     await expect(page.locator("#v-active .seg [data-scenestab=closed]")).toBeVisible();
     await page.click("#v-active .seg [data-scenestab=closed]");
     await expect(page.locator("#v-active .empty strong")).toHaveText("No finished scenes yet");
@@ -318,8 +339,9 @@ test.describe("van flows",()=>{
 
   test("full screen fills the width on a wide screen",async({page})=>{
     await page.setViewportSize({width:1180,height:820});
-    await page.evaluate(()=>{S.mode="desktop";save();applyMode();const b=document.querySelector("#v-home [data-quicksketch]"); b&&b.click()});
-    await page.waitForFunction(()=>view==="sketch");
+    await page.goto("/scenes.html#v=sketch&ref=new");
+    await page.waitForSelector("#skcanvas");
+    await page.evaluate(()=>{closeSheet();S.mode="desktop";save();applyMode();render()});
     await page.click("#skedit [data-skfull=\"1\"]");
     await page.waitForFunction(()=>document.body.classList.contains("skfull"));
     const w=await page.evaluate(()=>document.querySelector(".skgrid.full .canvaswrap").getBoundingClientRect().width);
@@ -339,7 +361,7 @@ test.describe("van flows",()=>{
 });
 
 test.describe("reports and upkeep",()=>{
-  test.beforeEach(async({page})=>{ await page.setViewportSize({width:1400,height:1000}); await open(page); await page.evaluate(()=>{S.who="TT";S.whoName="Det. T. Test";save()}); });
+  test.beforeEach(async({page})=>{ await page.setViewportSize({width:1400,height:1000}); await openScenes(page); await page.evaluate(()=>{S.who="TT";S.whoName="Det. T. Test";save()}); });
 
   test("the report fills from the incident and takes standard wording",async({page})=>{
     await page.evaluate(()=>{const inc=newIncident(); inc.caseNo="C-1"; inc.addr="1 Main St"; inc.offence="Theft"; save(); curInc=inc.id; go("incident")});
@@ -378,6 +400,7 @@ test.describe("reports and upkeep",()=>{
   });
 
   test("vehicle check, handover and service record",async({page})=>{
+    await open(page);
     await page.click("[data-vehcheck]");
     await page.fill("#vmil","1200");
     const n=await page.locator("[data-vpass]").count();
@@ -398,7 +421,7 @@ test.describe("reports and upkeep",()=>{
 
   test("version stamp reaches the exports",async({page})=>{
     const r=await page.evaluate(async()=>{const pkg=await casePackage("all"); let dxf=null; const od=dlBlob; dlBlob=(b)=>{b.text().then(t=>dxf=t)};
-      document.querySelector("[data-quicksketch]").click(); await new Promise(r=>setTimeout(r,200)); addObj("wall"); exportDXF(curSk()); await new Promise(r=>setTimeout(r,300)); dlBlob=od;
+      startSketch(""); closeSheet(); addObj("wall"); exportDXF(curSk()); await new Promise(r=>setTimeout(r,300)); dlBlob=od;
       return {pkg:pkg.version, dxf:dxf.includes(APP_VERSION), help:!!document.querySelector("[data-help]")||true}});
     expect(r.pkg).toBe(await page.evaluate(()=>APP_VERSION)); expect(r.dxf).toBe(true);
   });

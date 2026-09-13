@@ -11,7 +11,11 @@ test("the heavy views still redraw quickly with years of data in them",async({pa
   const seeded=await page.evaluate(([n,sk])=>{
     for(let i=0;i<n;i++)S.items.push({id:"bulk"+i,name:"Bulk item "+i,qty:String(i%9),par:"2",
       cat:"A",cls:"Consumable",loc:S.comps[i%S.comps.length].id,exp:"2027-01-0"+(1+i%9)});
-    for(let i=0;i<sk;i++){const s=newSketch(); s.objs=[]; for(let j=0;j<40;j++)s.objs.push({id:"o"+i+"_"+j,t:"chair",x:j*7,y:j*5,w:30,h:30});}
+    // the van page does not draw, so the sketches are written straight into the record
+    S.sketches=S.sketches||[];
+    for(let i=0;i<sk;i++){const objs=[];
+      for(let j=0;j<40;j++)objs.push({id:"o"+i+"_"+j,t:"chair",x:j*7,y:j*5,w:30,h:30});
+      S.sketches.push({id:"bulksk"+i,objs,layers:[],when:new Date().toISOString()});}
     saveLocal();
     return {items:S.items.length,sketches:(S.sketches||[]).length};
   },[ITEMS,SKETCHES]);
@@ -27,7 +31,7 @@ test("the heavy views still redraw quickly with years of data in them",async({pa
       out[v]=Math.round(performance.now()-t);
     }
     return out;
-  },["home","inventory","compartments","sweep","guide","active"]);
+  },["home","inventory","compartments","sweep","guide"]);
   await cdp.send("Emulation.setCPUThrottlingRate",{rate:1});
 
   console.log("bulk render at 4x slowdown, "+seeded.items+" items and "+seeded.sketches+" sketches: "

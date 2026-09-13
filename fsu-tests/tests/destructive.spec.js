@@ -4,15 +4,21 @@
 // bug this app could have, and it would be invisible until the case file was needed.
 const {test,expect}=require("@playwright/test");
 
-async function open(page){
+async function open(page){            // the van: items, compartments, the sample data
   await page.goto("/index.html");
   await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-home"));
+}
+async function openScenes(page){      // the scene: incidents and their sketches
+  await page.goto("/scenes.html");
+  await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-active"));
 }
 // two incidents, each with its own sketch and filled form, so a delete has a neighbour to spare
 const seed=page=>page.evaluate(()=>{
   const mk=n=>{
     const inc=newIncident(); inc.caseNo="26-00"+n;
-    const sk=newSketch(); sk.incidentId=inc.id; sk.caseNo=inc.caseNo;
+    const sk={id:"sk"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+      objs:[],layers:[],when:new Date().toISOString(),v:4};
+    (S.sketches=S.sketches||[]).push(sk); sk.incidentId=inc.id; sk.caseNo=inc.caseNo;
     sk.objs=[{id:"o"+n,t:"chair",x:10,y:10,w:20,h:20}];
     S.fills=S.fills||[]; S.fills.push({id:"f"+n,incidentId:inc.id,formId:"any",values:{}});
     return {inc:inc.id,sk:sk.id,fill:"f"+n};
@@ -28,7 +34,7 @@ async function confirmSheet(page){
 }
 
 test("deleting an incident takes its own material and nobody else's",async({page})=>{
-  await open(page);
+  await openScenes(page);
   const {a,b}=await seed(page);
   await page.evaluate(id=>{curInc=id;view="incident";
     document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id==="v-incident"));render();
@@ -42,7 +48,7 @@ test("deleting an incident takes its own material and nobody else's",async({page
 });
 
 test("deleting a sketch leaves the incident and the other sketch alone",async({page})=>{
-  await open(page);
+  await openScenes(page);
   const {a,b}=await seed(page);
   await page.evaluate(ids=>{curInc=ids.a.inc;curSketch=ids.a.sk;view="sketch";
     document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id==="v-sketch"));render();

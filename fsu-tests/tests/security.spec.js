@@ -23,11 +23,15 @@ function watch(page){
   page.on("dialog",d=>{seen.push("dialog: "+d.message);d.dismiss().catch(()=>{})});
   return seen;
 }
-async function open(page){
-  await page.goto("/index.html");
+// a field is checked on the page that shows it: the van for items and compartments,
+// the scene for incidents, forms and sketches
+async function open(page,where){
+  const url=where==="scenes"?"/scenes.html":"/index.html";
+  const first=where==="scenes"?"#v-active":"#v-home";
+  await page.goto(url);
   await page.evaluate(()=>localStorage.clear());
-  await page.goto("/index.html");
-  await page.waitForFunction(()=>typeof render==="function"&&document.querySelector("#v-home"));
+  await page.goto(url);
+  await page.waitForFunction(sel=>typeof render==="function"&&document.querySelector(sel),first);
 }
 // plant one hostile string, render, and report what the DOM gives back.
 // the pause lets an injected handler fire: an onerror would run a tick after the innerHTML lands
@@ -45,10 +49,10 @@ async function roundTrip(page,plant,bad){
   },sel);
 }
 // every payload through one field, checked the same way each time
-function escapes(name,plant){
+function escapes(name,plant,where){
   test(name,async({page})=>{
     const thrown=watch(page);
-    await open(page);
+    await open(page,where);
     for(const bad of BAD){
       const r=await roundTrip(page,plant,bad);
       expect(r.text,"the view rendered nothing for: "+bad).not.toBe(null);
@@ -82,21 +86,23 @@ escapes("a hostile case number is text on the incident screen",bad=>{
   S.incidents=[]; const inc=newIncident(); inc.caseNo=bad;
   curInc=inc.id; view="incident"; save(); render();
   return "#v-incident";
-});
+},"scenes");
 escapes("a hostile form field label is text on the form being filled in",bad=>{
   const f={id:"secf",name:"Scene supplement",cat:"Scene",rev:"",fields:parseFields(bad),verified:""};
   S.forms=(S.forms||[]).filter(x=>x.id!=="secf").concat(f);
   S.fills=[]; const r=newFill(f);
   curFill=r.id; view="fill"; save(); render();
   return "#v-fill";
-});
+},"scenes");
 escapes("a hostile sketch label is text on the sketch",bad=>{
-  S.sketches=[]; const sk=newSketch(); sk.caseNo=bad;
+  S.sketches=[]; const sk={id:"sk"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+      objs:[],layers:[],when:new Date().toISOString(),v:4};
+    (S.sketches=S.sketches||[]).push(sk); sk.caseNo=bad;
   curSketch=sk.id; addObj("marker");
   sk.objs[sk.objs.length-1].label=bad;
   view="sketch"; save(); render();
   return "#v-sketch";
-});
+},"scenes");
 
 /* ---- the token ---- */
 // stand in for every way a file leaves the app, so anything written out lands in one list
@@ -118,11 +124,13 @@ function arm(){
 
 test("the token is in no file the app writes out",async({page})=>{
   const thrown=watch(page);
-  await open(page);
+  await open(page,"scenes");
   await page.evaluate(arm);
   const found=await page.evaluate(async canary=>{
     const inc=newIncident(); inc.caseNo="26-004411";
-    const sk=newSketch(); sk.incidentId=inc.id; sk.caseNo=inc.caseNo; curSketch=sk.id; addObj("refpoint");
+    const sk={id:"sk"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+      objs:[],layers:[],when:new Date().toISOString(),v:4};
+    (S.sketches=S.sketches||[]).push(sk); sk.incidentId=inc.id; sk.caseNo=inc.caseNo; curSketch=sk.id; addObj("refpoint");
     const r=newFill(S.forms[0]); r.incidentId=inc.id;
     saveLocal();
     window.__cap.push(JSON.stringify(await casePackage({incidentId:inc.id})));
@@ -140,7 +148,7 @@ test("the token is in no file the app writes out",async({page})=>{
 
 test("the token is not on the settings screen, in text or in an attribute",async({page})=>{
   const thrown=watch(page);
-  await open(page);
+  await open(page);   // Settings lives with the van
   await page.evaluate(arm);
   const hits=await page.evaluate(canary=>{
     const out=[];

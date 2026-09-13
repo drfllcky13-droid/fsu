@@ -1,6 +1,14 @@
 SYNC DESIGN — van data between devices
 2026-09-12
 
+NOTE, 12 Sep 2026, later the same day: src/app.js no longer exists. It was split into a dozen
+parts and the app became two pages, index.html (the van) and scenes.html (the scene). The
+reasoning below is unchanged and the design is what shipped; only the file names and line
+numbers are stale. The code this describes is now src/sync.js, with the store and save() in
+src/core.js and the Settings screen in src/views-items.js. The two pages are the same origin and
+the same localStorage, so this document's "between devices" still means between devices — there
+is nothing to sync between the two pages, and nothing here needed changing for the split.
+
 --------------------------------------------------------------------------------
 1. WHAT IS WRONG TODAY  (verified against src/app.js)
 --------------------------------------------------------------------------------
