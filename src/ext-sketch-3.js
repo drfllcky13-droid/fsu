@@ -5,7 +5,7 @@
 /* 1. only the regions whose markup changed are touched, so nothing flickers or loses its scroll */
 function patchSketchView(html){
   const root=$("#v-sketch");
-  const key=(curSketch||"")+"|"+(skFull?1:0)+"|"+(skTools?1:0);
+  const key=(curSketch||"")+"|"+(skFull?1:0)+"|"+(skTools?1:0)+"|"+(skRailMin?1:0);
   const t=document.createElement("template"); t.innerHTML=html;
   if(root.dataset.skkey!==key||!root.querySelector("#skrail")){ root.innerHTML=html; root.dataset.skkey=key; return }
   ["skhead","skedit","skbars","skpanel","skrail"].forEach(id=>{

@@ -5,6 +5,7 @@ document.addEventListener("click",e=>{
   if(sf){setFull(sf.dataset.skfull==="1");return}
   const st=e.target.closest("[data-sktools]");
   if(st){skTools=st.dataset.sktools==="1";renderSketch();return}
+  if(e.target.closest("[data-skrailtog]")){skRailMin=!skRailMin;renderSketch();return}
   if(e.target.closest("[data-sksnap]")){
     snapOn=e.target.closest("[data-sksnap]").dataset.sksnap==="1";
     renderSketch(); return toast(snapOn?"Snapping on":"Snapping off")}

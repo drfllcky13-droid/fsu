@@ -896,6 +896,17 @@ body.xwide .main.split .pane-detail .back{display:none}
 body.xwide .main.split .pane-detail .actbar{position:static}
 body.xwide .skgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
 @media (max-width:1240px){ body.xwide .skgrid{grid-template-columns:minmax(0,1fr) 268px;gap:14px} body.xwide .palette{grid-template-columns:repeat(auto-fill,minmax(78px,1fr))} }
+body.xwide .skgrid.railmin{grid-template-columns:minmax(0,1fr) 34px;gap:6px}
+/* a caret on the rail collapses it to a thin strip for more canvas room, without losing your place in it */
+.skrail{position:relative;overflow-x:visible}
+.railcaret{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:26px;height:26px;border-radius:50%;
+  background:var(--card2);border:.5px solid var(--line);color:var(--ink3);display:none;align-items:center;
+  justify-content:center;padding:0;z-index:2}
+.railcaret svg{width:15px;height:15px;transition:transform .18s ease}
+body.xwide .railcaret{display:flex}
+.skgrid.railmin .railcaret svg{transform:rotate(180deg)}
+.skgrid.railmin .railbody{opacity:0;pointer-events:none}
+.railbody{transition:opacity .12s ease}
 /* the rail sits beside the canvas on every wide layout, iPad landscape included */
 @media (min-width:1000px){
   body.xwide .skgrid .skmain{position:sticky;top:12px;align-self:start}
@@ -1255,6 +1266,17 @@ body.wide .baystage.picked .bayzoom{max-height:calc(100vh - 200px)}
 .scard.danger .sn{color:var(--red)}
 .setsec{max-width:640px}
 .setsec textarea{width:100%;box-sizing:border-box}
+/* scenes settings: a nav column beside the open section, instead of a menu you drill into */
+.setsplit{display:grid;grid-template-columns:230px minmax(0,1fr);gap:var(--s5);align-items:start}
+.navcol{position:sticky;top:0;display:flex;flex-direction:column}
+.navcol .navtitle{font-size:var(--f4);font-weight:700;letter-spacing:-.01em;margin:0 0 var(--s2)}
+.navcol .grp{font-size:var(--f0);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);
+  margin:var(--s4) 0 var(--s1)}
+.navcol button{display:block;width:100%;text-align:left;background:none;border:0;padding:var(--s2) var(--s2);
+  border-radius:var(--r1);font-size:var(--f3);color:var(--ink);font:inherit;min-height:var(--tap)}
+.navcol button.on{background:var(--bluebg);color:var(--blue);font-weight:600}
+.setdetail{max-width:640px;min-width:0}
+@media (max-width:820px){.setsplit{grid-template-columns:minmax(0,1fr)}.navcol{position:static}}
 body.wide .side .sset{margin-top:auto}
 /* the side bar folds to an icon rail */
 .sidetog{display:none}

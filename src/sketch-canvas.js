@@ -4,7 +4,7 @@ const GLYPH={
  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.3l3.4 2"/></svg>',
  gap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/></svg>',
  ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.7 2.7L16 9.5"/></svg>'};
-let showSet=false, palCat=0, palQ="", skFull=false, skTools=true;
+let showSet=false, palCat=0, palQ="", skFull=false, skTools=true, skRailMin=false;
 // shrink on the way in: a reference thumbnail, never the evidential copy
 function shrinkPhoto(file,max=1400,q=0.72){
   return new Promise((res,rej)=>{
@@ -654,7 +654,7 @@ function renderSketch(){
     ${typeof docTabs==="function"?docTabs("sketch",sk.id):""}
     <div class="cdhead"><h2>${esc(sk.caseNo||"Untitled sketch")}</h2>
       <div class="sub">${esc(sk.addr||"No address")} · ${esc((sk.when||"").replace("T"," "))}${sk.by?" · "+esc(sk.by):""}</div></div></div>
-    <div class="skgrid${skFull?" full":""}${skFull&&!skTools?" notools":""}"><div class="skmain">
+    <div class="skgrid${skFull?" full":""}${skFull&&!skTools?" notools":""}${skRailMin?" railmin":""}"><div class="skmain">
     <div class="editbar" id="skedit">${skFull
       ? `<button data-skfull="0" class="on">Exit full screen</button>
          <button data-skundo="1"${canUndo(sk)?'':' disabled'}>Undo</button>
@@ -674,6 +674,8 @@ function renderSketch(){
 
     <p class="kbdhint">Arrow keys nudge, shift for bigger steps. D duplicates, Delete removes, Escape deselects.</p>
     </div><div class="skrail" id="skrail">
+    <button class="railcaret" data-skrailtog="1" aria-label="${skRailMin?"Show the panel":"Collapse the panel"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="railbody">
     <div id="skpanel">${(sel&&showSet)?`<div class="objset">
         <div class="oshead"><b>${esc(SHAPENAME(sel.t))}</b>
           <span class="osr">Rotation <span id="rotval">${sel.r||0}\u00b0</span></span>
@@ -769,7 +771,7 @@ function renderSketch(){
     <div class="actbar" style="grid-template-columns:1fr 1fr">
       <button class="primary" data-skexport="1">Export</button>
       <button data-skdel="1">Delete sketch</button></div>
-    </div></div>`;
+    </div></div></div>`;
   patchSketchView(__html);
   if(skFull){fitCanvas();
     if(typeof requestAnimationFrame==="function")requestAnimationFrame(fitCanvas)}

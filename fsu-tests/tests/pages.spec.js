@@ -86,7 +86,7 @@ test("each app's Settings is its own screen with its own content",async({page})=
   await page.click("#side .sset");
   w=await where(page);
   expect([w.file,w.view,w.on.join()]).toEqual(["scenes.html","data","v-data"]);
-  const sceneGroups=await page.evaluate(()=>[...document.querySelectorAll("#v-data .sect")].map(e=>e.textContent));
+  const sceneGroups=await page.evaluate(()=>[...document.querySelectorAll("#v-data .navcol .grp")].map(e=>e.textContent));
   expect(sceneGroups).toContain("Scenes");
   expect(sceneGroups).not.toContain("Van data");
 });

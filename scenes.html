@@ -912,6 +912,17 @@ body.xwide .main.split .pane-detail .back{display:none}
 body.xwide .main.split .pane-detail .actbar{position:static}
 body.xwide .skgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
 @media (max-width:1240px){ body.xwide .skgrid{grid-template-columns:minmax(0,1fr) 268px;gap:14px} body.xwide .palette{grid-template-columns:repeat(auto-fill,minmax(78px,1fr))} }
+body.xwide .skgrid.railmin{grid-template-columns:minmax(0,1fr) 34px;gap:6px}
+/* a caret on the rail collapses it to a thin strip for more canvas room, without losing your place in it */
+.skrail{position:relative;overflow-x:visible}
+.railcaret{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:26px;height:26px;border-radius:50%;
+  background:var(--card2);border:.5px solid var(--line);color:var(--ink3);display:none;align-items:center;
+  justify-content:center;padding:0;z-index:2}
+.railcaret svg{width:15px;height:15px;transition:transform .18s ease}
+body.xwide .railcaret{display:flex}
+.skgrid.railmin .railcaret svg{transform:rotate(180deg)}
+.skgrid.railmin .railbody{opacity:0;pointer-events:none}
+.railbody{transition:opacity .12s ease}
 /* the rail sits beside the canvas on every wide layout, iPad landscape included */
 @media (min-width:1000px){
   body.xwide .skgrid .skmain{position:sticky;top:12px;align-self:start}
@@ -1271,6 +1282,17 @@ body.wide .baystage.picked .bayzoom{max-height:calc(100vh - 200px)}
 .scard.danger .sn{color:var(--red)}
 .setsec{max-width:640px}
 .setsec textarea{width:100%;box-sizing:border-box}
+/* scenes settings: a nav column beside the open section, instead of a menu you drill into */
+.setsplit{display:grid;grid-template-columns:230px minmax(0,1fr);gap:var(--s5);align-items:start}
+.navcol{position:sticky;top:0;display:flex;flex-direction:column}
+.navcol .navtitle{font-size:var(--f4);font-weight:700;letter-spacing:-.01em;margin:0 0 var(--s2)}
+.navcol .grp{font-size:var(--f0);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);
+  margin:var(--s4) 0 var(--s1)}
+.navcol button{display:block;width:100%;text-align:left;background:none;border:0;padding:var(--s2) var(--s2);
+  border-radius:var(--r1);font-size:var(--f3);color:var(--ink);font:inherit;min-height:var(--tap)}
+.navcol button.on{background:var(--bluebg);color:var(--blue);font-weight:600}
+.setdetail{max-width:640px;min-width:0}
+@media (max-width:820px){.setsplit{grid-template-columns:minmax(0,1fr)}.navcol{position:static}}
 body.wide .side .sset{margin-top:auto}
 /* the side bar folds to an icon rail */
 .sidetog{display:none}
@@ -3991,7 +4013,40 @@ function settingsMenu(){
       sec("reset","Erase everything","Every item and compartment","danger")].filter(Boolean)):""}
     </div>`;
 }
+/* scenes: a nav column of the same sections, with the picked one open beside it */
+function settingsNav(){
+  const whoTxt=S.who?esc(S.who)+(S.whoName?" · "+esc(S.whoName):""):"Not set";
+  const cur=SET_SEC||"who";
+  const item=(k,name,attr)=>`<button class="${cur===k?"on":""}" ${attr||`data-setsec="${k}"`}>${name}</button>`;
+  const grp=t=>`<div class="grp">${t}</div>`;
+  return `<div class="navcol">
+    <b class="navtitle">Settings</b>
+    ${grp("You")}
+    ${item("who","Initials and name")}
+    ${grp("Scenes")}
+    ${item("case","Case packages")}
+    ${item(null,"Form templates",'data-go="templates"')}
+    ${item(null,"Report wording",'data-snipmanage="1"')}
+    ${grp("This device")}
+    ${item(null,"Display",'id="modebtn"')}
+    ${item("device","Storage and install")}
+    ${item("activity","Activity")}
+    ${item("errors","Recent errors")}
+    ${grp("About")}
+    ${item(null,"Help and change log",'data-help="1"')}
+  </div>`;
+}
+function settingsSplit(){
+  if(!SET_SEC||!SET_TITLES[SET_SEC])SET_SEC="who";
+  return `<div class="hhead"><b>Scenes</b><span>Version ${esc(APP_VERSION)}</span>
+      <span>${S.who?"Signed in as "+esc(S.who):"No initials set"}</span></div>
+    <div class="setsplit">${settingsNav()}<div class="setdetail">${settingsSectionBody(SET_SEC)}</div></div>`;
+}
 function settingsSection(k){
+  return `<button class="back" data-setback="1">&#8249; Settings</button>
+    <div class="setsec">${settingsSectionBody(k)}</div>`;
+}
+function settingsSectionBody(k){
   const L=live(), gp=S.items.filter(i=>i.status==="Not carried");
   const stale=!S.lastBackup||(Date.now()-Date.parse(S.lastBackup))/86400000>7;
   let body="";
@@ -4101,17 +4156,16 @@ function settingsSection(k){
     <div class="stackb">
       ${S.demo?`<button class="btn sec" id="cleardemo2" style="max-width:none;margin:0">Clear sample data</button>`:""}
       <button class="btn sec" id="wipe" style="max-width:none;color:var(--red);border-color:var(--red)">Erase everything</button></div>`;
-  return `<button class="back" data-setback="1">&#8249; Settings</button>
-    <div class="setsec"><div class="idsect" style="margin-top:0">${esc(SET_TITLES[k]||"Settings")}</div>${body}</div>`;
+  return `<div class="idsect" style="margin-top:0">${esc(SET_TITLES[k]||"Settings")}</div>${body}`;
 }
 function renderData(){
   if(!document.getElementById("v-data"))return;   // defensive: Settings is on both pages
   $("#title").textContent="Settings";
   if(conflict||tokenBad||badFile)SET_SEC="sync";
   if(SET_SEC&&!SET_TITLES[SET_SEC])SET_SEC=null;
-  $("#v-data").innerHTML=SET_SEC?settingsSection(SET_SEC):settingsMenu();
+  $("#v-data").innerHTML=PAGE==="scenes"?settingsSplit():(SET_SEC?settingsSection(SET_SEC):settingsMenu());
   renderSyncPill();
-  $$("#v-data [data-setsec]").forEach(b=>b.onclick=()=>{SET_SEC=b.dataset.setsec;window.scrollTo&&window.scrollTo(0,0);renderData()});
+  $$("#v-data [data-setsec]").forEach(b=>b.onclick=()=>{SET_SEC=b.dataset.setsec;if(PAGE!=="scenes")window.scrollTo&&window.scrollTo(0,0);renderData()});
   const bk=$("#v-data [data-setback]"); if(bk)bk.onclick=()=>{SET_SEC=null;renderData()};
   const cp=$("#casepkg"); if(cp)cp.onclick=()=>exportCasePackage("all","fsu-all");
   const ci=$("#casein"); if(ci)ci.onchange=()=>{const f=ci.files&&ci.files[0]; if(!f)return; f.text().then(importCasePackage)};
@@ -6628,7 +6682,7 @@ const GLYPH={
  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.3l3.4 2"/></svg>',
  gap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/></svg>',
  ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.7 2.7L16 9.5"/></svg>'};
-let showSet=false, palCat=0, palQ="", skFull=false, skTools=true;
+let showSet=false, palCat=0, palQ="", skFull=false, skTools=true, skRailMin=false;
 // shrink on the way in: a reference thumbnail, never the evidential copy
 function shrinkPhoto(file,max=1400,q=0.72){
   return new Promise((res,rej)=>{
@@ -7278,7 +7332,7 @@ function renderSketch(){
     ${typeof docTabs==="function"?docTabs("sketch",sk.id):""}
     <div class="cdhead"><h2>${esc(sk.caseNo||"Untitled sketch")}</h2>
       <div class="sub">${esc(sk.addr||"No address")} · ${esc((sk.when||"").replace("T"," "))}${sk.by?" · "+esc(sk.by):""}</div></div></div>
-    <div class="skgrid${skFull?" full":""}${skFull&&!skTools?" notools":""}"><div class="skmain">
+    <div class="skgrid${skFull?" full":""}${skFull&&!skTools?" notools":""}${skRailMin?" railmin":""}"><div class="skmain">
     <div class="editbar" id="skedit">${skFull
       ? `<button data-skfull="0" class="on">Exit full screen</button>
          <button data-skundo="1"${canUndo(sk)?'':' disabled'}>Undo</button>
@@ -7298,6 +7352,8 @@ function renderSketch(){
 
     <p class="kbdhint">Arrow keys nudge, shift for bigger steps. D duplicates, Delete removes, Escape deselects.</p>
     </div><div class="skrail" id="skrail">
+    <button class="railcaret" data-skrailtog="1" aria-label="${skRailMin?"Show the panel":"Collapse the panel"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="railbody">
     <div id="skpanel">${(sel&&showSet)?`<div class="objset">
         <div class="oshead"><b>${esc(SHAPENAME(sel.t))}</b>
           <span class="osr">Rotation <span id="rotval">${sel.r||0}\u00b0</span></span>
@@ -7393,7 +7449,7 @@ function renderSketch(){
     <div class="actbar" style="grid-template-columns:1fr 1fr">
       <button class="primary" data-skexport="1">Export</button>
       <button data-skdel="1">Delete sketch</button></div>
-    </div></div>`;
+    </div></div></div>`;
   patchSketchView(__html);
   if(skFull){fitCanvas();
     if(typeof requestAnimationFrame==="function")requestAnimationFrame(fitCanvas)}
@@ -8847,7 +8903,7 @@ document.addEventListener("keydown",e=>{
 /* 1. only the regions whose markup changed are touched, so nothing flickers or loses its scroll */
 function patchSketchView(html){
   const root=$("#v-sketch");
-  const key=(curSketch||"")+"|"+(skFull?1:0)+"|"+(skTools?1:0);
+  const key=(curSketch||"")+"|"+(skFull?1:0)+"|"+(skTools?1:0)+"|"+(skRailMin?1:0);
   const t=document.createElement("template"); t.innerHTML=html;
   if(root.dataset.skkey!==key||!root.querySelector("#skrail")){ root.innerHTML=html; root.dataset.skkey=key; return }
   ["skhead","skedit","skbars","skpanel","skrail"].forEach(id=>{
@@ -9063,6 +9119,7 @@ document.addEventListener("click",e=>{
   if(sf){setFull(sf.dataset.skfull==="1");return}
   const st=e.target.closest("[data-sktools]");
   if(st){skTools=st.dataset.sktools==="1";renderSketch();return}
+  if(e.target.closest("[data-skrailtog]")){skRailMin=!skRailMin;renderSketch();return}
   if(e.target.closest("[data-sksnap]")){
     snapOn=e.target.closest("[data-sksnap]").dataset.sksnap==="1";
     renderSketch(); return toast(snapOn?"Snapping on":"Snapping off")}

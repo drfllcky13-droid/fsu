@@ -481,7 +481,40 @@ function settingsMenu(){
       sec("reset","Erase everything","Every item and compartment","danger")].filter(Boolean)):""}
     </div>`;
 }
+/* scenes: a nav column of the same sections, with the picked one open beside it */
+function settingsNav(){
+  const whoTxt=S.who?esc(S.who)+(S.whoName?" · "+esc(S.whoName):""):"Not set";
+  const cur=SET_SEC||"who";
+  const item=(k,name,attr)=>`<button class="${cur===k?"on":""}" ${attr||`data-setsec="${k}"`}>${name}</button>`;
+  const grp=t=>`<div class="grp">${t}</div>`;
+  return `<div class="navcol">
+    <b class="navtitle">Settings</b>
+    ${grp("You")}
+    ${item("who","Initials and name")}
+    ${grp("Scenes")}
+    ${item("case","Case packages")}
+    ${item(null,"Form templates",'data-go="templates"')}
+    ${item(null,"Report wording",'data-snipmanage="1"')}
+    ${grp("This device")}
+    ${item(null,"Display",'id="modebtn"')}
+    ${item("device","Storage and install")}
+    ${item("activity","Activity")}
+    ${item("errors","Recent errors")}
+    ${grp("About")}
+    ${item(null,"Help and change log",'data-help="1"')}
+  </div>`;
+}
+function settingsSplit(){
+  if(!SET_SEC||!SET_TITLES[SET_SEC])SET_SEC="who";
+  return `<div class="hhead"><b>Scenes</b><span>Version ${esc(APP_VERSION)}</span>
+      <span>${S.who?"Signed in as "+esc(S.who):"No initials set"}</span></div>
+    <div class="setsplit">${settingsNav()}<div class="setdetail">${settingsSectionBody(SET_SEC)}</div></div>`;
+}
 function settingsSection(k){
+  return `<button class="back" data-setback="1">&#8249; Settings</button>
+    <div class="setsec">${settingsSectionBody(k)}</div>`;
+}
+function settingsSectionBody(k){
   const L=live(), gp=S.items.filter(i=>i.status==="Not carried");
   const stale=!S.lastBackup||(Date.now()-Date.parse(S.lastBackup))/86400000>7;
   let body="";
@@ -591,17 +624,16 @@ function settingsSection(k){
     <div class="stackb">
       ${S.demo?`<button class="btn sec" id="cleardemo2" style="max-width:none;margin:0">Clear sample data</button>`:""}
       <button class="btn sec" id="wipe" style="max-width:none;color:var(--red);border-color:var(--red)">Erase everything</button></div>`;
-  return `<button class="back" data-setback="1">&#8249; Settings</button>
-    <div class="setsec"><div class="idsect" style="margin-top:0">${esc(SET_TITLES[k]||"Settings")}</div>${body}</div>`;
+  return `<div class="idsect" style="margin-top:0">${esc(SET_TITLES[k]||"Settings")}</div>${body}`;
 }
 function renderData(){
   if(!document.getElementById("v-data"))return;   // defensive: Settings is on both pages
   $("#title").textContent="Settings";
   if(conflict||tokenBad||badFile)SET_SEC="sync";
   if(SET_SEC&&!SET_TITLES[SET_SEC])SET_SEC=null;
-  $("#v-data").innerHTML=SET_SEC?settingsSection(SET_SEC):settingsMenu();
+  $("#v-data").innerHTML=PAGE==="scenes"?settingsSplit():(SET_SEC?settingsSection(SET_SEC):settingsMenu());
   renderSyncPill();
-  $$("#v-data [data-setsec]").forEach(b=>b.onclick=()=>{SET_SEC=b.dataset.setsec;window.scrollTo&&window.scrollTo(0,0);renderData()});
+  $$("#v-data [data-setsec]").forEach(b=>b.onclick=()=>{SET_SEC=b.dataset.setsec;if(PAGE!=="scenes")window.scrollTo&&window.scrollTo(0,0);renderData()});
   const bk=$("#v-data [data-setback]"); if(bk)bk.onclick=()=>{SET_SEC=null;renderData()};
   const cp=$("#casepkg"); if(cp)cp.onclick=()=>exportCasePackage("all","fsu-all");
   const ci=$("#casein"); if(ci)ci.onchange=()=>{const f=ci.files&&ci.files[0]; if(!f)return; f.text().then(importCasePackage)};
