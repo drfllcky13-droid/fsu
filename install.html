@@ -13,8 +13,10 @@
   .addr{display:flex;gap:22px;align-items:center;flex-wrap:wrap;border:2px solid #1258A8;border-radius:12px;padding:18px 20px;margin:0 0 26px}
   .addr a{font-size:20px;font-weight:700;color:#1258A8;word-break:break-all;text-decoration:none}
   .addr p{margin:6px 0 0;color:#555}
-  #qr{width:150px;height:150px;flex:none}
-  #qr img,#qr canvas{width:150px;height:150px;display:block}
+  .addr .which{display:block;font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:#111;margin-bottom:2px}
+  .addr+.addr{margin-top:-14px}
+  #qr,#qr2{width:150px;height:150px;flex:none}
+  #qr img,#qr canvas,#qr2 img,#qr2 canvas{width:150px;height:150px;display:block}
   h2{font-size:18px;margin:26px 0 8px;padding-top:14px;border-top:1px solid #ddd}
   ol{margin:0;padding-left:22px}
   li{margin:0 0 8px}
@@ -30,31 +32,47 @@
 <button class="print" onclick="print()">Print</button>
 <main>
   <h1>FSU app</h1>
-  <p class="sub">Van inventory and scene documentation for the Forensic Services Unit. One address, works offline once installed.</p>
+  <p class="sub">Van inventory and scene documentation for the Forensic Services Unit. Two icons, one set of
+     records, and both work offline once installed.</p>
 
   <div class="addr">
     <div id="qr"></div>
     <div>
-      <a id="link" href="./index.html">https://drfllcky13-droid.github.io/van-app/</a>
-      <p>Point the camera at the code, or type the address. Same address on every device.</p>
+      <b class="which">FSU &mdash; the van</b>
+      <a id="link" href="./index.html">https://drfllcky13-droid.github.io/fsu/</a>
+      <p>Storage, items, the sweep, the guide, labels and settings.</p>
     </div>
   </div>
 
-  <h2>Put it on the home screen</h2>
+  <div class="addr">
+    <div id="qr2"></div>
+    <div>
+      <b class="which">Scenes &mdash; the scene</b>
+      <a id="link2" href="./scenes.html">https://drfllcky13-droid.github.io/fsu/scenes.html</a>
+      <p>Incidents, the documents each one needs, and the sketch.</p>
+    </div>
+  </div>
+
+  <p class="note">Install both. They are one app sharing one set of records: a sweep logged on one is
+     there on the other, and the tabs down the side move between them.</p>
+
+  <h2>Put both on the home screen</h2>
   <div class="grid">
     <div class="card"><b>iPad or iPhone</b>Open the address in Safari. Tap Share, then <i>Add to Home Screen</i>, then Add.</div>
     <div class="card"><b>Android</b>Open the address in Chrome. Tap the menu, then <i>Install app</i> or <i>Add to Home screen</i>.</div>
     <div class="card"><b>Desktop</b>Open the address in Chrome or Edge. Click the install icon at the right end of the address bar.</div>
   </div>
-  <p class="note">Open it from its own icon once while online. After that it works with no connection; the app updates itself the next time it is opened online.</p>
+  <p class="note">Do it once for each address above, so both icons are on the home screen. Open each from its
+     own icon once while online. After that they work with no connection, and update themselves the next time
+     they are opened online.</p>
 
   <h2>Share the van list with the other devices</h2>
   <ol>
-    <li>In the app, tap <b>Settings</b> at the top of Home, then <b>Automatic saving</b>.</li>
+    <li>On the <b>FSU</b> icon, tap <b>Settings</b> at the top of Home, then <b>Automatic saving</b>.</li>
     <li>Owner and repository are already filled in. Paste the unit's access token and enter the date it expires.</li>
     <li>Tap <b>Connect</b>. The list pulls straight away, and every change after that saves itself a couple of seconds later.</li>
   </ol>
-  <p class="note">Done once per device. The token is kept in that device's browser only. Ask the unit's GitHub administrator for the token; it is not printed here.</p>
+  <p class="note">Done once per device, on the FSU icon; the Scenes icon picks it up. The token is kept in that device's browser only. Ask the unit's GitHub administrator for the token; it is not printed here.</p>
 
   <h2>What stays on the device</h2>
   <p>Incidents, forms, sketches and photographs never sync. They leave the device only when you export a PDF, Word file, DXF or a case package.</p>
@@ -62,13 +80,23 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 (function(){
-  var here=/^https?:/.test(location.protocol)?location.origin+location.pathname.replace(/install\.html$/,""):"https://drfllcky13-droid.github.io/van-app/";
-  var a=document.getElementById("link"); a.textContent=here; a.href=here;
+  var here=/^https?:/.test(location.protocol)?location.origin+location.pathname.replace(/install\.html$/,""):"https://drfllcky13-droid.github.io/fsu/";
+  // both addresses come from wherever this sheet is served, so a printed copy is never
+  // pointing at somewhere the app no longer lives
+  [["link",here],["link2",here+"scenes.html"]].forEach(function(pair){
+    var a=document.getElementById(pair[0]); if(!a)return;
+    a.textContent=pair[1]; a.href=pair[1];
+  });
   try{
-    var q=qrcode(0,"M"); q.addData(here); q.make();
-    document.getElementById("qr").innerHTML=q.createSvgTag({cellSize:4,margin:0,scalable:true});
-    var s=document.querySelector("#qr svg"); if(s){s.setAttribute("width","150");s.setAttribute("height","150")}
-  }catch(e){document.getElementById("qr").textContent=""}
+    [["qr",here],["qr2",here+"scenes.html"]].forEach(function(pair){
+      var q=qrcode(0,"M"); q.addData(pair[1]); q.make();
+      var box=document.getElementById(pair[0]); if(!box)return;
+      box.innerHTML=q.createSvgTag({cellSize:4,margin:0,scalable:true});
+      var svg=box.querySelector("svg");
+      if(svg){svg.setAttribute("width","150");svg.setAttribute("height","150")}
+    });
+  }catch(e){ ["qr","qr2"].forEach(function(id){
+      var box=document.getElementById(id); if(box)box.textContent="" }) }
 })();
 </script>
 </body>

@@ -23,8 +23,8 @@ the problem, not the behaviour.
 | Symbols | 142 SVG shape functions `(w, hh, o?) => string`. Area fills take the object as a third argument for pattern ids and the fill choice |
 | Event handling | 6 delegated listeners on `document`, dispatching by `closest("[data-x]")` |
 
-Runs from a local file or GitHub Pages. Lives at https://drfllcky13-droid.github.io/van-app/
-(repository `drfllcky13-droid/van-app`, Pages source: branch `main`, root; a push to `main` is live
+Runs from a local file or GitHub Pages. Lives at https://drfllcky13-droid.github.io/fsu/
+(repository `drfllcky13-droid/fsu`, Pages source: branch `main`, root; a push to `main` is live
 within about a minute). `install.html` beside it is the printable install sheet. Works offline. No server. Served over http it registers
 `sw.js` (network first, cache fallback) and can be added to the home screen; Settings › This device says how.
 

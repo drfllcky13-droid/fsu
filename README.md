@@ -5,7 +5,7 @@ No server, runs offline on an iPad, a phone or a desktop.
 
 ## Where it runs
 
-The app is live at **https://drfllcky13-droid.github.io/van-app/**
+The app is live at **https://drfllcky13-droid.github.io/fsu/**
 
 GitHub Pages serves this repository's `main` branch directly. A push to `main` is live within about
 a minute. Nothing needs to be enabled or deployed by hand.
@@ -14,7 +14,7 @@ It is two pages, and you can put both on the home screen:
 
 - **FSU** (the address above) is the van: Home, Storage, Items, the sweep, the guide, the printed
   map and labels, restocking, tidying up and Settings.
-- **Scenes** (`.../van-app/scenes.html`) is the scene: the incident list, an incident and the
+- **Scenes** (`.../fsu/scenes.html`) is the scene: the incident list, an incident and the
   documents it needs, filling a form in, form templates and the sketch.
 
 They are the same app and the same records, not two copies. A sweep logged on one shows up on the
@@ -22,7 +22,7 @@ other, and nothing has to be sent between them. The tabs down the side are the s
 tapping Scenes from the van, or Home from a scene, just goes to the other page; you do not have to
 know which one you are on.
 
-**Install sheet:** https://drfllcky13-droid.github.io/van-app/install.html — one printable page with
+**Install sheet:** https://drfllcky13-droid.github.io/fsu/install.html — one printable page with
 the address as a QR code, the home-screen steps for iPad, Android and desktop, and how to connect a
 device to the van data. Print it and pin it in the van. It still covers only the first address;
 the second icon is step 3 below and is not on the sheet yet.
@@ -33,7 +33,7 @@ the second icon is step 3 below and is not on the sheet yet.
 2. Add it to the home screen: Safari → Share → Add to Home Screen; Chrome → menu → Install app or
    Add to Home screen; desktop Chrome or Edge → the install icon at the right of the address bar.
    That icon is **FSU**, the van.
-3. Now open `.../van-app/scenes.html` and add that to the home screen the same way. That icon is
+3. Now open `.../fsu/scenes.html` and add that to the home screen the same way. That icon is
    **Scenes**. Doing both gives the technician one icon for the van and one for the scene; the
    sketch and the forms open straight from the second without going through the first.
 4. Open each icon once while online. From then on they work without a connection.

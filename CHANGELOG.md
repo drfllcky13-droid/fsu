@@ -147,7 +147,7 @@ own page with a way back. The Display, Form templates, Report wording and Help e
 from the bottom of Home. The bottom tab bar fills its width.
 
 ## 2026.09.04.12
-Hosted at https://drfllcky13-droid.github.io/van-app/ straight from the `main` branch. An install
+Hosted at https://drfllcky13-droid.github.io/fsu/ straight from the `main` branch. An install
 sheet, `install.html`, carries the address as a QR code, the home-screen steps for iPad, Android and
 desktop, and how to connect a device to the van data. Van icon on the home screen. The Actions
 deploy workflow is gone; Pages serves the branch directly.
