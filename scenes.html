@@ -4234,7 +4234,7 @@ function renderTidy(){
       <button class="btn" id="tsave" style="max-width:none;margin-top:4px">Save, next &rarr;</button>
       <button class="btn sec" id="tskip" style="max-width:none">Skip for now</button>
     </div>
-    <p class="hint focusline">${queue.length} item${queue.length===1?"":"s"} still need a par level</p></div>`;
+    <p class="hint focusline">${queue.length} item${queue.length===1?" still needs":"s still need"} a par level</p></div>`;
   const parEl=$("#tf-par"); if(parEl)parEl.focus();
   $("#tsave").onclick=()=>{
     const par=$("#tf-par").value.trim(); if(!par)return toast("Enter a par level, or Skip");
