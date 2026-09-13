@@ -19,7 +19,7 @@ the problem, not the behaviour.
 | `scenes.html` | the scene. ~800 KB, built from the same `src/` by the same command (31 parts: the shared set, plus PDF, the symbol tables and the sketch engine, which the van page does not carry) |
 | JavaScript | ~34 parts under `src/`, all global scope, concatenated byte for byte. The extensions sit in blocks just before the init call (sketch rounds one to three on the scene page, then round four for the van side: guided sweep, item cards, verification, reorder states, labels and deep links, activity log, count mode) and hook into the existing listeners |
 | CSS | 81 KB, `src/app.css`, one `<style>` block, the same on both pages |
-| Views | 20 `<section class="view">` elements, shown and hidden by a `view` string: 14 on the van page, 6 on the scene page. Tabs are Home, Scenes, Guide, Storage, Items and are the same on both — a tab whose view is on the other page navigates there. The old Active and Scenes tabs are one list with an Open and Closed filter, and `forms` is now reached only through it |
+| Views | 21 `<section class="view">` elements, shown and hidden by a `view` string: 14 on the van page, 7 on the scene page (`data`/Settings is the one view built into both, each with page-appropriate content). Since 13 September 2026 the two pages are independent apps: `TABS_BY_PAGE` in `src/data-van.js` gives each its own short tab list — Home, Guide, Storage, Items on the van; just Scenes on the scene — and neither list names a view the other page has. There is no crossing between them; you switch by leaving the app and opening the other icon. The old Active and Scenes tabs are one list with an Open and Closed filter, and `forms` is reached only through it |
 | Symbols | 142 SVG shape functions `(w, hh, o?) => string`. Area fills take the object as a third argument for pattern ids and the fill choice |
 | Event handling | 6 delegated listeners on `document`, dispatching by `closest("[data-x]")` |
 
@@ -39,28 +39,35 @@ unit 1. Load it through the app's own restore (Settings › Restore or import), 
 **The page split.** `build.js` has two targets. `index.html` is the van: home, compartments and
 bays, items, the sweep, the guide, the printable map and labels, restock, tidy and Settings.
 `scenes.html` is the scene: the incident list, an incident and its document plan, a form being
-filled in, form templates and the sketch. Same origin, same path, so **same `localStorage` — one
-record, nothing copied, nothing to sync between them.** A save on one page is picked up by the
-other through the `storage` event listener in `src/core.js`, which takes their version whole and
-re-renders; do not add a merge there, and do not write a copy of anything into the other page.
+filled in, form templates, the sketch, and its own Settings. Same origin, same path, so **same
+`localStorage` — one record, nothing copied, nothing to sync between them.** A save on one page
+is picked up by the other through the `storage` event listener in `src/core.js`, which takes
+their version whole and re-renders; do not add a merge there, and do not write a copy of
+anything into the other page.
 
-`src/pages.js` is the seam and is where you look first:
+**They are independent apps, on purpose, since 13 September 2026.** Neither has a control that
+opens the other: no shared tab bar, no "Quick sketch" on the van's Home, no "Storage" tab on the
+scene. `src/pages.js` is the seam and is where you look first:
 - `VIEWS` lists which view belongs to which page, and `PAGE` is set before it by `src/van.js`
-  or `src/scenes.js` (each is one line).
-- `here(v)` is "this page draws that view"; `pageOf(v)` is "which page does".
-- `go(v)` in `src/nav.js` calls `crossTo(v)` when the view is not here, which sets
-  `location.href` to the other page with `#v=<view>&ref=<id>`. `ref` is the incident, sketch,
-  fill, item, compartment or bay the view is about.
-- `openFromHash()` reads that back on load and on `hashchange`, sets the matching `cur*` and
-  `view`, and returns false if the hash names a view that is not on this page.
-- `startSketch()` lives here because either page can start a sketch: only the scene page can
-  actually make one, so from the van it crosses with `ref=new[:incidentId]`.
+  or `src/scenes.js` (each is one line). `"data"` (Settings) is the one view listed on both —
+  everything else belongs to exactly one page.
+- `here(v)` is "this page draws that view".
+- `go(v)` in `src/nav.js` is a no-op when the view is not here — it used to jump to the other
+  page; it no longer does, by design. If you find yourself wanting it to jump again, that is
+  the crossing coming back; check with whoever owns the product decision first.
+- `openFromHash()` reads `#v=<view>&ref=<id>` on load and on `hashchange` — a *direct* link into
+  this page (a bookmark, a reload, a home-screen shortcut), not a hop from the other one — sets
+  the matching `cur*` and `view`, and returns false if the hash names a view that is not on this
+  page or a `ref` that names the wrong kind of record.
+- `startSketch()` only ever runs on the scene page now; it is a no-op if called on the van
+  (structurally unreachable in practice, since nothing on the van calls it).
 
-Adding a view means adding it to `VIEWS`, to that page's body part, and to that page's target in
-`build.js`. `fsu-tests/tests/pages.spec.js` is the guard on all of this: it presses the crossings
-a user presses, checks a reload lands back on the same record, checks a stale or nonsense `#v=`
+Adding a view means adding it to `VIEWS`, to that page's body part, to that page's tab list in
+`TABS_BY_PAGE` (`src/data-van.js`) if it should have one, and to that page's target in
+`build.js`. `fsu-tests/tests/pages.spec.js` is the guard on all of this: it checks neither app
+offers a route into the other, that a reload holds your place, that a stale or nonsense `#v=`
 address cannot blank the screen, checks two open pages do not write over each other, and checks
-that every view is built into exactly one page and that `pages.js` agrees with both. Run it first
+that every view is built into exactly one page (or deliberately both, `data` only). Run it first
 after anything structural.
 
 Each page has its own manifest (`manifest.webmanifest`, `scenes.webmanifest`) and its own
@@ -198,16 +205,18 @@ package.
 14. **`appExtraClick` runs first** in the main click listener, before the back button. It owns
    every `data-` attribute added in round four and intercepts `data-check` when a compartment
    holds regulated stock that has not been counted today.
-15. **Deep links.** `#c=CODE`, `#i=ID`, `#s=ID`, `#inc=ID` open a compartment, item, sketch or
-   incident on load and on `hashchange`, then clear the hash. QR labels encode them with the
-   address under Settings › Labels. The in-app scanner (`scanSheet` in ext-van.js) uses `BarcodeDetector`
-   where it exists and otherwise loads jsQR from jsdelivr on first use; every device also gets a
-   photo route through a file input with `capture`, decoded the same way.
+15. **Deep links.** `#c=CODE`, `#i=ID` open a compartment or item; `handleHash` (ext-van.js) reads
+   them on load (`setTimeout(handleHash,80)`) and on `hashchange`, then clears the hash. It is
+   shared code and runs unconditionally on *either* page — a printed QR label always encodes the
+   van's own address (`appUrl()` at the time the label was printed, from Settings › Labels, which
+   only exists on the van), so in practice it only ever fires on the van, but a hand-typed or
+   bookmarked `scenes.html#c=…` would reach it too. `openTarget` therefore checks `here()` before
+   acting on any kind — `c`/`i` toast "open it in the FSU app" and `s`/`inc` toast "open it in the
+   Scenes app" if asked for on the wrong page, rather than setting `view` to something the current
+   page has nothing to draw into (which used to leave the screen blank with the old `.on` class
+   already cleared off it).
    These are a *second*, older hash scheme, separate from the `#v=<view>&ref=<id>` one that
-   `src/pages.js` uses to cross between the pages, and they are handled by `handleHash` /
-   `openTarget` in `ext-van.js` rather than by `openFromHash`. `openTarget` sets `view` directly
-   without asking `here()`, so a scanned `#s=` or `#inc=` on the van page sets a view that page
-   does not have. Route it through `go()` or `crossTo()` when you next touch it.
+   `src/pages.js` uses to open a direct link into a page.
 18. **Landscape only.** `applyRotLock` (ext-reports.js) puts `rotlock` on `body` when `landscapeOnly()`
    (default: iPad-like user agent, else `S.landscapeOnly`) and the screen's short side is 700px or
    more; `#rotgate` then covers everything in portrait. iPadOS ignores `screen.orientation.lock` and

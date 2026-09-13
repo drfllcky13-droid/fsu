@@ -18,17 +18,17 @@ sweep.js        Was already here. Switches through each view of the page it is r
                 looking for render errors, NaN in a symbol, duplicate ids, page-level
                 overflow, and a data- attribute with no handler behind it. The symbol
                 tables are on the scene page only, so a run against the van page reports
-                zero symbols rather than checking 142 of them — see WHAT IS LEFT.
+                zero symbols; fsu.spec.js runs it against both pages now, so all 142
+                symbols and the scene's six views are covered.
 
 crawl.js        Presses every control in every view, and one level into any sheet a control
                 opens. Reports a nav control whose target view is missing or that lands
                 somewhere else, a handler that throws, and a button that does nothing.
                 Saved state and the open item, sketch, incident, bay and compartment are
                 snapshotted and put back after every click. Controls that delete, export,
-                send or sign are named, not pressed. Run against each page in turn. It
-                judges a nav control by looking for #v-<target> in the current document,
-                so the tabs that cross to the other page (Scenes from the van, Home from
-                the scene) read as dead routes to it — see WHAT IS LEFT.
+                send or sign are named, not pressed. Run against each page in turn. FSU and
+                Scenes are independent apps with no route between them, so every route the
+                crawl finds is same-page by construction — there is nothing to allow for.
 
 visible.js      Layout audit per view at the current window size, checked at the top of the
                 page and again at the bottom. Anything outside the window horizontally,
@@ -99,15 +99,18 @@ fsu-tests/tests/          (van = index.html, scene = scenes.html)
                     compartments sharing a code, no item in a compartment that does not
                     exist, every date and quantity parsable, every compartment in a named
                     bay. Van.
-  pages.spec.js     The split itself. Presses every crossing the way a user does — Quick
-                    sketch, the Scenes tab, Settings from the scene, a document row on an
-                    incident — and checks where it lands and that the address carries the
-                    record, so a reload holds. Then: a stale or nonsense #v=/ref= address
-                    opens on something rather than a blank screen; two pages open at once do
-                    not write over each other's record; every view is built into exactly one
-                    page and src/pages.js agrees with both, with no control anywhere naming a
-                    view that does not exist; both manifests resolve and the worker precaches
-                    both pages, which then open with the network cut.
+  pages.spec.js     The split itself. Checks that neither app offers a route into the other —
+                    no button on the van reaches Scenes, none on Scenes reaches the van, and
+                    each has its own Settings screen with its own content — while a document
+                    row on an incident (a sketch, a form, the document tabs) still opens
+                    same-page, and a reload holds your place. Then: a stale or nonsense
+                    #v=/ref= address, or the older #c=/#i=/#s=/#inc= scanned-label scheme
+                    landing on the wrong page, opens on something rather than a blank screen;
+                    two pages open at once do not write over each other's record; every view
+                    is built into exactly one page (Settings, deliberately, on both) and
+                    src/pages.js agrees, with no control anywhere naming a view that does not
+                    exist; both manifests resolve and the worker precaches both pages, which
+                    then open with the network cut.
   bulk.spec.js      600 extra items and 40 sketches, rendered at a quarter speed to stand in
                     for an older iPad. Budget 200ms a view; the worst today is about 85. Van.
   visual.spec.js    Picture baselines at iPad width in both schemes: Home, Storage and Items
@@ -147,23 +150,23 @@ initials" 91x19, the header gear 87x31 and the side-nav rows 231x43, all just un
 guideline. Gloved hands in a van is where that matters, so they are worth a look, but moving
 them is a layout decision and nothing has been moved.
 
+FSU and Scenes were split into two pages with a route between them, then made fully
+independent — no shared tab bar, no button on either that opens the other, each with its
+own Settings screen. Writing pages.spec.js against the independence claim, rather than just
+trusting the removal, found a real bug: the older #c=/#i=/#s=/#inc= scanned-label scheme
+(handleHash in ext-van.js) is shared code that runs unconditionally on either page's load,
+and openTarget set `view` to a screen the current page had already stopped drawing, with
+nothing to fall back to — a hand-typed or bookmarked address on the wrong page would have
+left the screen blank. openTarget now checks here() for every kind and answers with a toast
+naming the right app instead. Caught by three FOREIGN-address tests that fail without the
+fix and pass with it.
+
 Still reported by the crawl and all correct: Undo and Redo with an empty history, zoom out
 at the minimum, a tab that is already active, Home while on Home. They would read better
 disabled at their limit, which is a design call.
 
 
 WHAT IS LEFT
-
-The render sweep on the scene page. It walks the section.view elements of whatever page it
-is loaded on, and fsu.spec.js still loads the van. So the scene page's six views and all 142
-symbols are outside it at the moment, which is exactly the half the sweep was written for.
-One more loop in fsu.spec.js against scenes.html.
-
-The crawl and the cross-page tabs. crawl.js decides a nav control is dead by looking for
-#v-<target> in the current document, and the tabs that cross pages point at a view the other
-page owns, so it reports Scenes on the van (and Home on the scene) as a dead route. It needs
-to ask pages.js — here(v) — before calling a route dead, and to put the page back afterwards,
-since pressing that tab navigates.
 
 Two home-screen icons on a real device. Whether iPadOS treats index.html and scenes.html as
 one installed app or two, and whether the second icon opens standalone rather than in Safari,

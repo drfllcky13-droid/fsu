@@ -191,7 +191,7 @@ test.describe("van flows",()=>{
     await page.click("#v-active .seg [data-scenestab=closed]");
     await expect(page.locator("#v-active .empty strong")).toHaveText("No finished scenes yet");
     const tabs=await page.evaluate(()=>[...document.querySelectorAll("#side button span.lbl")].map(b=>b.textContent.trim()));
-    expect(tabs).toEqual(["Home","Scenes","Guide","Storage","Items","Settings"]);
+    expect(tabs).toEqual(["Scenes","Settings"]);   // Scenes is its own app now, with its own short tab list
   });
 
   test("guided sweep marks and advances",async({page})=>{
@@ -282,8 +282,7 @@ test.describe("van flows",()=>{
   });
 
   test("freehand ends when a symbol is picked, and rotation can be locked",async({page})=>{
-    await page.evaluate(()=>{const b=document.querySelector("#v-home [data-quicksketch]"); b&&b.click()});
-    await page.waitForFunction(()=>view==="sketch");
+    await quickSketch(page);   // drawing lives on the scene page, not the van's own flow above
     await page.evaluate(()=>{inkStart()});
     expect(await page.evaluate(()=>!!inkDraw)).toBe(true);
     await page.evaluate(()=>placeStart("rect"));

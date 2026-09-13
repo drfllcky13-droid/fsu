@@ -37,10 +37,17 @@ test("focus moves through every view and is visible where it lands",async({page}
   expect([...new Set(blind)]).toEqual([]);
 });
 
+// Settings > Help opens a sheet on the van page and needs no data of its own, so it works
+// whichever record the test happens to run against.
+async function openHelpSheet(page){
+  await page.evaluate(()=>{if(typeof go==="function")go("data")});
+  await page.evaluate(()=>{const b=document.querySelector("[data-help]"); if(b)b.click()});
+}
+
 test("a sheet can be left with the keyboard",async({page})=>{
   await page.setViewportSize({width:1194,height:834});
   await open(page);
-  await page.evaluate(()=>{document.querySelector("[data-newinc]").click()});
+  await openHelpSheet(page);
   await page.waitForSelector("#sheet.on");    // the sheet slides up on the next frame
   await page.keyboard.press("Escape");
   expect(await page.evaluate(()=>!!document.querySelector("#sheet.on"))).toBe(false);
@@ -49,7 +56,7 @@ test("a sheet can be left with the keyboard",async({page})=>{
 test("tabbing inside a sheet stays in the sheet",async({page})=>{
   await page.setViewportSize({width:1194,height:834});
   await open(page);
-  await page.evaluate(()=>{document.querySelector("[data-newinc]").click()});
+  await openHelpSheet(page);
   await page.waitForSelector("#sheet.on");
   const out=[];
   for(let i=0;i<12;i++){

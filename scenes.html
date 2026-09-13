@@ -1299,12 +1299,7 @@ body.wide.sidemin .side button{position:relative}
 <aside class="side" id="side"></aside>
 
 <header class="hdr">
-  <div class="sbox">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-    <input type="text" id="q" placeholder="Search items, compartments, guides" autocomplete="off">
-    <button id="qclear" style="display:none">Clear</button>
-  </div>
-  <div class="titlerow"><h1 id="title">FSU</h1><span id="savedtick" class="savedtick" aria-live="polite"></span></div>
+  <div class="titlerow"><h1 id="title">Scenes</h1><span id="savedtick" class="savedtick" aria-live="polite"></span></div>
 
 </header>
 
@@ -1317,13 +1312,14 @@ body.wide.sidemin .side button{position:relative}
 <section class="view on" id="v-active"></section>
 <section class="view" id="v-incident"></section>
 <section class="view" id="v-templates"></section>
+<section class="view" id="v-data"></section>
 </main>
 
 <nav class="tabs" id="tabs"></nav>
 <div class="scrim" id="scrim"></div>
 <div class="sheet" id="sheet"><div class="grab"></div><div id="sheetbody"></div></div>
 <div class="toast" id="toast"></div>
-<div class="rotgate" id="rotgate"><div class="rg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M12 2v2M12 20v2"/></svg><b>Turn the iPad sideways</b><span>FSU runs in landscape so the sketch and the storage wall have room.</span><button class="lnkbtn" data-rotlock="0">Allow portrait on this device</button></div></div>
+<div class="rotgate" id="rotgate"><div class="rg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M12 2v2M12 20v2"/></svg><b>Turn the iPad sideways</b><span>Scenes runs in landscape so the sketch has room.</span><button class="lnkbtn" data-rotlock="0">Allow portrait on this device</button></div></div>
 
 <script>
 const PAGE="scenes";
@@ -1478,8 +1474,13 @@ const WALLDEF={"Driver side":{cols:24,rows:12},"Passenger side":{cols:24,rows:12
 const VANSIDES=["Driver side","Passenger side","Rear doors","Cab"];
 const VANWALLS={"Driver side":{"cols":144,"rows":60},"Passenger side":{"cols":144,"rows":60},"Rear doors":{"cols":72,"rows":60},"Cab":{"cols":48,"rows":40}};
 const VANCOMPS=[["2A","Evidence bags",0,84,2,14,22],["2B","Shoe / tire impression",0,84,24,14,22],["2C1","Evidence envelopes",0,98,2,20,5],["2C2","Cash envelopes",0,98,7,20,5],["2C3","Drug envelopes",0,98,12,20,5],["2C4","Misc. forms",0,98,17,20,5],["2C5","SEM kits",0,98,22,20,5],["2C6","",0,98,27,20,5],["2C7","",0,98,32,20,5],["2C8","",0,98,37,20,5],["2C9","",0,98,42,20,5],["2D1","",0,118,2,8,5],["2D2","",0,118,7,8,5],["2D3","",0,118,12,8,5],["2D4","Batteries",0,118,17,8,5],["2D5","",0,118,22,8,5],["2D6","",0,118,27,8,5],["2D7","",0,118,32,8,5],["2D8","",0,118,37,8,5],["2D9","",0,118,42,8,5],["2E1","Electrostatic bags",0,126,2,14,5],["2E2","",0,126,7,14,5],["2E3","",0,126,12,14,5],["2E4","Rain suits",0,126,17,14,5],["2E5","",0,126,22,14,5],["2E6","",0,126,27,14,5],["2E7","Hand preservation bags",0,126,32,14,5],["2E8","",0,126,37,14,5],["2E9","",0,126,42,14,5],["1A1","Power inverter and strip",0,4,0,8,10],["1A2","DNA swabs and swab boxes",0,12,0,8,10],["1A3","Evidence collection lifters",0,20,0,8,10],["1A4","Marking spray paint",0,28,0,8,10],["1A5","Blood reagents — Bluestar, luminol",0,36,0,8,10],["1A6","Small particle reagent",0,44,0,8,10],["1B1","Disposable jumpsuits",0,4,12,6,7],["1B2","Disposable boot covers",0,10,12,6,7],["1B3","Latex gloves",0,16,12,6,7],["1B4","Dye stain and print cleaner",0,22,12,6,7],["1B5","Cyanoacrylate",0,28,12,6,7],["1B6","Face masks",0,34,12,6,7],["1B7","Collection tubes",0,40,12,12,7],["1C1","Evidence collection jars",0,4,22,6,7],["1C2","Small evidence boxes",0,10,22,6,7],["1C3","Very small evidence jars",0,16,22,6,7],["1C4","Mikrosil casting material",0,22,22,6,7],["1C5","Bin, lower row",0,28,22,6,7],["1C6","Aluminum foil",0,34,22,6,7],["1C7","Yarn, tags and stickers",0,40,22,12,7],["1D1","Distilled water",0,4,31,8,11],["1D2","Evidence markers and cones",0,12,31,8,11],["1D3","Electrostatic dust print lifter",0,20,31,8,11],["1D4","Bluemaxx light kit",0,28,31,8,11],["1D5","Evidence tubes / laser trajectory",0,36,31,8,11],["1D6","Evidence tubes / laser trajectory",0,44,31,8,11],["1E","Pry bars",0,4,44,48,11],["3A","Lighting / extension cords",1,40,6,16,48],["3B","Top shelf",1,56,0,88,10],["3C","Shelf 2",1,56,10,88,12],["3D","Shelf 3",1,56,22,88,12],["3E","Shelf 4",1,56,34,88,11],["3F","Bottom shelf",1,56,45,88,11]];
-// a field tool first: the scene comes before the van
-const TABS=[["home","Home"],["active","Scenes"],["guide","Guide"],["compartments","Storage"],["inventory","Items"]];
+// FSU and Scenes are two apps now, not two halves of one tab bar: each gets its own list, and
+// there is no entry here that leads into the other app.
+const TABS_BY_PAGE={
+  van:[["home","Home"],["guide","Guide"],["compartments","Storage"],["inventory","Items"]],
+  scenes:[["active","Scenes"]],
+};
+const TABS=TABS_BY_PAGE[PAGE];
 const FORMCATS=["Scene documentation","Evidence and custody","Photography","Reports and statements","Admin"];
 const ICONS={home:"M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z",
  compartments:"M3 4h7v7H3zM14 4h7v7h-7zM3 13h7v7H3zM14 13h7v7h-7z",
@@ -1737,28 +1738,22 @@ if("serviceWorker" in navigator&&/^https?:/.test(location.protocol)){
 }
 
 /* ---------- two apps, one record ----------
-   The van and the scene are two jobs. Each is its own page with its own home-screen icon, and
-   because they are the same site they are the same storage: one record, no copies, no sync
-   between them. A view that lives on the other page is reached by going there, and the address
-   carries which view, so Back and a reload land where you were.
+   FSU (the van) and Scenes (the scene) are two independent apps: separate icons, separate
+   pages, and no link from inside one into the other. What they share is the origin, so they
+   share localStorage — one record, nothing copied, nothing to sync between them. A save made
+   in one is picked up by the other the next time it loads (see the storage listener in
+   core.js), but neither can navigate into the other's screens.
 
    PAGE is set by the page's own file (van.js or scenes.js) before this runs. ---------- */
 const VIEWS={
   van:["home","compartments","bay","compdetail","inventory","itemdetail","sweep","guide",
        "reorder","tidy","print","labels","search","data"],
-  scenes:["active","incident","fill","sketch","templates","forms"],
+  scenes:["active","incident","fill","sketch","templates","forms","data"],
 };
-const PAGEFILE={van:"index.html",scenes:"scenes.html"};
 const here=v=>VIEWS[PAGE].includes(v);
-const pageOf=v=>VIEWS.van.includes(v)?"van":VIEWS.scenes.includes(v)?"scenes":PAGE;
 
-/* what has to travel with a view, so the other page opens on the right record */
-function crossTo(v,ref){
-  const p=pageOf(v);
-  const q=ref?"&ref="+encodeURIComponent(ref):"";
-  location.href=PAGEFILE[p]+"#v="+encodeURIComponent(v)+q;
-}
-/* what each view is about, so an address can carry it and be checked on the way back in */
+/* what each view is about, so a direct link to this page (a home-screen shortcut, a bookmark)
+   can open the right record instead of just the view */
 const REFOF={incident:()=>curInc,sketch:()=>curSketch,fill:()=>curFill,
   itemdetail:()=>curItem,compdetail:()=>curComp,bay:()=>curBay};
 /* a ref has to name a record of the right kind: an incident id is not a sketch */
@@ -1772,14 +1767,15 @@ const refFits=(v,ref)=>{
   if(v==="compdetail"||v==="bay")return has("comps","code")||(v==="bay"&&/^[0-9]$/.test(String(ref)));
   return false;
 };
-/* keep the address in step with where you are, so a reload and Back both land here */
+/* keep the address in step with where you are, so a reload and Back both land here. This
+   never points at the other page — it only ever rewrites this page's own hash. */
 function keepAddress(){
-  if(typeof history==="undefined"||!history.replaceState)return;
+  if(!here(view)||typeof history==="undefined"||!history.replaceState)return;
   const ref=REFOF[view]?REFOF[view]():null;
   const want="#v="+encodeURIComponent(view)+(ref?"&ref="+encodeURIComponent(ref):"");
   if(location.hash!==want){try{history.replaceState(null,"",want)}catch(_){}}
 }
-/* opened as #v=<view>&ref=<id>: the id is the incident, sketch, item or compartment it is about */
+/* opened as #v=<view>&ref=<id>: a direct link into this page, never a hop from the other one */
 function openFromHash(){
   const h=String(location.hash||"").replace(/^#/,"");
   if(!h)return false;
@@ -1803,10 +1799,9 @@ function openFromHash(){
   view=v;
   return true;
 }
-/* a new sketch, started from either page */
+/* a new sketch. Only ever called from inside the Scenes app, where "sketch" always lives. */
 function startSketch(incId){
-  // only the page that draws can make one; the other page asks it to
-  if(!here("sketch"))return crossTo("sketch","new"+(incId?":"+incId:""));
+  if(!here("sketch"))return;   // structurally unreachable from the van; no-op rather than a jump
   const sk=newSketch();
   if(incId){const inc=incidentOf(incId);
     if(inc)Object.assign(sk,{incidentId:inc.id,caseNo:inc.caseNo,offence:inc.offence,addr:inc.addr})}
@@ -2442,17 +2437,21 @@ function buildTabs(){
   $("#tabs").innerHTML=TABS.map(([v,l0])=>{const l=SHORT[v]||l0;
     return `<button data-v="${v}" aria-current="${v===view}">${ic(v)}${
       v==="active"&&nOpen?`<i class="tdot">${nOpen}</i>`:""}<span>${l}</span></button>`}).join("");
-  const L=live();
-  const att=L.filter(i=>isOut(i)||isLow(i)||isExpired(i)||isExpiring(i)||isService(i)).length;
-  const unchk=comps().filter(c=>compState(c.code).k==="unchecked").length;
-  const scene=(S.fills||[]).length+(S.sketches||[]).length;
-  const count={home:att?{n:att,hot:true}:null,
-    compartments:unchk?{n:unchk,hot:false}:null,
-    inventory:L.length?{n:L.length,hot:false}:null,
-    active:nOpen?{n:nOpen,hot:true}:null,
-    forms:scene?{n:scene,hot:false}:null,guide:null};
-  $("#side").innerHTML=`<button class="sidetog" data-sidetog="1" aria-label="${S.sideMin?"Expand the side bar":"Collapse the side bar"}" title="${S.sideMin?"Expand":"Collapse"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${S.sideMin?"M9 6l6 6-6 6":"M15 6l-6 6 6 6"}"/></svg></button><div class="ident"><div class="idot">F</div>
-      <div><div class="in1">FSU</div><div class="in2">${esc(S.vanName||"Forensic Services Unit")}</div></div></div>`
+  const count={};
+  if(PAGE==="van"){
+    const L=live();
+    const att=L.filter(i=>isOut(i)||isLow(i)||isExpired(i)||isExpiring(i)||isService(i)).length;
+    const unchk=comps().filter(c=>compState(c.code).k==="unchecked").length;
+    Object.assign(count,{home:att?{n:att,hot:true}:null,
+      compartments:unchk?{n:unchk,hot:false}:null,
+      inventory:L.length?{n:L.length,hot:false}:null,guide:null});
+  }else{
+    count.active=nOpen?{n:nOpen,hot:true}:null;
+  }
+  const idot=PAGE==="van"?"F":"S", iname=PAGE==="van"?"FSU":"Scenes",
+    isub=PAGE==="van"?esc(S.vanName||"Forensic Services Unit"):"Incidents, forms and the sketch";
+  $("#side").innerHTML=`<button class="sidetog" data-sidetog="1" aria-label="${S.sideMin?"Expand the side bar":"Collapse the side bar"}" title="${S.sideMin?"Expand":"Collapse"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${S.sideMin?"M9 6l6 6-6 6":"M15 6l-6 6 6 6"}"/></svg></button><div class="ident"><div class="idot">${idot}</div>
+      <div><div class="in1">${iname}</div><div class="in2">${isub}</div></div></div>`
     +TABS.map(([v,l])=>{
     const c=count[v];
     return `<button data-v="${v}" aria-current="${v===view}">${ic(v)}<span class="lbl">${esc(l)}</span>
@@ -2467,11 +2466,13 @@ function restoreScroll(v){
   put(); if(typeof requestAnimationFrame==="function")requestAnimationFrame(put);
 }
 function go(v){
-  if(!here(v))return crossTo(v);      // that view lives on the other page
+  if(!here(v))return;      // the two apps do not open one another's screens
   rememberScroll();
   // moving by tab or back button is not a drill-down, so forget where we came from
   prevView=null;
-  view=v;query="";$("#q").value="";$("#qclear").style.display="none";
+  view=v;query="";
+  const qel=$("#q"); if(qel)qel.value="";
+  const qc=$("#qclear"); if(qc)qc.style.display="none";
   $$(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));
   render();restoreScroll(v)}
 document.addEventListener("click",e=>{const b=e.target.closest("#tabs button,#side button");if(b&&b.dataset.v)go(b.dataset.v)});
@@ -2493,14 +2494,18 @@ document.addEventListener("input",e=>{
 });
 let searchFrom="home";
 function applyQuery(){
-  $("#qclear").style.display=query?"":"none";
+  const qc=$("#qclear"); if(qc)qc.style.display=query?"":"none";
   if(query){ if(view!=="search"){searchFrom=view;view="search"} }
   else if(view==="search"){ view=searchFrom||"home" }
   $$(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+view));
   window.scrollTo&&window.scrollTo(0,0);render();
 }
-$("#q").addEventListener("input",e=>{query=e.target.value.trim();applyQuery()});
-$("#qclear").onclick=()=>{$("#q").value="";query="";applyQuery()};
+// the search box is a van feature: it looks through items, compartments and the guide, which
+// Scenes has none of, so Scenes' page carries no #q at all
+if($("#q")){
+  $("#q").addEventListener("input",e=>{query=e.target.value.trim();applyQuery()});
+  $("#qclear").onclick=()=>{$("#q").value="";query="";applyQuery()};
+}
 
 /* ---------- home: priority strip ---------- */
 function renderHome(){
@@ -2518,9 +2523,8 @@ function renderHome(){
   const unchk=cs.filter(c=>compState(c.code).k==="unchecked").length, checked=cs.length-unchk;
   const need=L.filter(i=>isOut(i)||isExpired(i)||isLow(i)||isService(i)||isExpiring(i))
     .sort((a,b)=>{const r=x=>isOut(x)||isExpired(x)?0:1;return r(a)-r(b)||a.name.localeCompare(b.name)});
-  const open_=openIncidents(), loose=openDocs(), pend=unsent(), td=tokenDays();
+  const td=tokenDays();
   const lastMark=cs.map(c=>c.checked).filter(Boolean).sort().pop();
-  const changed=(S.sketches||[]).filter(s=>s.updated&&(!s.packaged||s.packaged<s.updated)).length;
 
   // where am I
   const dateTxt=new Date().toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"});
@@ -2540,25 +2544,9 @@ function renderHome(){
     ${tile(gp.length?"t-dark":"t-calm","Gaps",gp.length?String(gp.length):"None",gp.length?"not in the van, to decide":"nothing outstanding",'data-list="gaps"')}
   </div>`;
 
-  // what do I do at a scene
-  const scenes=`<div class="panel scenepanel"><div class="ph2">Scenes</div><div class="pb">
-    <div class="two"><button class="btn" data-newinc="1" style="max-width:none;margin:0">Start an incident</button>
-      <button class="btn sec" data-quicksketch="1" style="max-width:none;margin:0">Quick sketch</button></div>
-    ${open_.length?`<div class="narrowlist" style="margin-top:6px">`+open_.map(inc=>{
-        const plan=(inc.plan||[]).map(k=>planState(inc,k)).filter(Boolean);
-        const done=plan.filter(p=>p.state==="done").length;
-        return `<button class="nrow" data-inc="${inc.id}"><span class="nn">${esc(inc.caseNo||"No case number")}</span>
-          <span class="nm2"><span class="lc">${esc(inc.offence||"\u2014")}${inc.addr?" \u00b7 "+esc(inc.addr):""}</span>
-          <span class="badge b-${done===plan.length?"good":"attn"}">${done} of ${plan.length}</span></span></button>`}).join("")+`</div>`
-      :`<p class="hint" style="margin:10px 0 0">Nothing open. Start an incident and its entry log, evidence log, sketch and report stay together.</p>`}
-    ${loose.length?`<button class="act" data-go="active"><span>${loose.length} document${loose.length===1?"":"s"} not filed to an incident</span><span class="chev">&#8250;</span></button>`:""}
-  </div></div>`;
-
   // what needs doing
   const rows=[];
   if(ghOn()&&td!=null&&td<=30)rows.push(["warn",td<0?"Automatic saving has stopped, the token has expired":"Sync token expires in "+td+" day"+(td===1?"":"s"),'data-gosec="sync"',""]);
-  if(pend.length)rows.push(["warn",pend.length+" scene document"+(pend.length===1?"":"s")+" not exported yet",'data-go="active"',""]);
-  if(changed)rows.push(["",changed+" sketch"+(changed===1?"":"es")+" changed since the last case package",'data-caseall="1"',"Save"]);
   if(bad.length)rows.push(["","Review "+bad.length+" low or out",'data-list="low"',""]);
   if(soon.length)rows.push(["","Check "+soon.length+" expiring or due for service",'data-list="expiring"',""]);
   if(gp.length)rows.push(["","Decide on "+gp.length+" gap"+(gp.length===1?"":"s"),'data-list="gaps"',""]);
@@ -2591,7 +2579,7 @@ function renderHome(){
       <p class="hint" style="margin:8px 0 0">Star an item and it appears here.</p></div></div>`:"";
 
   $("#v-home").innerHTML=head+tiles+`<div class="dash2">
-    <div class="col">${scenes}${todo}${handoverPanel()}${attention}</div>
+    <div class="col">${todo}${handoverPanel()}${attention}</div>
     <div class="col">${unitPanel()}${quick}</div></div>`;
   $$("#v-home [data-gosec]").forEach(b=>b.onclick=()=>openSettings(b.dataset.gosec));
 }
@@ -3897,28 +3885,31 @@ function settingsMenu(){
   const inst=isStandalone()?"installed":"not on the home screen";
   const nErr=(S.errors||[]).length, nAct=(S.activity||[]).length;
   const lastAct=nAct?S.activity[nAct-1]:null;
-  return `<div class="hhead"><b>${esc(S.vanName||"Forensic Services Unit")}</b><span>Version ${esc(APP_VERSION)}</span>
+  // Automatic saving covers the whole shared record and keeps working in the background on
+  // whichever page enabled it, but the switch itself, the backup file and Reset are van-domain,
+  // so they only appear in FSU's Settings; Scenes gets its own case/forms group instead.
+  return `<div class="hhead"><b>${PAGE==="van"?esc(S.vanName||"Forensic Services Unit"):"Scenes"}</b><span>Version ${esc(APP_VERSION)}</span>
       <span>${S.who?"Signed in as "+esc(S.who):"No initials set"}</span></div>
     <div class="setgroups">
     ${group("You",[sec("who","Initials and name",whoTxt,S.who?"":"warn")])}
-    ${group("Van data",[
+    ${PAGE==="van"?group("Van data",[
       sec("sync","Automatic saving",syncTxt,syncCls),
       sec("backup","Back up",bkTxt,L.length&&stale?"warn":""),
-      sec("restore","Restore or import","From a backup file or CSV")])}
-    ${group("Scenes",[
+      sec("restore","Restore or import","From a backup file or CSV")]):""}
+    ${PAGE==="scenes"?group("Scenes",[
       sec("case","Case packages",S.lastCase?"Last "+esc(S.lastCase.slice(0,10)):"None saved yet"),
       row('data-go="templates"',"Form templates",S.forms.length+" blank form"+(S.forms.length===1?"":"s")),
-      row('data-snipmanage="1"',"Report wording","Standard sentences for reports")])}
+      row('data-snipmanage="1"',"Report wording","Standard sentences for reports")]):""}
     ${group("This device",[
       row('id="modebtn"',"Display",themeTxt+", "+modeTxt+(landscapeOnly()?", landscape only":"")),
-      sec("labels","Labels and web address",appUrl()?esc(appUrl().replace(/^https?:\/\//,"")):"No web address"),
+      PAGE==="van"?sec("labels","Labels and web address",appUrl()?esc(appUrl().replace(/^https?:\/\//,"")):"No web address"):"",
       sec("device","Storage and install",stor+", "+inst,storageState.asked&&!storageState.persisted?"warn":""),
       sec("activity","Activity",lastAct?"Last "+esc(String(lastAct.t||"").slice(0,10)):"Nothing yet"),
-      sec("errors","Recent errors",nErr?nErr+" recorded":"None",nErr?"warn":"")])}
+      sec("errors","Recent errors",nErr?nErr+" recorded":"None",nErr?"warn":"")].filter(Boolean))}
     ${group("About",[row('data-help="1"',"Help and change log","How to use it, what changed")])}
-    ${group("Reset",[
+    ${PAGE==="van"?group("Reset",[
       S.demo?sec("reset","Clear sample data","Sample compartments and items"):"",
-      sec("reset","Erase everything","Every item and compartment","danger")].filter(Boolean))}
+      sec("reset","Erase everything","Every item and compartment","danger")].filter(Boolean)):""}
     </div>`;
 }
 function settingsSection(k){
@@ -4035,7 +4026,7 @@ function settingsSection(k){
     <div class="setsec"><div class="idsect" style="margin-top:0">${esc(SET_TITLES[k]||"Settings")}</div>${body}</div>`;
 }
 function renderData(){
-  if(!document.getElementById("v-data"))return;   // that view is on the other page
+  if(!document.getElementById("v-data"))return;   // defensive: Settings is on both pages
   $("#title").textContent="Settings";
   if(conflict||tokenBad||badFile)SET_SEC="sync";
   if(SET_SEC&&!SET_TITLES[SET_SEC])SET_SEC=null;
@@ -4340,7 +4331,6 @@ document.addEventListener("click",e=>{
   if(e.target.closest("#syncnow")){
     if(conflict||tokenBad||badFile){openSettings("sync");return}
     syncErr="";retries=0;renderSyncBar();toast("Retrying");ghPush(false);return}
-  if(e.target.closest("[data-quicksketch]"))return startSketch("");
   if(e.target.closest("[data-newinc]")){
     const inc=newIncident(); curInc=inc.id; view="incident"; render(); incidentSheet(inc); return}
   const ib=e.target.closest("[data-inc]");
@@ -4421,13 +4411,10 @@ document.addEventListener("click",e=>{
   const dtb=e.target.closest("[data-doc]");
   if(dtb){const [k,id]=dtb.dataset.doc.split(":");
     if(k==="fill"){curFill=id;view="fill"} else {curSketch=id;selObj=null;view="sketch"}
-    if(!here(view))return crossTo(view,id);
     window.scrollTo&&window.scrollTo(0,0); return render()}
   if(e.target.closest("#newsketch"))return startSketch(curInc||"");
   const sko=e.target.closest("[data-sk]");
-  if(sko){const id=sko.dataset.sk;
-    if(!here("sketch"))return crossTo("sketch",id);
-    curSketch=id;selObj=null;view="sketch";window.scrollTo&&window.scrollTo(0,0);return render()}
+  if(sko){curSketch=sko.dataset.sk;selObj=null;view="sketch";window.scrollTo&&window.scrollTo(0,0);return render()}
   if(e.target.closest("#addform"))return formSheet(null);
   if(e.target.closest("#fmfill")){
     const f=curForm; if(!f)return;
@@ -4690,7 +4677,7 @@ document.addEventListener("keydown",e=>{
   const typing=/^(INPUT|TEXTAREA|SELECT)$/.test((e.target||{}).tagName||"");
   if(e.key==="Escape"){
     if($("#sheet")&&$("#sheet").classList.contains("on"))return closeSheet();
-    if(query){$("#q").value="";query="";applyQuery();return}
+    if(query){const qel=$("#q"); if(qel)qel.value=""; query="";applyQuery();return}
     return}
   if(typing)return;
   if(e.key==="Enter"&&$("#sheet")&&$("#sheet").classList.contains("on")){
@@ -5042,20 +5029,22 @@ function renderLabels(){
     .catch(()=>toast("The QR maker needs a connection the first time. The labels print without codes until then."));
 }
 function openTarget(kind,val,mode){
+  // this can fire from a hand-typed or bookmarked address on either page (handleHash runs on
+  // load and on hashchange, unconditionally), not only from the van's own scan button — so
+  // every kind checks it is on the page that can actually show it, rather than blanking the
+  // screen the way a stuck `view` with nothing to draw into would
+  if(kind==="c"||kind==="i"){
+    if(!here(kind==="c"?"compdetail":"itemdetail"))return toast("That is a van code — open it in the FSU app");
+  }
   if(kind==="c"){ if(!S.comps.some(c=>c.code===val))return toast("No compartment "+val+" is logged");
     logAct("scan","Opened "+val+" from a label");
     if(mode==="sweep"){S.curLoc=val;S.pick=false;save();renderSweep();const f=$("#q-name")||$("#f-name");if(f)f.focus();return}
-    if(!here("compdetail"))return crossTo("compdetail",val);
     curComp=val; prevView="compartments"; view="compdetail"; window.scrollTo(0,0); render(); return }
   if(kind==="i"){ if(!S.items.some(i=>i.id===val))return toast("That item is no longer logged");
-    if(!here("itemdetail"))return crossTo("itemdetail",val);
     curItem=val; prevView="inventory"; view="itemdetail"; window.scrollTo(0,0); render(); return }
-  if(kind==="s"){ if(!(S.sketches||[]).some(s=>s.id===val))return toast("That sketch is not on this device");
-    if(!here("sketch"))return crossTo("sketch",val);
-    curSketch=val; view="sketch"; render(); return }
-  if(kind==="inc"){ if(!incidents().some(i=>i.id===val))return toast("That incident is not on this device");
-    if(!here("incident"))return crossTo("incident",val);
-    curInc=val; view="incident"; render() }
+  // sketches and incidents are never printed as labels here; this exists only in case a foreign
+  // code is scanned. It cannot open in this app, and this app never opens the other one.
+  if(kind==="s"||kind==="inc")return toast("That is a Scenes code — open it in the Scenes app");
 }
 function openScanned(text,mode){
   const s=String(text||""); const m=s.match(/#(c|i|s|inc)=([^&]+)/)||s.match(/^fsu:(c|i|s|inc):(.+)$/);
@@ -5447,17 +5436,27 @@ function svcSheet(i){
 /* ---- help and about ---- */
 function helpSheet(){
   const sec=(t,b)=>`<div class="idsect">${t}</div><p class="helpp">${b}</p>`;
-  openSheet(`<h3>How to use FSU</h3>
-    <p class="hint" style="margin:0 0 6px">Version ${esc(APP_VERSION)}. Two pages, top to bottom.</p>
-    ${sec("At a scene","Start an incident on Home. It keeps the entry log, evidence log, photo log, sketch and report together. Quick sketch is for when there is no case number yet; it offers to become an incident once there is.")}
-    ${sec("The sketch","Setup › Set the scale, or draw walls by dimension and the scale sets itself. Place two reference points. Draw › Marker mode numbers evidence as you tap; markers write themselves into the evidence log, photo points into the photo log. Place by measurement moves an item to where two tape distances meet. Pinch to zoom. Freehand with the Pencil for the rough sketch.")}
-    ${sec("Forms and the report","Fields fill from the incident. On any narrative field, Insert wording drops in the unit's standard sentences; edit them under Settings › Report wording. Export gives a PDF, and Export Word gives a document a supervisor can edit.")}
-    ${sec("Finishing","Export gives one PDF; the incident bundle gives everything in one packet. A case package carries the sketches, forms and photographs to the case file. Case material never leaves the device any other way.")}
-    ${sec("The sweep","Storage › a bay, or Home › Sweep. Work through the compartments in order: log what is there, tap Swept, next. Regulated stock is counted before a compartment can be marked. Scan a label to jump to a compartment.")}
-    ${sec("Items and reorder","Items shows every item with a count you can tap. Count the stock walks every compartment. Anything short goes on the reorder list; mark it Ordered when it has gone in and Received when it arrives, and send the list with part numbers to whoever orders.")}
-    ${sec("The van itself","Vehicle check on Storage or Home: pass or fail each line, weekly. Failures go to Next actions. Write a handover when the van changes hands; the note appears on Home for the next officer.")}
-    ${sec("The guide","Every item can carry its instructions and a source. Verify walks the unverified ones with a date and your initials. Durable kit carries a service date and a certificate link.")}
-    ${sec("Settings","Back up the van data, connect automatic saving, set your initials, print labels, and read the activity log and any errors. Add the app to the home screen so it opens full screen and works without a connection.")}
+  // FSU (the van) and Scenes are two apps; each explains only what it does
+  const vanSecs=[
+    sec("The sweep","Storage › a bay, or Home › Sweep. Work through the compartments in order: log what is there, tap Swept, next. Regulated stock is counted before a compartment can be marked. Scan a label to jump to a compartment."),
+    sec("Items and reorder","Items shows every item with a count you can tap. Count the stock walks every compartment. Anything short goes on the reorder list; mark it Ordered when it has gone in and Received when it arrives, and send the list with part numbers to whoever orders."),
+    sec("The van itself","Vehicle check on Storage or Home: pass or fail each line, weekly. Failures go to Next actions. Write a handover when the van changes hands; the note appears on Home for the next officer."),
+    sec("The guide","Every item can carry its instructions and a source. Verify walks the unverified ones with a date and your initials. Durable kit carries a service date and a certificate link."),
+    sec("Settings","Back up the van data, connect automatic saving, set your initials, print labels, and read the activity log and any errors. Add the app to the home screen so it opens full screen and works without a connection."),
+  ].join("");
+  const sceneSecs=[
+    sec("At a scene","Start an incident from Scenes. It keeps the entry log, evidence log, photo log, sketch and report together. Quick sketch is for when there is no case number yet; it offers to become an incident once there is."),
+    sec("The sketch","Setup › Set the scale, or draw walls by dimension and the scale sets itself. Place two reference points. Draw › Marker mode numbers evidence as you tap; markers write themselves into the evidence log, photo points into the photo log. Place by measurement moves an item to where two tape distances meet. Pinch to zoom. Freehand with the Pencil for the rough sketch."),
+    sec("Forms and the report","Fields fill from the incident. On any narrative field, Insert wording drops in the unit's standard sentences; edit them under Settings › Report wording. Export gives a PDF, and Export Word gives a document a supervisor can edit."),
+    sec("Finishing","Export gives one PDF; the incident bundle gives everything in one packet. A case package carries the sketches, forms and photographs to the case file. Case material never leaves the device any other way."),
+    sec("Settings","Connect automatic saving, set your initials, and read the activity log and any errors. Add the app to the home screen so it opens full screen and works without a connection."),
+  ].join("");
+  const title=PAGE==="van"?"How to use FSU":"How to use Scenes";
+  const blurb=PAGE==="van"?"Van inventory and upkeep. Scene work is in the separate Scenes app."
+    :"Incidents, forms and the sketch. Van inventory is in the separate FSU app.";
+  openSheet(`<h3>${title}</h3>
+    <p class="hint" style="margin:0 0 6px">Version ${esc(APP_VERSION)}. ${blurb}</p>
+    ${PAGE==="van"?vanSecs:sceneSecs}
     <div class="idsect">Change log</div>
     ${CHANGELOG.map(([d,t])=>`<p class="helpp"><b>${esc(d)}</b> ${esc(t)}</p>`).join("")}
     <button class="btn sec" id="hlx" style="max-width:none;margin:12px 0 0">Close</button>`);

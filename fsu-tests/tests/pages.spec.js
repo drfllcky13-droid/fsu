@@ -1,8 +1,9 @@
-// Two pages, one record. The app used to be one file; it is now the van (index.html) and the
-// scene (scenes.html), and every route between them goes through the address bar. These press
-// the crossings the way a user does and check where they land, that a reload holds, that a
-// stale or nonsense address cannot blank the screen, that the two pages do not clobber each
-// other's record, and that nothing was orphaned by the split.
+// Two independent apps, one record. FSU (index.html) is the van; Scenes (scenes.html) is the
+// scene. Neither has a way into the other's screens — no shared tab bar, no button that jumps
+// pages — but they are the same origin, so they read and write the same storage. These check
+// that neither app offers a route into the other, that a reload holds your place within a
+// page, that a stale or nonsense address cannot blank the screen, that the two pages do not
+// fight over the record, and that nothing was orphaned by the split.
 const {test,expect}=require("@playwright/test");
 const fs=require("fs"), path=require("path");
 const root=f=>fs.readFileSync(path.join(__dirname,"..","..",f),"utf8");
@@ -37,56 +38,57 @@ async function seed(page){
   });
 }
 
-/* ---------- 1. the crossings ---------- */
+/* ---------- 1. FSU and Scenes do not open one another ---------- */
 
-test("Quick sketch on the van opens a new sketch on the scene",async({page})=>{
-  const errs=[]; page.on("pageerror",e=>errs.push(e.message));
+test("the van offers no route into Scenes",async({page})=>{
   await open(page,VAN);
-  await page.click("[data-quicksketch]");
-  await page.waitForFunction(()=>location.pathname.endsWith("scenes.html")&&typeof render==="function");
-  await page.waitForFunction(()=>view==="sketch");
-  const w=await where(page);
-  expect(w.file).toBe("scenes.html");
-  expect(w.on).toEqual(["v-sketch"]);
-  expect(w.body,"the sketch view came up blank").toBeGreaterThan(0);
-  const made=await page.evaluate(()=>({n:(S.sketches||[]).length, open:!!S.sketches.find(s=>s.id===curSketch)}));
-  expect(made).toEqual({n:1,open:true});
-  expect(w.hash,"the new sketch is not in the address, so a reload loses it").toContain("ref="+w.curSketch);
-  expect(errs).toEqual([]);
+  // no button anywhere on the van starts a scene or crosses to the scene page
+  expect(await page.locator("[data-quicksketch]").count()).toBe(0);
+  expect(await page.locator('#side button[data-v="active"]').count()).toBe(0);
+  expect(await page.evaluate(()=>document.getElementById("v-active"))).toBeNull();
+  expect(await page.evaluate(()=>document.getElementById("v-incident"))).toBeNull();
+  expect(await page.evaluate(()=>document.getElementById("v-sketch"))).toBeNull();
+  // and the shared function behind Quick sketch is a same-page no-op here, not a jump
+  const r=await page.evaluate(()=>{startSketch(""); return {file:location.pathname.split("/").pop(), n:(S.sketches||[]).length}});
+  expect(r).toEqual({file:"index.html",n:0});
 });
 
-test("the Scenes tab on the van lands on the incident list",async({page})=>{
-  await open(page,VAN);
-  await page.click('#side button[data-v="active"]');
-  await page.waitForFunction(()=>location.pathname.endsWith("scenes.html")&&typeof render==="function");
-  const w=await where(page);
-  expect([w.file,w.view,w.on.join()]).toEqual(["scenes.html","active","v-active"]);
-  expect(w.body).toBeGreaterThan(0);
+test("the scene offers no route into FSU",async({page})=>{
+  await open(page,SCENES);
+  for(const v of ["home","compartments","inventory","guide"])
+    expect(await page.locator(`#side button[data-v="${v}"]`).count(),v+" tab is on the scene page").toBe(0);
+  for(const id of ["v-home","v-compartments","v-inventory","v-guide"])
+    expect(await page.evaluate(i=>document.getElementById(i),id)).toBeNull();
+  const tabs=await page.evaluate(()=>[...document.querySelectorAll("#side button span.lbl")].map(b=>b.textContent.trim()));
+  expect(tabs).toEqual(["Scenes","Settings"]);
 });
 
-for(const [v,label] of [["home","Home"],["compartments","Storage"],["inventory","Items"],["guide","Guide"]]){
-  test(`${label} on the scene lands on the van's ${v}`,async({page})=>{
+for(const v of ["home","compartments","inventory","guide"]){
+  test(`asking the scene page to go("${v}") does nothing`,async({page})=>{
     await open(page,SCENES);
-    await page.click(`#side button[data-v="${v}"]`);
-    await page.waitForFunction(()=>location.pathname.endsWith("index.html")&&typeof render==="function");
-    const w=await where(page);
-    expect([w.file,w.view,w.on.join()]).toEqual(["index.html",v,"v-"+v]);
-    expect(w.body).toBeGreaterThan(0);
+    const before=await where(page);
+    await page.evaluate(v=>{if(typeof go==="function")go(v)},v);
+    const after=await where(page);
+    expect([after.file,after.view]).toEqual([before.file,before.view]);
   });
 }
 
-test("Settings is reached from either page and is the van's own",async({page})=>{
-  await open(page,SCENES);
+test("each app's Settings is its own screen with its own content",async({page})=>{
+  await open(page,VAN);
   await page.click("#side .sset");
-  await page.waitForFunction(()=>location.pathname.endsWith("index.html")&&typeof render==="function");
   let w=await where(page);
   expect([w.file,w.view,w.on.join()]).toEqual(["index.html","data","v-data"]);
-  expect(w.body).toBeGreaterThan(0);
-  // from the van it is the same view without leaving the page
-  await page.click('#side button[data-v="home"]');
+  const vanGroups=await page.evaluate(()=>[...document.querySelectorAll("#v-data .ph2")].map(e=>e.textContent));
+  expect(vanGroups).toContain("Van data");
+  expect(vanGroups).not.toContain("Scenes");
+
+  await open(page,SCENES);
   await page.click("#side .sset");
   w=await where(page);
-  expect([w.file,w.view,w.on.join()]).toEqual(["index.html","data","v-data"]);
+  expect([w.file,w.view,w.on.join()]).toEqual(["scenes.html","data","v-data"]);
+  const sceneGroups=await page.evaluate(()=>[...document.querySelectorAll("#v-data .ph2")].map(e=>e.textContent));
+  expect(sceneGroups).toContain("Scenes");
+  expect(sceneGroups).not.toContain("Van data");
 });
 
 test("an incident's sketch row opens that sketch, and its form row that form",async({page})=>{
@@ -141,27 +143,26 @@ test("the incident's Export bundle is on the page that can build it",async({page
 
 /* ---------- 2. a reload holds ---------- */
 
-test("a reload stays on the record the crossing landed on",async({page})=>{
-  await open(page,VAN);
-  await page.click("[data-quicksketch]");
-  await page.waitForFunction(()=>location.pathname.endsWith("scenes.html")&&typeof render==="function");
-  await page.waitForFunction(()=>view==="sketch");
-  const before=await where(page);
+test("a new sketch survives a reload, on the scene page that made it",async({page})=>{
+  await open(page,SCENES);
+  const errs=[]; page.on("pageerror",e=>errs.push(e.message));
+  const before=await page.evaluate(()=>{startSketch(""); return {n:(S.sketches||[]).length, id:curSketch}});
+  expect(before.n).toBe(1);
   await page.reload();
   await page.waitForFunction(()=>typeof render==="function");
   const after=await where(page);
   expect([after.file,after.view,after.on.join()]).toEqual(["scenes.html","sketch","v-sketch"]);
-  expect(after.curSketch,"the reload opened a different sketch").toBe(before.curSketch);
+  expect(after.curSketch,"the reload opened a different sketch").toBe(before.id);
   expect(after.body).toBeGreaterThan(0);
   expect(await page.evaluate(()=>(S.sketches||[]).length),"the reload made a second sketch").toBe(1);
+  expect(errs).toEqual([]);
 });
 
-test("moving around a page keeps the address honest, so a reload does not jump back",async({page})=>{
-  await open(page,VAN);
+test("walking into an incident keeps the address honest, so a reload does not jump back",async({page})=>{
+  await open(page,SCENES);
   const ids=await seed(page);
-  await page.click('#side button[data-v="active"]');
-  await page.waitForFunction(()=>location.pathname.endsWith("scenes.html")&&typeof render==="function");
-  // arrived at the incident list; now walk one step in, the way a user does
+  await page.evaluate(()=>render());   // the incident list on screen was drawn before seeding it
+  // arrived at the incident list already (Scenes' own Home); walk one step in
   await page.click(`[data-inc="${ids.inc}"]`);
   const w=await where(page);
   expect([w.view,w.curInc]).toEqual(["incident",ids.inc]);
@@ -171,6 +172,16 @@ test("moving around a page keeps the address honest, so a reload does not jump b
   expect([after.view,after.curInc],
     "the address still said #v=active, so the reload threw away the incident that was open")
     .toEqual(["incident",ids.inc]);
+});
+
+test("a reload keeps the van on the view it was showing",async({page})=>{
+  await open(page,VAN);
+  await page.click('#side button[data-v="compartments"]');
+  await page.waitForFunction(()=>view==="compartments");
+  await page.reload();
+  await page.waitForFunction(()=>typeof render==="function");
+  const after=await where(page);
+  expect([after.file,after.view]).toEqual(["index.html","compartments"]);
 });
 
 /* ---------- 3. a stale or nonsense address ---------- */
@@ -218,6 +229,29 @@ test("a ref for the wrong kind of record does not open someone else's",async({pa
   expect(w.body,"the sketch view was left empty because that id is an incident").toBeGreaterThan(0);
 });
 
+// The older #c=/#i=/#s=/#inc= scheme (QR labels, the in-app scanner) is shared code that runs
+// unconditionally on either page's load. A printed label always encodes the van's own address,
+// so in practice it only ever lands on the van — but a hand-typed or bookmarked address could
+// put any of these on the wrong page, and that must not blank the screen either.
+const FOREIGN=[
+  [SCENES,"#c=1A1","a compartment code opened on the scene"],
+  [SCENES,"#i=some-item-id","an item id opened on the scene"],
+  [VAN,"#inc=some-incident-id","an incident id opened on the van"],
+];
+for(const [url,hash,what] of FOREIGN){
+  test(`${what} does not blank the page`,async({page})=>{
+    const errs=[]; page.on("pageerror",e=>errs.push(e.message));
+    await open(page,url);   // load once first, so the record it will look for is the real one
+    await page.goto(url+hash);
+    await page.waitForFunction(()=>typeof render==="function");
+    await page.waitForTimeout(150);   // handleHash fires 80ms after load
+    const w=await where(page);
+    expect(errs).toEqual([]);
+    expect(w.on.length,"no view is showing at all").toBeGreaterThan(0);
+    expect(w.body,"the view that is showing was never drawn into").toBeGreaterThan(0);
+  });
+}
+
 /* ---------- 4. the two pages do not fight over the record ---------- */
 
 test("a save on one page shows on the other without a reload",async({context})=>{
@@ -252,9 +286,11 @@ const SRC=fs.readdirSync(path.join(__dirname,"..","..","src"))
   .map(f=>[f,fs.readFileSync(path.join(__dirname,"..","..","src",f),"utf8")]);
 const sections=html=>[...html.matchAll(/id="v-([a-z]+)"/g)].map(m=>m[1]);
 
-test("every view exists on exactly one page, and pages.js agrees",async()=>{
+test("every view exists on exactly one page, or is deliberately on both",async()=>{
   const van=sections(root("index.html")), scenes=sections(root("scenes.html"));
-  expect(van.filter(v=>scenes.includes(v)),"a view is built into both pages").toEqual([]);
+  // Settings is the one screen both apps carry, each with its own content; nothing else should be
+  const shared=van.filter(v=>scenes.includes(v));
+  expect(shared,"a view is built into both pages without meaning to be").toEqual(["data"]);
   const listed=[...root("src/pages.js").matchAll(/"([a-z]+)"/g)].map(m=>m[1]);
   for(const v of [...van,...scenes])
     expect(listed,`#v-${v} is on a page but pages.js never routes to it`).toContain(v);

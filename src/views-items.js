@@ -448,28 +448,31 @@ function settingsMenu(){
   const inst=isStandalone()?"installed":"not on the home screen";
   const nErr=(S.errors||[]).length, nAct=(S.activity||[]).length;
   const lastAct=nAct?S.activity[nAct-1]:null;
-  return `<div class="hhead"><b>${esc(S.vanName||"Forensic Services Unit")}</b><span>Version ${esc(APP_VERSION)}</span>
+  // Automatic saving covers the whole shared record and keeps working in the background on
+  // whichever page enabled it, but the switch itself, the backup file and Reset are van-domain,
+  // so they only appear in FSU's Settings; Scenes gets its own case/forms group instead.
+  return `<div class="hhead"><b>${PAGE==="van"?esc(S.vanName||"Forensic Services Unit"):"Scenes"}</b><span>Version ${esc(APP_VERSION)}</span>
       <span>${S.who?"Signed in as "+esc(S.who):"No initials set"}</span></div>
     <div class="setgroups">
     ${group("You",[sec("who","Initials and name",whoTxt,S.who?"":"warn")])}
-    ${group("Van data",[
+    ${PAGE==="van"?group("Van data",[
       sec("sync","Automatic saving",syncTxt,syncCls),
       sec("backup","Back up",bkTxt,L.length&&stale?"warn":""),
-      sec("restore","Restore or import","From a backup file or CSV")])}
-    ${group("Scenes",[
+      sec("restore","Restore or import","From a backup file or CSV")]):""}
+    ${PAGE==="scenes"?group("Scenes",[
       sec("case","Case packages",S.lastCase?"Last "+esc(S.lastCase.slice(0,10)):"None saved yet"),
       row('data-go="templates"',"Form templates",S.forms.length+" blank form"+(S.forms.length===1?"":"s")),
-      row('data-snipmanage="1"',"Report wording","Standard sentences for reports")])}
+      row('data-snipmanage="1"',"Report wording","Standard sentences for reports")]):""}
     ${group("This device",[
       row('id="modebtn"',"Display",themeTxt+", "+modeTxt+(landscapeOnly()?", landscape only":"")),
-      sec("labels","Labels and web address",appUrl()?esc(appUrl().replace(/^https?:\/\//,"")):"No web address"),
+      PAGE==="van"?sec("labels","Labels and web address",appUrl()?esc(appUrl().replace(/^https?:\/\//,"")):"No web address"):"",
       sec("device","Storage and install",stor+", "+inst,storageState.asked&&!storageState.persisted?"warn":""),
       sec("activity","Activity",lastAct?"Last "+esc(String(lastAct.t||"").slice(0,10)):"Nothing yet"),
-      sec("errors","Recent errors",nErr?nErr+" recorded":"None",nErr?"warn":"")])}
+      sec("errors","Recent errors",nErr?nErr+" recorded":"None",nErr?"warn":"")].filter(Boolean))}
     ${group("About",[row('data-help="1"',"Help and change log","How to use it, what changed")])}
-    ${group("Reset",[
+    ${PAGE==="van"?group("Reset",[
       S.demo?sec("reset","Clear sample data","Sample compartments and items"):"",
-      sec("reset","Erase everything","Every item and compartment","danger")].filter(Boolean))}
+      sec("reset","Erase everything","Every item and compartment","danger")].filter(Boolean)):""}
     </div>`;
 }
 function settingsSection(k){
@@ -586,7 +589,7 @@ function settingsSection(k){
     <div class="setsec"><div class="idsect" style="margin-top:0">${esc(SET_TITLES[k]||"Settings")}</div>${body}</div>`;
 }
 function renderData(){
-  if(!document.getElementById("v-data"))return;   // that view is on the other page
+  if(!document.getElementById("v-data"))return;   // defensive: Settings is on both pages
   $("#title").textContent="Settings";
   if(conflict||tokenBad||badFile)SET_SEC="sync";
   if(SET_SEC&&!SET_TITLES[SET_SEC])SET_SEC=null;

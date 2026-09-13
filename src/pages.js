@@ -1,26 +1,20 @@
 /* ---------- two apps, one record ----------
-   The van and the scene are two jobs. Each is its own page with its own home-screen icon, and
-   because they are the same site they are the same storage: one record, no copies, no sync
-   between them. A view that lives on the other page is reached by going there, and the address
-   carries which view, so Back and a reload land where you were.
+   FSU (the van) and Scenes (the scene) are two independent apps: separate icons, separate
+   pages, and no link from inside one into the other. What they share is the origin, so they
+   share localStorage — one record, nothing copied, nothing to sync between them. A save made
+   in one is picked up by the other the next time it loads (see the storage listener in
+   core.js), but neither can navigate into the other's screens.
 
    PAGE is set by the page's own file (van.js or scenes.js) before this runs. ---------- */
 const VIEWS={
   van:["home","compartments","bay","compdetail","inventory","itemdetail","sweep","guide",
        "reorder","tidy","print","labels","search","data"],
-  scenes:["active","incident","fill","sketch","templates","forms"],
+  scenes:["active","incident","fill","sketch","templates","forms","data"],
 };
-const PAGEFILE={van:"index.html",scenes:"scenes.html"};
 const here=v=>VIEWS[PAGE].includes(v);
-const pageOf=v=>VIEWS.van.includes(v)?"van":VIEWS.scenes.includes(v)?"scenes":PAGE;
 
-/* what has to travel with a view, so the other page opens on the right record */
-function crossTo(v,ref){
-  const p=pageOf(v);
-  const q=ref?"&ref="+encodeURIComponent(ref):"";
-  location.href=PAGEFILE[p]+"#v="+encodeURIComponent(v)+q;
-}
-/* what each view is about, so an address can carry it and be checked on the way back in */
+/* what each view is about, so a direct link to this page (a home-screen shortcut, a bookmark)
+   can open the right record instead of just the view */
 const REFOF={incident:()=>curInc,sketch:()=>curSketch,fill:()=>curFill,
   itemdetail:()=>curItem,compdetail:()=>curComp,bay:()=>curBay};
 /* a ref has to name a record of the right kind: an incident id is not a sketch */
@@ -34,14 +28,15 @@ const refFits=(v,ref)=>{
   if(v==="compdetail"||v==="bay")return has("comps","code")||(v==="bay"&&/^[0-9]$/.test(String(ref)));
   return false;
 };
-/* keep the address in step with where you are, so a reload and Back both land here */
+/* keep the address in step with where you are, so a reload and Back both land here. This
+   never points at the other page — it only ever rewrites this page's own hash. */
 function keepAddress(){
-  if(typeof history==="undefined"||!history.replaceState)return;
+  if(!here(view)||typeof history==="undefined"||!history.replaceState)return;
   const ref=REFOF[view]?REFOF[view]():null;
   const want="#v="+encodeURIComponent(view)+(ref?"&ref="+encodeURIComponent(ref):"");
   if(location.hash!==want){try{history.replaceState(null,"",want)}catch(_){}}
 }
-/* opened as #v=<view>&ref=<id>: the id is the incident, sketch, item or compartment it is about */
+/* opened as #v=<view>&ref=<id>: a direct link into this page, never a hop from the other one */
 function openFromHash(){
   const h=String(location.hash||"").replace(/^#/,"");
   if(!h)return false;
@@ -65,10 +60,9 @@ function openFromHash(){
   view=v;
   return true;
 }
-/* a new sketch, started from either page */
+/* a new sketch. Only ever called from inside the Scenes app, where "sketch" always lives. */
 function startSketch(incId){
-  // only the page that draws can make one; the other page asks it to
-  if(!here("sketch"))return crossTo("sketch","new"+(incId?":"+incId:""));
+  if(!here("sketch"))return;   // structurally unreachable from the van; no-op rather than a jump
   const sk=newSketch();
   if(incId){const inc=incidentOf(incId);
     if(inc)Object.assign(sk,{incidentId:inc.id,caseNo:inc.caseNo,offence:inc.offence,addr:inc.addr})}

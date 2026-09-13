@@ -6,17 +6,21 @@ function buildTabs(){
   $("#tabs").innerHTML=TABS.map(([v,l0])=>{const l=SHORT[v]||l0;
     return `<button data-v="${v}" aria-current="${v===view}">${ic(v)}${
       v==="active"&&nOpen?`<i class="tdot">${nOpen}</i>`:""}<span>${l}</span></button>`}).join("");
-  const L=live();
-  const att=L.filter(i=>isOut(i)||isLow(i)||isExpired(i)||isExpiring(i)||isService(i)).length;
-  const unchk=comps().filter(c=>compState(c.code).k==="unchecked").length;
-  const scene=(S.fills||[]).length+(S.sketches||[]).length;
-  const count={home:att?{n:att,hot:true}:null,
-    compartments:unchk?{n:unchk,hot:false}:null,
-    inventory:L.length?{n:L.length,hot:false}:null,
-    active:nOpen?{n:nOpen,hot:true}:null,
-    forms:scene?{n:scene,hot:false}:null,guide:null};
-  $("#side").innerHTML=`<button class="sidetog" data-sidetog="1" aria-label="${S.sideMin?"Expand the side bar":"Collapse the side bar"}" title="${S.sideMin?"Expand":"Collapse"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${S.sideMin?"M9 6l6 6-6 6":"M15 6l-6 6 6 6"}"/></svg></button><div class="ident"><div class="idot">F</div>
-      <div><div class="in1">FSU</div><div class="in2">${esc(S.vanName||"Forensic Services Unit")}</div></div></div>`
+  const count={};
+  if(PAGE==="van"){
+    const L=live();
+    const att=L.filter(i=>isOut(i)||isLow(i)||isExpired(i)||isExpiring(i)||isService(i)).length;
+    const unchk=comps().filter(c=>compState(c.code).k==="unchecked").length;
+    Object.assign(count,{home:att?{n:att,hot:true}:null,
+      compartments:unchk?{n:unchk,hot:false}:null,
+      inventory:L.length?{n:L.length,hot:false}:null,guide:null});
+  }else{
+    count.active=nOpen?{n:nOpen,hot:true}:null;
+  }
+  const idot=PAGE==="van"?"F":"S", iname=PAGE==="van"?"FSU":"Scenes",
+    isub=PAGE==="van"?esc(S.vanName||"Forensic Services Unit"):"Incidents, forms and the sketch";
+  $("#side").innerHTML=`<button class="sidetog" data-sidetog="1" aria-label="${S.sideMin?"Expand the side bar":"Collapse the side bar"}" title="${S.sideMin?"Expand":"Collapse"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${S.sideMin?"M9 6l6 6-6 6":"M15 6l-6 6 6 6"}"/></svg></button><div class="ident"><div class="idot">${idot}</div>
+      <div><div class="in1">${iname}</div><div class="in2">${isub}</div></div></div>`
     +TABS.map(([v,l])=>{
     const c=count[v];
     return `<button data-v="${v}" aria-current="${v===view}">${ic(v)}<span class="lbl">${esc(l)}</span>
@@ -31,11 +35,13 @@ function restoreScroll(v){
   put(); if(typeof requestAnimationFrame==="function")requestAnimationFrame(put);
 }
 function go(v){
-  if(!here(v))return crossTo(v);      // that view lives on the other page
+  if(!here(v))return;      // the two apps do not open one another's screens
   rememberScroll();
   // moving by tab or back button is not a drill-down, so forget where we came from
   prevView=null;
-  view=v;query="";$("#q").value="";$("#qclear").style.display="none";
+  view=v;query="";
+  const qel=$("#q"); if(qel)qel.value="";
+  const qc=$("#qclear"); if(qc)qc.style.display="none";
   $$(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));
   render();restoreScroll(v)}
 document.addEventListener("click",e=>{const b=e.target.closest("#tabs button,#side button");if(b&&b.dataset.v)go(b.dataset.v)});
@@ -57,12 +63,16 @@ document.addEventListener("input",e=>{
 });
 let searchFrom="home";
 function applyQuery(){
-  $("#qclear").style.display=query?"":"none";
+  const qc=$("#qclear"); if(qc)qc.style.display=query?"":"none";
   if(query){ if(view!=="search"){searchFrom=view;view="search"} }
   else if(view==="search"){ view=searchFrom||"home" }
   $$(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+view));
   window.scrollTo&&window.scrollTo(0,0);render();
 }
-$("#q").addEventListener("input",e=>{query=e.target.value.trim();applyQuery()});
-$("#qclear").onclick=()=>{$("#q").value="";query="";applyQuery()};
+// the search box is a van feature: it looks through items, compartments and the guide, which
+// Scenes has none of, so Scenes' page carries no #q at all
+if($("#q")){
+  $("#q").addEventListener("input",e=>{query=e.target.value.trim();applyQuery()});
+  $("#qclear").onclick=()=>{$("#q").value="";query="";applyQuery()};
+}
 

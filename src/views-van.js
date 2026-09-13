@@ -14,9 +14,8 @@ function renderHome(){
   const unchk=cs.filter(c=>compState(c.code).k==="unchecked").length, checked=cs.length-unchk;
   const need=L.filter(i=>isOut(i)||isExpired(i)||isLow(i)||isService(i)||isExpiring(i))
     .sort((a,b)=>{const r=x=>isOut(x)||isExpired(x)?0:1;return r(a)-r(b)||a.name.localeCompare(b.name)});
-  const open_=openIncidents(), loose=openDocs(), pend=unsent(), td=tokenDays();
+  const td=tokenDays();
   const lastMark=cs.map(c=>c.checked).filter(Boolean).sort().pop();
-  const changed=(S.sketches||[]).filter(s=>s.updated&&(!s.packaged||s.packaged<s.updated)).length;
 
   // where am I
   const dateTxt=new Date().toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"});
@@ -36,25 +35,9 @@ function renderHome(){
     ${tile(gp.length?"t-dark":"t-calm","Gaps",gp.length?String(gp.length):"None",gp.length?"not in the van, to decide":"nothing outstanding",'data-list="gaps"')}
   </div>`;
 
-  // what do I do at a scene
-  const scenes=`<div class="panel scenepanel"><div class="ph2">Scenes</div><div class="pb">
-    <div class="two"><button class="btn" data-newinc="1" style="max-width:none;margin:0">Start an incident</button>
-      <button class="btn sec" data-quicksketch="1" style="max-width:none;margin:0">Quick sketch</button></div>
-    ${open_.length?`<div class="narrowlist" style="margin-top:6px">`+open_.map(inc=>{
-        const plan=(inc.plan||[]).map(k=>planState(inc,k)).filter(Boolean);
-        const done=plan.filter(p=>p.state==="done").length;
-        return `<button class="nrow" data-inc="${inc.id}"><span class="nn">${esc(inc.caseNo||"No case number")}</span>
-          <span class="nm2"><span class="lc">${esc(inc.offence||"\u2014")}${inc.addr?" \u00b7 "+esc(inc.addr):""}</span>
-          <span class="badge b-${done===plan.length?"good":"attn"}">${done} of ${plan.length}</span></span></button>`}).join("")+`</div>`
-      :`<p class="hint" style="margin:10px 0 0">Nothing open. Start an incident and its entry log, evidence log, sketch and report stay together.</p>`}
-    ${loose.length?`<button class="act" data-go="active"><span>${loose.length} document${loose.length===1?"":"s"} not filed to an incident</span><span class="chev">&#8250;</span></button>`:""}
-  </div></div>`;
-
   // what needs doing
   const rows=[];
   if(ghOn()&&td!=null&&td<=30)rows.push(["warn",td<0?"Automatic saving has stopped, the token has expired":"Sync token expires in "+td+" day"+(td===1?"":"s"),'data-gosec="sync"',""]);
-  if(pend.length)rows.push(["warn",pend.length+" scene document"+(pend.length===1?"":"s")+" not exported yet",'data-go="active"',""]);
-  if(changed)rows.push(["",changed+" sketch"+(changed===1?"":"es")+" changed since the last case package",'data-caseall="1"',"Save"]);
   if(bad.length)rows.push(["","Review "+bad.length+" low or out",'data-list="low"',""]);
   if(soon.length)rows.push(["","Check "+soon.length+" expiring or due for service",'data-list="expiring"',""]);
   if(gp.length)rows.push(["","Decide on "+gp.length+" gap"+(gp.length===1?"":"s"),'data-list="gaps"',""]);
@@ -87,7 +70,7 @@ function renderHome(){
       <p class="hint" style="margin:8px 0 0">Star an item and it appears here.</p></div></div>`:"";
 
   $("#v-home").innerHTML=head+tiles+`<div class="dash2">
-    <div class="col">${scenes}${todo}${handoverPanel()}${attention}</div>
+    <div class="col">${todo}${handoverPanel()}${attention}</div>
     <div class="col">${unitPanel()}${quick}</div></div>`;
   $$("#v-home [data-gosec]").forEach(b=>b.onclick=()=>openSettings(b.dataset.gosec));
 }

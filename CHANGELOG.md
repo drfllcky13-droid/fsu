@@ -1,5 +1,17 @@
 # FSU change log
 
+## 2026.09.12.7
+FSU and Scenes are now genuinely separate apps, not two pages that happened to share a tab bar.
+The van no longer has a Scenes tab, and Home no longer offers Start an incident or Quick sketch —
+that work happens in the Scenes app. Scenes no longer has Home, Storage, Guide or Items — those
+are the van's. Each has its own Settings: FSU's covers automatic saving, backup and labels;
+Scenes' covers case packages, form templates and report wording. Each has its own Help.
+
+They still share one set of records — a sweep logged on one shows up on the other, and nothing
+has to be sent between them — but there is no button, tab or link from inside one into the other
+any more. Switching means going back to the home screen and tapping the other icon, the way any
+two separate apps work.
+
 ## 2026.09.12.6
 The van and the scene are now two icons on the home screen. **FSU** is the van: Home, Storage,
 Items, the sweep, the guide, the printed map and labels, restocking and Settings. **Scenes** is

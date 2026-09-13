@@ -17,15 +17,15 @@ It is two pages, and you can put both on the home screen:
 - **Scenes** (`.../fsu/scenes.html`) is the scene: the incident list, an incident and the
   documents it needs, filling a form in, form templates and the sketch.
 
-They are the same app and the same records, not two copies. A sweep logged on one shows up on the
-other, and nothing has to be sent between them. The tabs down the side are the same on both, so
-tapping Scenes from the van, or Home from a scene, just goes to the other page; you do not have to
-know which one you are on.
+They are the same records, not two copies — a sweep logged on one shows up on the other, and
+nothing has to be sent between them — but they are genuinely separate apps. Neither has a button,
+a tab or a link into the other; there is no "Scenes" tab on the van and no "Storage" tab on the
+scene. You switch between them the way you switch between any two apps: back to the home screen,
+tap the other icon.
 
-**Install sheet:** https://drfllcky13-droid.github.io/fsu/install.html — one printable page with
-the address as a QR code, the home-screen steps for iPad, Android and desktop, and how to connect a
-device to the van data. Print it and pin it in the van. It still covers only the first address;
-the second icon is step 3 below and is not on the sheet yet.
+**Install sheet:** https://drfllcky13-droid.github.io/fsu/install.html — one printable page with a
+QR code for each app, the home-screen steps for iPad, Android and desktop, and how to connect a
+device to the van data. Print it and pin it in the van.
 
 ## Getting a device going
 
@@ -34,8 +34,8 @@ the second icon is step 3 below and is not on the sheet yet.
    Add to Home screen; desktop Chrome or Edge → the install icon at the right of the address bar.
    That icon is **FSU**, the van.
 3. Now open `.../fsu/scenes.html` and add that to the home screen the same way. That icon is
-   **Scenes**. Doing both gives the technician one icon for the van and one for the scene; the
-   sketch and the forms open straight from the second without going through the first.
+   **Scenes**. Doing both gives the technician one icon for the van and one for the scene; each
+   opens straight into its own work, with no route from one into the other.
 4. Open each icon once while online. From then on they work without a connection.
 5. To share the van list with the other devices, open **Settings** (top of Home), then
    **Automatic saving**. Owner and repository are already filled in (`drfllcky13-droid` /

@@ -12,12 +12,14 @@ npm test
 seeds a record on one page can open the other and find it there; `/scenes.html#v=sketch&ref=new`
 opens straight into a new sketch, which is how every sketch spec starts.
 
-**The split itself** is `pages.spec.js`: the crossings pressed the way a user presses them
-(Quick sketch, the Scenes tab, Settings from the scene, a document row on an incident), that a
-reload lands back on the same record, that a stale or nonsense `#v=`/`ref=` address opens on
-something rather than a blank screen, that two open pages do not write over each other's record,
-that every view is built into exactly one page and `src/pages.js` agrees with both, and that both
-manifests and both pages are cached and open offline.
+**The split itself** is `pages.spec.js`: that neither app offers a route into the other (no
+control anywhere on the van reaches Scenes, none on Scenes reaches the van, and each keeps its
+own Settings), that a document row on an incident still opens same-page (a sketch row, a form
+row, the document tabs), that a reload holds your place, that a stale or nonsense `#v=`/`ref=`
+address — or the older `#c=`/`#i=`/`#s=`/`#inc=` scanned-label scheme landing on the wrong page —
+opens on something rather than a blank screen, that two open pages do not write over each other's
+record, that every view is built into exactly one page (Settings only, deliberately, on both) and
+`src/pages.js` agrees, and that both manifests and both pages are cached and open offline.
 
 **On the van page.** The render sweep (`../sweep.js`) at 1500, 1194, 393 and 320 px wide in
 light and dark. Offline (the network is cut and the app still opens and keeps what was entered),

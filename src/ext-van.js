@@ -252,20 +252,22 @@ function renderLabels(){
     .catch(()=>toast("The QR maker needs a connection the first time. The labels print without codes until then."));
 }
 function openTarget(kind,val,mode){
+  // this can fire from a hand-typed or bookmarked address on either page (handleHash runs on
+  // load and on hashchange, unconditionally), not only from the van's own scan button — so
+  // every kind checks it is on the page that can actually show it, rather than blanking the
+  // screen the way a stuck `view` with nothing to draw into would
+  if(kind==="c"||kind==="i"){
+    if(!here(kind==="c"?"compdetail":"itemdetail"))return toast("That is a van code — open it in the FSU app");
+  }
   if(kind==="c"){ if(!S.comps.some(c=>c.code===val))return toast("No compartment "+val+" is logged");
     logAct("scan","Opened "+val+" from a label");
     if(mode==="sweep"){S.curLoc=val;S.pick=false;save();renderSweep();const f=$("#q-name")||$("#f-name");if(f)f.focus();return}
-    if(!here("compdetail"))return crossTo("compdetail",val);
     curComp=val; prevView="compartments"; view="compdetail"; window.scrollTo(0,0); render(); return }
   if(kind==="i"){ if(!S.items.some(i=>i.id===val))return toast("That item is no longer logged");
-    if(!here("itemdetail"))return crossTo("itemdetail",val);
     curItem=val; prevView="inventory"; view="itemdetail"; window.scrollTo(0,0); render(); return }
-  if(kind==="s"){ if(!(S.sketches||[]).some(s=>s.id===val))return toast("That sketch is not on this device");
-    if(!here("sketch"))return crossTo("sketch",val);
-    curSketch=val; view="sketch"; render(); return }
-  if(kind==="inc"){ if(!incidents().some(i=>i.id===val))return toast("That incident is not on this device");
-    if(!here("incident"))return crossTo("incident",val);
-    curInc=val; view="incident"; render() }
+  // sketches and incidents are never printed as labels here; this exists only in case a foreign
+  // code is scanned. It cannot open in this app, and this app never opens the other one.
+  if(kind==="s"||kind==="inc")return toast("That is a Scenes code — open it in the Scenes app");
 }
 function openScanned(text,mode){
   const s=String(text||""); const m=s.match(/#(c|i|s|inc)=([^&]+)/)||s.match(/^fsu:(c|i|s|inc):(.+)$/);

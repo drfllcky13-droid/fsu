@@ -30,15 +30,14 @@ test("work done offline is still there after an offline reload",async({page,cont
   await page.reload();
   await page.waitForFunction(()=>typeof render==="function");
   const n=await page.evaluate(()=>{
-    document.querySelector("[data-newinc]").click(); closeSheet();
+    S.items.push({id:"offlinecheck",name:"Added offline",qty:"1",cat:"A",cls:"Consumable",loc:""});
     const c=S.comps[0]; c.checked=today(); save();
-    return {incs:(S.incidents||[]).length, checked:c.id};
+    return {items:S.items.length, checked:c.id};
   });
-  expect(n.incs).toBe(1);
   await page.reload();
   await page.waitForFunction(()=>typeof render==="function");
-  const after=await page.evaluate(id=>({incs:(S.incidents||[]).length, checked:!!S.comps.find(c=>c.id===id&&c.checked)}),n.checked);
-  expect(after).toEqual({incs:1,checked:true});
+  const after=await page.evaluate(id=>({added:!!S.items.find(i=>i.id==="offlinecheck"), checked:!!S.comps.find(c=>c.id===id&&c.checked)}),n.checked);
+  expect(after).toEqual({added:true,checked:true});
   await context.setOffline(false);
 });
 

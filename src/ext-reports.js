@@ -216,17 +216,27 @@ function svcSheet(i){
 /* ---- help and about ---- */
 function helpSheet(){
   const sec=(t,b)=>`<div class="idsect">${t}</div><p class="helpp">${b}</p>`;
-  openSheet(`<h3>How to use FSU</h3>
-    <p class="hint" style="margin:0 0 6px">Version ${esc(APP_VERSION)}. Two pages, top to bottom.</p>
-    ${sec("At a scene","Start an incident on Home. It keeps the entry log, evidence log, photo log, sketch and report together. Quick sketch is for when there is no case number yet; it offers to become an incident once there is.")}
-    ${sec("The sketch","Setup › Set the scale, or draw walls by dimension and the scale sets itself. Place two reference points. Draw › Marker mode numbers evidence as you tap; markers write themselves into the evidence log, photo points into the photo log. Place by measurement moves an item to where two tape distances meet. Pinch to zoom. Freehand with the Pencil for the rough sketch.")}
-    ${sec("Forms and the report","Fields fill from the incident. On any narrative field, Insert wording drops in the unit's standard sentences; edit them under Settings › Report wording. Export gives a PDF, and Export Word gives a document a supervisor can edit.")}
-    ${sec("Finishing","Export gives one PDF; the incident bundle gives everything in one packet. A case package carries the sketches, forms and photographs to the case file. Case material never leaves the device any other way.")}
-    ${sec("The sweep","Storage › a bay, or Home › Sweep. Work through the compartments in order: log what is there, tap Swept, next. Regulated stock is counted before a compartment can be marked. Scan a label to jump to a compartment.")}
-    ${sec("Items and reorder","Items shows every item with a count you can tap. Count the stock walks every compartment. Anything short goes on the reorder list; mark it Ordered when it has gone in and Received when it arrives, and send the list with part numbers to whoever orders.")}
-    ${sec("The van itself","Vehicle check on Storage or Home: pass or fail each line, weekly. Failures go to Next actions. Write a handover when the van changes hands; the note appears on Home for the next officer.")}
-    ${sec("The guide","Every item can carry its instructions and a source. Verify walks the unverified ones with a date and your initials. Durable kit carries a service date and a certificate link.")}
-    ${sec("Settings","Back up the van data, connect automatic saving, set your initials, print labels, and read the activity log and any errors. Add the app to the home screen so it opens full screen and works without a connection.")}
+  // FSU (the van) and Scenes are two apps; each explains only what it does
+  const vanSecs=[
+    sec("The sweep","Storage › a bay, or Home › Sweep. Work through the compartments in order: log what is there, tap Swept, next. Regulated stock is counted before a compartment can be marked. Scan a label to jump to a compartment."),
+    sec("Items and reorder","Items shows every item with a count you can tap. Count the stock walks every compartment. Anything short goes on the reorder list; mark it Ordered when it has gone in and Received when it arrives, and send the list with part numbers to whoever orders."),
+    sec("The van itself","Vehicle check on Storage or Home: pass or fail each line, weekly. Failures go to Next actions. Write a handover when the van changes hands; the note appears on Home for the next officer."),
+    sec("The guide","Every item can carry its instructions and a source. Verify walks the unverified ones with a date and your initials. Durable kit carries a service date and a certificate link."),
+    sec("Settings","Back up the van data, connect automatic saving, set your initials, print labels, and read the activity log and any errors. Add the app to the home screen so it opens full screen and works without a connection."),
+  ].join("");
+  const sceneSecs=[
+    sec("At a scene","Start an incident from Scenes. It keeps the entry log, evidence log, photo log, sketch and report together. Quick sketch is for when there is no case number yet; it offers to become an incident once there is."),
+    sec("The sketch","Setup › Set the scale, or draw walls by dimension and the scale sets itself. Place two reference points. Draw › Marker mode numbers evidence as you tap; markers write themselves into the evidence log, photo points into the photo log. Place by measurement moves an item to where two tape distances meet. Pinch to zoom. Freehand with the Pencil for the rough sketch."),
+    sec("Forms and the report","Fields fill from the incident. On any narrative field, Insert wording drops in the unit's standard sentences; edit them under Settings › Report wording. Export gives a PDF, and Export Word gives a document a supervisor can edit."),
+    sec("Finishing","Export gives one PDF; the incident bundle gives everything in one packet. A case package carries the sketches, forms and photographs to the case file. Case material never leaves the device any other way."),
+    sec("Settings","Connect automatic saving, set your initials, and read the activity log and any errors. Add the app to the home screen so it opens full screen and works without a connection."),
+  ].join("");
+  const title=PAGE==="van"?"How to use FSU":"How to use Scenes";
+  const blurb=PAGE==="van"?"Van inventory and upkeep. Scene work is in the separate Scenes app."
+    :"Incidents, forms and the sketch. Van inventory is in the separate FSU app.";
+  openSheet(`<h3>${title}</h3>
+    <p class="hint" style="margin:0 0 6px">Version ${esc(APP_VERSION)}. ${blurb}</p>
+    ${PAGE==="van"?vanSecs:sceneSecs}
     <div class="idsect">Change log</div>
     ${CHANGELOG.map(([d,t])=>`<p class="helpp"><b>${esc(d)}</b> ${esc(t)}</p>`).join("")}
     <button class="btn sec" id="hlx" style="max-width:none;margin:12px 0 0">Close</button>`);

@@ -91,7 +91,6 @@ document.addEventListener("click",e=>{
   if(e.target.closest("#syncnow")){
     if(conflict||tokenBad||badFile){openSettings("sync");return}
     syncErr="";retries=0;renderSyncBar();toast("Retrying");ghPush(false);return}
-  if(e.target.closest("[data-quicksketch]"))return startSketch("");
   if(e.target.closest("[data-newinc]")){
     const inc=newIncident(); curInc=inc.id; view="incident"; render(); incidentSheet(inc); return}
   const ib=e.target.closest("[data-inc]");
@@ -172,13 +171,10 @@ document.addEventListener("click",e=>{
   const dtb=e.target.closest("[data-doc]");
   if(dtb){const [k,id]=dtb.dataset.doc.split(":");
     if(k==="fill"){curFill=id;view="fill"} else {curSketch=id;selObj=null;view="sketch"}
-    if(!here(view))return crossTo(view,id);
     window.scrollTo&&window.scrollTo(0,0); return render()}
   if(e.target.closest("#newsketch"))return startSketch(curInc||"");
   const sko=e.target.closest("[data-sk]");
-  if(sko){const id=sko.dataset.sk;
-    if(!here("sketch"))return crossTo("sketch",id);
-    curSketch=id;selObj=null;view="sketch";window.scrollTo&&window.scrollTo(0,0);return render()}
+  if(sko){curSketch=sko.dataset.sk;selObj=null;view="sketch";window.scrollTo&&window.scrollTo(0,0);return render()}
   if(e.target.closest("#addform"))return formSheet(null);
   if(e.target.closest("#fmfill")){
     const f=curForm; if(!f)return;
@@ -441,7 +437,7 @@ document.addEventListener("keydown",e=>{
   const typing=/^(INPUT|TEXTAREA|SELECT)$/.test((e.target||{}).tagName||"");
   if(e.key==="Escape"){
     if($("#sheet")&&$("#sheet").classList.contains("on"))return closeSheet();
-    if(query){$("#q").value="";query="";applyQuery();return}
+    if(query){const qel=$("#q"); if(qel)qel.value=""; query="";applyQuery();return}
     return}
   if(typing)return;
   if(e.key==="Enter"&&$("#sheet")&&$("#sheet").classList.contains("on")){
