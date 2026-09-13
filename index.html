@@ -1398,7 +1398,7 @@ body.wide.sidemin .side button{position:relative}
     <input type="text" id="q" placeholder="Search items, compartments, guides" autocomplete="off">
     <button id="qclear" style="display:none">Clear</button>
   </div>
-  <div class="titlerow"><h1 id="title">FSU</h1><span id="savedtick" class="savedtick" aria-live="polite"></span></div>
+  <div class="titlerow"><h1 id="title">Inventory</h1><span id="savedtick" class="savedtick" aria-live="polite"></span></div>
 
 </header>
 
@@ -2609,7 +2609,7 @@ if($("#q")){
 
 /* ---------- home: priority strip ---------- */
 function renderHome(){
-  $("#title").textContent="FSU";
+  $("#title").textContent="Inventory";
   const L=live();
   if(!L.length&&!S.comps.length){
     $("#v-home").innerHTML=`<div class="empty"><strong>Nothing logged yet</strong>

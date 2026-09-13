@@ -1,6 +1,6 @@
 /* ---------- home: priority strip ---------- */
 function renderHome(){
-  $("#title").textContent="FSU";
+  $("#title").textContent="Inventory";
   const L=live();
   if(!L.length&&!S.comps.length){
     $("#v-home").innerHTML=`<div class="empty"><strong>Nothing logged yet</strong>
