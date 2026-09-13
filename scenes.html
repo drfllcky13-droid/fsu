@@ -2235,7 +2235,7 @@ function clearDemo(){
 }
 function renderDemoBar(){
   const b=$("#demobar");
-  if(!S.demo){b.style.display="none";b.innerHTML="";return}
+  if(!S.demo||PAGE!=="van"){b.style.display="none";b.innerHTML="";return}
   b.style.display="";
   b.innerHTML=`<span>Sample van loaded. Clear it before the real sweep.</span>
     <button id="cleardemo">Clear sample</button>`;
