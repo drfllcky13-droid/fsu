@@ -132,6 +132,21 @@ MapLibre's `.maplibregl-map{position:relative}` lands on its container and overr
 one-class `position:absolute`. That collapsed the live map to nothing once; `.mfbox .mfmap`
 needs its two classes.
 
+**Offline, all of it.** Since 2026.09.22.1 nothing the app needs comes from another site except
+the county aerial imagery. The PDF, Word, QR and map libraries and the map's font are in `lib/`
+(see `lib/SOURCES.txt`). The map data sits beside the pages as `williamsport-*.json`. Settings ›
+This device › Download for offline use (`OFFLINE` and `offlineDownload` in
+`src/views-items.js`) puts every one of those files into `sw.js`'s cache, `fsu-v1`, and the
+worker serves them back when there is no network. The list and `lib/` have to move together;
+`map.spec.js` fails if the list names a file that is not there. The download records the app
+version it was made with, so Settings can say when to fetch again. `fsu-tests/serve.js` has to
+serve `.mjs` as JavaScript or MapLibre will not load under test; GitHub Pages already does. A
+preview server started before that fix kept serving the old type until it was restarted.
+Address search (`findAddress` and `addrLoad` in `src/sketch-canvas.js`) reads
+`williamsport-addresses.json`: the city's county address points plus OSM street crossings. The
+Williamsport3D project rebuilds all three data files (`fetch_buildings.py`, `fetch_basemap.py`,
+`lidar_heights.py`).
+
 **Sketches, filled forms and photographs are
 deliberately excluded** from both sync and backup — that is case material and it stays on the
 device. Keep that. The only way case material leaves the device is a **case package** (Settings › Case packages,

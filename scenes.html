@@ -4169,7 +4169,9 @@ function settingsSectionBody(k){
       ? "Installed. It opens full screen from its own icon and works without a connection."
       : /iPad|iPhone/.test(navigator.userAgent)
         ? "In Safari, tap Share, then Add to Home Screen. It then opens full screen from its own icon and works without a connection."
-        : "Use the browser's Install option, or add it to the home screen, so it opens full screen and works without a connection."}</p>`;
+        : "Use the browser's Install option, or add it to the home screen, so it opens full screen and works without a connection."}</p>
+    <div class="idsect">Offline use</div>
+    ${offlineHTML()}`;
   else if(k==="activity")body=activityHTML();
   else if(k==="errors")body=(S.errors||[]).length?`<div style="margin-bottom:8px">${S.errors.slice().reverse().map(x=>`<div class="errrow"><span class="et">${esc(String(x.t||"").slice(0,16).replace("T"," "))}${x.v?" \u00b7 "+esc(x.v):""}</span><span class="em">${esc(x.m)}</span></div>`).join("")}</div>
       <button class="btn sec" id="errclear" style="max-width:none;margin:0">Clear the list</button>`
@@ -4193,6 +4195,44 @@ function renderData(){
   const cp=$("#casepkg"); if(cp)cp.onclick=()=>exportCasePackage("all","fsu-all");
   const ci=$("#casein"); if(ci)ci.onchange=()=>{const f=ci.files&&ci.files[0]; if(!f)return; f.text().then(importCasePackage)};
   const ec=$("#errclear"); if(ec)ec.onclick=()=>{S.errors=[];saveLocal();renderData();toast("Cleared")};
+  const od=$("#offdl"); if(od)od.onclick=()=>offlineDownload(od);
+}
+/* Everything either app fetches on demand, fetched in one go so a device is ready for a scene
+   with no signal. It goes into the service worker's own cache (the name must match sw.js), and
+   the worker hands it back whenever the network is not there. County aerial photos are not in
+   it: they are fetched for one spot at a time and would be gigabytes for the whole city. */
+const OFFLINE=["index.html","scenes.html","manifest.webmanifest","scenes.webmanifest",
+  "icon-180.png","icon-512.png","scenes-icon-180.png","scenes-icon-512.png",
+  "lib/jspdf.umd.min.js","lib/svg2pdf.umd.min.js","lib/jszip.min.js","lib/qrcode.min.js","lib/jsQR.js",
+  "lib/maplibre/maplibre-gl.mjs","lib/maplibre/maplibre-gl-shared.mjs","lib/maplibre/maplibre-gl-worker.mjs",
+  "lib/maplibre/maplibre-gl.css","lib/fonts/Noto Sans Regular/0-255.pbf",
+  "williamsport-buildings.json","williamsport-streets.json","williamsport-addresses.json"];
+const offlineState=()=>{try{return JSON.parse(localStorage.getItem("fsuOffline")||"null")}catch(_){return null}};
+function offlineHTML(){
+  const off=offlineState(), old=off&&off.v!==APP_VERSION;
+  return `<p class="hint" style="margin:0 0 10px">${!off
+      ?"Everything the app needs without a connection: the map of Williamsport and its address list, and the tools that make PDFs, Word files and QR labels. About 11 MB. County aerial photos still need a connection."
+      :old?`Downloaded ${esc(String(off.at).slice(0,10))}, but the app has been updated since. Download again so this device has the new version.`
+      :`Ready without a connection since ${esc(String(off.at).slice(0,10))} (${(+off.mb).toFixed(1)} MB). County aerial photos still need a connection.`}</p>
+    <button class="btn${off&&!old?" sec":""}" id="offdl" style="max-width:none;margin:0">${off?"Download again":"Download for offline use"}</button>
+    <p class="hint" id="offst" style="margin:8px 0 0"></p>`;
+}
+async function offlineDownload(btn){
+  const st=$("#offst"); btn.disabled=true; st.style.color="";
+  try{
+    if(typeof caches==="undefined")throw new Error("This browser cannot keep files for use without a connection");
+    const c=await caches.open("fsu-v1"); let bytes=0;
+    for(let i=0;i<OFFLINE.length;i++){
+      st.textContent=`Downloading ${i+1} of ${OFFLINE.length}\u2026`;
+      const r=await fetch(OFFLINE[i],{cache:"no-store"});
+      if(!r.ok)throw new Error(`Could not fetch ${OFFLINE[i]} (${r.status}). Nothing is lost; try again with a better connection.`);
+      bytes+=(await r.clone().arrayBuffer()).byteLength;
+      await c.put(OFFLINE[i],r);
+    }
+    if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+    localStorage.setItem("fsuOffline",JSON.stringify({at:new Date().toISOString(),mb:bytes/1048576,v:APP_VERSION}));
+    renderData(); toast("Ready for use without a connection");
+  }catch(err){ st.textContent=err.message; st.style.color="var(--red)"; btn.disabled=false }
 }
 
 /* ---------- filtered lists from the strip ---------- */
@@ -5171,7 +5211,7 @@ function qrLib(){
   if(window.qrcode)return Promise.resolve();
   if(QRP)return QRP;
   QRP=new Promise((res,rej)=>{const s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js";
+    s.src="lib/qrcode.min.js";
     s.onload=res; s.onerror=()=>{QRP=null;rej(new Error("no network"))}; document.head.appendChild(s)});
   return QRP;
 }
@@ -5234,7 +5274,7 @@ function jsqrLib(){
   if(window.jsQR)return Promise.resolve();
   if(JSQRP)return JSQRP;
   JSQRP=new Promise((res,rej)=>{const s=document.createElement("script");
-    s.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+    s.src="lib/jsQR.js";
     s.onload=res; s.onerror=()=>{JSQRP=null;rej(new Error("no network"))}; document.head.appendChild(s)});
   return JSQRP;
 }
@@ -5396,7 +5436,7 @@ function appExtraClick9(e){
 /* ---------- reports and upkeep, round ten ----------
    report wording, auto-fill, photograph log, Word export, vector PDF, version stamp,
    vehicle check, part numbers, shift handover, service and calibration, help and change log. */
-const APP_VERSION="2026.09.21.1";
+const APP_VERSION="2026.09.22.1";
 const CHANGELOG=[
   ["2026-09-05","Tapping a bin on the bay wall opens its items in a panel beside the wall on a wide screen, without moving the page. Full screen fills the screen again on an iPad."],
   ["2026-09-05","Every page opens as the main screen; the side-by-side pane is gone. On an iPad the sketch gets the width back: the side bar folds to icons while sketching and the tool rail is narrower."],
@@ -5476,7 +5516,7 @@ function zipLib(){
   if(window.JSZip)return Promise.resolve();
   if(ZIPP)return ZIPP;
   ZIPP=new Promise((res,rej)=>{const s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+    s.src="lib/jszip.min.js";
     s.onload=res; s.onerror=()=>{ZIPP=null;rej(new Error("The Word export needs a connection the first time"))}; document.head.appendChild(s)});
   return ZIPP;
 }
@@ -5525,7 +5565,7 @@ function svgPdfLib(){
   if(window.svg2pdf)return Promise.resolve();
   if(SVGP)return SVGP;
   SVGP=new Promise((res,rej)=>{const s=document.createElement("script");
-    s.src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.4/dist/svg2pdf.umd.min.js";
+    s.src="lib/svg2pdf.umd.min.js";
     s.onload=res; s.onerror=()=>{SVGP=null;rej(new Error("no network"))}; document.head.appendChild(s)});
   return SVGP;
 }
@@ -5664,7 +5704,7 @@ function loadPDF(){
   if(jsPDFlib)return Promise.resolve(jsPDFlib);
   return new Promise((res,rej)=>{
     const s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    s.src="lib/jspdf.umd.min.js";
     s.onload=()=>{jsPDFlib=(window.jspdf||{}).jsPDF;
       jsPDFlib?res(jsPDFlib):rej(new Error("PDF library loaded oddly"))};
     s.onerror=()=>rej(new Error("Couldn't load the PDF tool. Do one export on wifi and it stays cached."));
@@ -7019,42 +7059,75 @@ function canvasSVG(sk){
     ${headerSVG(sk)}
   </svg>`;
 }
-const LYCO_ADDR="https://gis.lyco.org/arcgis/rest/services/BuildingAddresses/MapServer/0/query";
 const PEMA_IMG="https://imagery.pasda.psu.edu/arcgis/rest/services/PEMAImagery2021_2023cache/MapServer/export";
 
-function parseAddr(q){
-  const m=String(q).trim().match(/^(\d+)\s+(.*)$/);
-  const num=m?+m[1]:null;
-  // the county stores the bare street name, so drop the number, type and direction
-  const name=(m?m[2]:String(q)).toUpperCase()
-    .replace(/\b(STREET|ST|AVENUE|AVE|ROAD|RD|DRIVE|DR|LANE|LN|BOULEVARD|BLVD|COURT|CT|PLACE|PL|WAY|TERRACE|TER|CIRCLE|CIR|PIKE|HIGHWAY|HWY|TRAIL|TRL|PARKWAY|PKWY|SQUARE|SQ|ALLEY|ALY|RUN)\b\.?/g," ")
-    .replace(/\b(NORTH|SOUTH|EAST|WEST|N|S|E|W|NE|NW|SE|SW)\b\.?/g," ")
-    .replace(/[.,]/g," ").replace(/\s+/g," ").trim();
-  return {num,name};
+/* ---------- finding an address, with or without a connection ----------
+   Every address point in Williamsport city (Lycoming County Public Safety) and every street
+   crossing (OpenStreetMap), from williamsport-addresses.json beside the page. Searching is
+   local: no signal needed, city addresses first, typos forgiven, and "4th and Market" finds
+   the corner. The file is rebuilt by fetch_basemap.py in E:\Claude\Projects\Williamsport3D. */
+const ADDRWORD={NORTH:"N",SOUTH:"S",EAST:"E",WEST:"W",STREET:"ST",AVENUE:"AVE",ROAD:"RD",DRIVE:"DR",
+  LANE:"LN",PLACE:"PL",COURT:"CT",BOULEVARD:"BLVD",TERRACE:"TER",CIRCLE:"CIR",HIGHWAY:"HWY",ALLEY:"ALY",
+  EXTENSION:"EXT",PARKWAY:"PKWY",FIRST:"1ST",SECOND:"2ND",THIRD:"3RD",FOURTH:"4TH",FIFTH:"5TH",SIXTH:"6TH",
+  SEVENTH:"7TH",EIGHTH:"8TH",NINTH:"9TH",TENTH:"10TH",ELEVENTH:"11TH",TWELFTH:"12TH",MOUNT:"MT"};
+const ADDRTYPE=new Set(["ST","AVE","RD","DR","LN","PL","CT","BLVD","TER","CIR","HWY","ALY","EXT","PKWY","WAY"]);
+const ADDRDIR=new Set(["N","S","E","W"]);
+const addrWords=s=>String(s).toUpperCase().replace(/[.,']/g," ").split(/\s+/).filter(Boolean).map(w=>ADDRWORD[w]||w);
+// the name without its direction and type: E CHURCH ST is CHURCH
+const addrCore=ws=>ws.filter((w,i)=>!(ws.length>1&&((i===0&&ADDRDIR.has(w))||(i===ws.length-1&&ADDRTYPE.has(w))))).join(" ");
+function addrLev(a,b){       // edits to turn one name into the other; two letters swapped count as one
+  const d=[...Array(a.length+1)].map((_,i)=>[i,...Array(b.length).fill(0)]);
+  for(let j=1;j<=b.length;j++)d[0][j]=j;
+  for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++){
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+    if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1);
+  }
+  return d[a.length][b.length];
+}
+let addrIdx=null;
+function addrLoad(){
+  return addrIdx=addrIdx||fetch("williamsport-addresses.json").then(r=>{if(!r.ok)throw 0;return r.json()})
+    .then(d=>({
+      a:d.addresses.map(([label,lat,lon])=>{const m=label.match(/^(\d+)\S*\s+(.*)$/), ws=addrWords(m?m[2]:label);
+        return {label:label+", WILLIAMSPORT",lat,lon,num:m?+m[1]:null,st:ws.join(" "),core:addrCore(ws)}}),
+      x:d.intersections.map(([p,q,lat,lon])=>{const a=addrWords(p), b=addrWords(q);
+        return {label:a.join(" ")+" & "+b.join(" ")+", WILLIAMSPORT",lat,lon,a:[a.join(" "),addrCore(a)],b:[b.join(" "),addrCore(b)]}})}))
+    .catch(()=>{addrIdx=null;throw new Error("The address list is not on this device yet \u2014 open it once with a connection, "
+      +"or use Settings \u203a This device \u203a Download for offline use")});
+}
+// how well the typed street matches one street: 0 not at all, up to 4 exactly
+function addrMatch(qw,st,core){
+  const q=qw.join(" "), qc=addrCore(qw);
+  if(!qc)return 0;
+  if(st===q)return 4;
+  if(core===qc)return 3.5;                                  // direction or type left off
+  if(core.startsWith(qc)||st.startsWith(q))return 3;        // the start of the name
+  const cw=core.split(" ");
+  if(qc.split(" ").every(w=>cw.some(c=>c.startsWith(w))))return 2.5;
+  if(qc.length>=4&&addrLev(qc,core)<=(qc.length>6?2:1))return 2;   // a typo
+  return 0;
 }
 async function findAddress(q){
-  const {num,name}=parseAddr(q);
-  if(!name)throw new Error("Type a street name, ideally with a number");
-  const esc2=s=>String(s).replace(/'/g,"''");
-  const where=(num!=null?`Add_Number=${num} AND `:"")+`St_Name LIKE '${esc2(name)}%'`;
-  const url=LYCO_ADDR+"?where="+encodeURIComponent(where)
-    +"&outFields=Add_Number,St_PreDir,St_Name,St_PosTyp,Inc_Muni,Post_Code"
-    +"&returnGeometry=true&outSR=4326&resultRecordCount=12&f=json";
-  const r=await fetch(url);
-  if(!r.ok)throw new Error("County address service unreachable");
-  const j=await r.json();
-  if(j.error)throw new Error(j.error.message||"Address lookup failed");
-  return (j.features||[]).map(f=>({
-    label:[f.attributes.Add_Number,f.attributes.St_PreDir,f.attributes.St_Name,
-           f.attributes.St_PosTyp].map(v=>String(v==null?"":v).trim())
-      .filter(Boolean).join(" ")
-      +(String(f.attributes.Inc_Muni||"").trim()
-        ?", "+String(f.attributes.Inc_Muni).trim():""),
-    lat:f.geometry.y, lon:f.geometry.x }));
+  const idx=await addrLoad(), text=String(q).trim();
+  const two=text.split(/\s+(?:&|and|at|@)\s+|\s*[&@]\s*/i).filter(Boolean);
+  if(two.length===2&&!/^\d+\s/.test(text)){                // two streets: the corner where they cross
+    const [p,r]=two.map(addrWords);
+    return idx.x.map(x=>({x,sc:Math.max(Math.min(addrMatch(p,...x.a),addrMatch(r,...x.b)),
+        Math.min(addrMatch(p,...x.b),addrMatch(r,...x.a)))}))
+      .filter(o=>o.sc>0).sort((u,v)=>v.sc-u.sc).slice(0,8).map(({x})=>({label:x.label,lat:x.lat,lon:x.lon}));
+  }
+  const m=text.match(/^(\d+)\S*\s*(.*)$/), num=m?+m[1]:null, qw=addrWords(m?m[2]:text);
+  if(!qw.length)throw new Error("Type a street name, ideally with a number");
+  const street=new Map();                                   // score each street once, not every address
+  idx.a.forEach(a=>{if(!street.has(a.st))street.set(a.st,addrMatch(qw,a.st,a.core))});
+  return idx.a.filter(a=>street.get(a.st)>0)
+    .sort((u,v)=>street.get(v.st)-street.get(u.st)
+      ||(num==null?0:Math.abs(u.num-num)-Math.abs(v.num-num))||u.num-v.num)
+    .slice(0,8).map(a=>({label:a.label,lat:a.lat,lon:a.lon}));
 }
-// the county search as a control: suggestions while typing, a list from Find, pick(hit) on choosing
+// the address search as a control: suggestions while typing, a list from Find, pick(hit) on choosing
 function addrSearch(qEl,sugBox,hitsBox,findBtn,pick){
-  // suggest as you type, but only after a pause, so the county service is not hammered
+  // suggest as you type, after a short pause so every keystroke does not redraw the list
   let sugT=null, sugSeq=0;
   const showSug=(list)=>{
     sugBox.innerHTML=list.slice(0,6).map((x,i)=>`<button class="sug" data-sug="${i}">${esc(x.label)}</button>`).join("");
@@ -7070,7 +7143,7 @@ function addrSearch(qEl,sugBox,hitsBox,findBtn,pick){
     sugT=setTimeout(async()=>{
       try{ const hits=await findAddress(q); if(seq===sugSeq)showSug(hits) }
       catch(e){ if(seq===sugSeq)showSug([]) }
-    },350);
+    },150);
   };
   const say=(t,red)=>{hitsBox.innerHTML=`<p class="hint" style="margin:0 0 10px${red?";color:var(--red)":""}">${t}</p>`};
   findBtn.onclick=async()=>{
@@ -7854,36 +7927,84 @@ function labelSheet(o){
 /* ---------- the map (Scenes only) ----------
    Williamsport's buildings in 3D. Settings › Map opens it for finding a place; the sketch's
    Backdrop › Map drawing uses the same data drawn flat, north up and to scale.
-   It fetches everything on first use and the service worker keeps it: MapLibre from jsdelivr
-   (v6 ships ES modules only, hence import()), the streets from OpenFreeMap, and
-   williamsport-buildings.json beside this page — OpenStreetMap plus Microsoft's footprints,
-   with heights, built by fetch_buildings.py in E:\Claude\Projects\Williamsport3D. */
-const MAPLIB="https://cdn.jsdelivr.net/npm/maplibre-gl@6.10.0/dist/maplibre-gl";
-const MAPSTYLE="https://tiles.openfreemap.org/styles/positron";
-const MAPSRC="OpenStreetMap contributors, Microsoft Building Footprints, OpenMapTiles via OpenFreeMap (ODbL)";
-const MAPHSRC={tag:"Height from OpenStreetMap",levels:"Height from its floor count in OpenStreetMap",
-  ms:"Height estimated by Microsoft from aerial imagery",default:"No height on record, so typical for its type"};
+   Everything is served beside this page, so it works with no signal once the service worker
+   has it (Settings › This device › Download for offline use fetches it all at once): MapLibre
+   in lib/ (v6 ships ES modules only, hence import()), our own street map in
+   williamsport-streets.json, the buildings in williamsport-buildings.json and the addresses in
+   williamsport-addresses.json. The data is built by fetch_buildings.py, fetch_basemap.py and
+   lidar_heights.py in E:\Claude\Projects\Williamsport3D. */
+const MAPLIB="lib/maplibre/maplibre-gl";
+const MAPSRC="OpenStreetMap contributors, Microsoft Building Footprints, USGS LiDAR (ODbL)";
+const MAPHSRC={lidar:"Height measured from the 2024 USGS LiDAR",tag:"Height from OpenStreetMap",
+  levels:"Height from its floor count in OpenStreetMap",ms:"Height estimated by Microsoft from aerial imagery",
+  default:"No height on record, so typical for its type"};
 let mapLib=null, mapBld=null, mapView=null, mapPin=null, mapWant=null, mapBusy=false;
+const MAPGONE="The map is not on this device yet \u2014 open it once with a connection, or use Settings \u203a This device \u203a Download for offline use";
 
 function mapLoad(){
   if(!$("#mlcss"))document.head.insertAdjacentHTML("beforeend",`<link id="mlcss" rel="stylesheet" href="${MAPLIB}.css">`);
-  return mapLib=mapLib||import(MAPLIB+".mjs")
-    .catch(()=>{mapLib=null;throw new Error("The map needs a connection the first time it opens")});
+  return mapLib=mapLib||import("./"+MAPLIB+".mjs").catch(()=>{mapLib=null;throw new Error(MAPGONE)});
 }
+// the buildings, and the address points as map labels
 function mapData(){
-  return mapBld=mapBld||fetch("williamsport-buildings.json").then(r=>{if(!r.ok)throw 0;return r.json()})
-    .catch(()=>{mapBld=null;throw new Error("Could not load the buildings \u2014 check the connection")});
+  return mapBld=mapBld||Promise.all([fetch("williamsport-buildings.json").then(r=>{if(!r.ok)throw 0;return r.json()}),addrLoad()])
+    .then(([bld,idx])=>({bld,idx,adr:{type:"FeatureCollection",features:idx.a.map(a=>({type:"Feature",
+      properties:{n:String(a.num||"")},geometry:{type:"Point",coordinates:[a.lon,a.lat]}}))}}))
+    .catch(()=>{mapBld=null;throw new Error(MAPGONE)});
 }
-// drawn over the basemap's own flat footprints, which stay for the rest of the county
-function mapBuildings(m,data,flat){
-  m.addSource("bld",{type:"geojson",data,attribution:"\u00a9 OpenStreetMap contributors \u00b7 Microsoft Building Footprints"});
-  const under=(m.getStyle().layers.find(l=>l.type==="symbol")||{}).id;   // street names stay on top
+/* Our own street map of the Williamsport box. Streets are drawn at about their real width
+   (a residential street is 9 m, an alley 4.5 m), which is what a to-scale backdrop needs:
+   metres per pixel here is 58,860 / 2^zoom, so the widths double with every zoom level. */
+const MAPPATHS=["footway","path","steps","cycleway","pedestrian","track","bridleway","corridor"];
+function mapStyle(){
+  const wide=(z14,z20)=>["interpolate",["exponential",2],["zoom"],14,z14,20,z20];
+  const byClass=(big,mid,res,alley,k)=>["match",["get","c"],
+    ["motorway","trunk","primary","motorway_link","trunk_link","primary_link"],big/k,
+    ["secondary","tertiary","secondary_link","tertiary_link"],mid/k,
+    ["residential","unclassified","living_street","road"],res/k,alley/k];
+  const m=(big,mid,res,alley)=>wide(byClass(big,mid,res,alley,3.593),byClass(big,mid,res,alley,0.0561));
+  const road=["all",["==",["get","k"],"road"],["!",["in",["get","c"],["literal",MAPPATHS]]]];
+  return {version:8,glyphs:"lib/fonts/{fontstack}/{range}.pbf",
+    sources:{base:{type:"geojson",data:"williamsport-streets.json",attribution:"\u00a9 OpenStreetMap contributors"}},
+    layers:[
+      {id:"land",type:"background",paint:{"background-color":"#f2f3f0"}},
+      {id:"park",type:"fill",source:"base",filter:["==",["get","k"],"park"],paint:{"fill-color":"#e1ebd6"}},
+      {id:"water",type:"fill",source:"base",filter:["==",["get","k"],"water"],paint:{"fill-color":"#bccfda"}},
+      {id:"path",type:"line",source:"base",filter:["all",["==",["get","k"],"road"],["in",["get","c"],["literal",MAPPATHS]]],
+        paint:{"line-color":"#bdbab3","line-width":wide(1.2/3.593,1.2/0.0561),"line-dasharray":[2,1.5]}},
+      {id:"rail",type:"line",source:"base",filter:["==",["get","k"],"rail"],
+        paint:{"line-color":"#9d9a94","line-width":wide(1.5/3.593,1.5/0.0561),"line-dasharray":[4,2]}},
+      {id:"casing",type:"line",source:"base",filter:road,layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":"#c3bfb7","line-width":m(14.5,12.5,10.5,6)}},
+      {id:"road",type:"line",source:"base",filter:road,layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":"#ffffff","line-width":m(13,11,9,4.5)}},
+      {id:"road-name",type:"symbol",source:"base",filter:["all",["==",["get","k"],"road"],["has","n"]],
+        layout:{"symbol-placement":"line","text-field":["get","n"],"text-font":["Noto Sans Regular"],
+          "text-size":["interpolate",["linear"],["zoom"],14,9,20,15],"text-max-angle":35},
+        paint:{"text-color":"#454545","text-halo-color":"#ffffff","text-halo-width":1.4}}]};
+}
+// the buildings under the street names, and house numbers on top once you are close
+function mapLayers(m,d,flat){
+  m.addSource("bld",{type:"geojson",data:d.bld,attribution:"\u00a9 OpenStreetMap contributors \u00b7 Microsoft Building Footprints \u00b7 USGS LiDAR"});
   if(flat){
-    m.addLayer({id:"bld",type:"fill",source:"bld",paint:{"fill-color":"#e6e2dc"}},under);
-    m.addLayer({id:"bldline",type:"line",source:"bld",paint:{"line-color":"#55504a","line-width":1.4}},under);
+    m.addLayer({id:"bld",type:"fill",source:"bld",paint:{"fill-color":"#e6e2dc"}},"road-name");
+    m.addLayer({id:"bldline",type:"line",source:"bld",paint:{"line-color":"#55504a","line-width":1.4}},"road-name");
   }else m.addLayer({id:"bld",type:"fill-extrusion",source:"bld",paint:{"fill-extrusion-color":"#cfc9bf",
     "fill-extrusion-height":["get","height"],"fill-extrusion-base":["coalesce",["get","min_height"],0],
-    "fill-extrusion-opacity":0.95}},under);
+    "fill-extrusion-opacity":0.95}},"road-name");
+  m.addSource("adr",{type:"geojson",data:d.adr});
+  m.addLayer({id:"adr",type:"symbol",source:"adr",minzoom:17.5,layout:{"text-field":["get","n"],
+    "text-font":["Noto Sans Regular"],"text-size":11},
+    paint:{"text-color":"#6b645a","text-halo-color":"#f2f3f0","text-halo-width":1.2}});
+}
+// the county addresses that fall inside a building's outline
+function addrsIn(idx,g){
+  const ring=g.type==="Polygon"?g.coordinates[0]:g.coordinates[0][0];
+  const xs=ring.map(p=>p[0]), ys=ring.map(p=>p[1]);
+  const x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
+  const inside=(x,y)=>{let hit=false; for(let i=0,j=ring.length-1;i<ring.length;j=i++){const [xi,yi]=ring[i],[xj,yj]=ring[j];
+    if((yi>y)!==(yj>y)&&x<xi+(y-yi)*(xj-xi)/(yj-yi))hit=!hit} return hit};
+  return idx.a.filter(a=>a.lon>=x0&&a.lon<=x1&&a.lat>=y0&&a.lat<=y1&&inside(a.lon,a.lat)).map(a=>a.label);
 }
 
 function renderMap(){
@@ -7897,9 +8018,10 @@ function renderMap(){
       <button class="btn" id="mapgo">Find</button></div>
     <div id="mapsug" class="sugbox"></div><div id="maphits"></div>
     <div id="mapbox"><p class="hint" style="padding:14px">Loading the map\u2026</p></div>
-    <p class="hint">Drag to move, pinch or scroll to zoom, two fingers or a right-drag to tilt and turn.
-      Addresses from Lycoming County Public Safety. Buildings from OpenStreetMap and Microsoft; most
-      heights are Microsoft's estimates from aerial imagery, so read them as rough.</p>`;
+    <p class="hint">Drag to move, pinch or scroll to zoom, two fingers or a right-drag to tilt and turn. Tap a
+      building for its address and height. Addresses from Lycoming County Public Safety; buildings from
+      OpenStreetMap and Microsoft. Heights inside the city are measured from the 2024 USGS LiDAR; the few it
+      could not see, and everything outside the city, are estimates.</p>`;
   addrSearch($("#mapq"),$("#mapsug"),$("#maphits"),$("#mapgo"),mapFly);
   // start the heavy part only once this view is really showing, not while something
   // walks every view in one go, as the render sweep does
@@ -7911,14 +8033,15 @@ async function mapBoot(){
   try{
     const [ml,data]=await Promise.all([mapLoad(),mapData()]);
     box.innerHTML="";
-    const m=mapView=new ml.Map({container:box,style:MAPSTYLE,center:[-77.0011,41.2412],
+    const m=mapView=new ml.Map({container:box,style:mapStyle(),center:[-77.0011,41.2412],
       zoom:15.5,pitch:55,maxPitch:80});
     m.addControl(new ml.NavigationControl({visualizePitch:true}));
     m.on("error",()=>{});   // a tile that fails to load leaves a gap; nothing to report
-    m.on("load",()=>mapBuildings(m,data,false));
+    m.on("load",()=>mapLayers(m,data,false));
     m.on("click","bld",e=>{
-      const p=e.features[0].properties;
-      new ml.Popup().setLngLat(e.lngLat).setHTML(`<b>${esc(p.name||"Building")}</b><br>About `
+      const p=e.features[0].properties, at=addrsIn(data.idx,e.features[0].geometry);
+      new ml.Popup().setLngLat(e.lngLat).setHTML(`<b>${esc(at[0]||p.name||"Building")}</b>`
+        +`${at.length>1?" and "+(at.length-1)+" more":""}${p.name&&at.length?"<br>"+esc(p.name):""}<br>About `
         +`${Math.round(p.height*3.281)} ft tall${p.levels?", "+esc(p.levels)+" floors":""}<br>`
         +`<span style="color:#666">${MAPHSRC[p.height_source]||""}</span>`).addTo(m)});
     mapPin=new ml.Marker({color:"#c62828"});
@@ -7946,14 +8069,14 @@ async function fetchPlan(lat,lon,feet,px,py){
   const css=768, box=document.createElement("div");
   box.style.cssText=`position:fixed;top:0;left:${-css-50}px;width:${css}px;height:${Math.round(css*(py||px)/px)}px`;
   document.body.appendChild(box);
-  const m=new ml.Map({container:box,style:MAPSTYLE,center:[lon,lat],zoom:planZoom(lat,feet,css),
+  const m=new ml.Map({container:box,style:mapStyle(),center:[lon,lat],zoom:planZoom(lat,feet,css),
     interactive:false,attributionControl:false,fadeDuration:0,pixelRatio:px/css,
     canvasContextAttributes:{preserveDrawingBuffer:true}});
   m.on("error",()=>{});
   try{
     await new Promise((res,rej)=>{
       const t=setTimeout(()=>rej(new Error("The map did not finish drawing \u2014 check the connection")),25000);
-      m.on("load",()=>{mapBuildings(m,data,true);m.once("idle",()=>{clearTimeout(t);res()})});
+      m.on("load",()=>{mapLayers(m,data,true);m.once("idle",()=>{clearTimeout(t);res()})});
     });
     return {data:m.getCanvas().toDataURL("image/png"),feet};
   }finally{m.remove();box.remove()}
@@ -7985,7 +8108,7 @@ async function frameMap(sk,at,feet){
   try{
     const [ml,data]=await Promise.all([mapLoad(),mapData()]);
     const holder=el.querySelector(".mfmap");
-    const m=mapFrame=new ml.Map({container:holder,style:MAPSTYLE,center:[at.lon,at.lat],
+    const m=mapFrame=new ml.Map({container:holder,style:mapStyle(),center:[at.lon,at.lat],
       zoom:planZoom(at.lat,feet,holder.clientWidth),dragRotate:false,pitchWithRotate:false,
       touchPitch:false,maxPitch:0,attributionControl:false});
     m.touchZoomRotate.disableRotation();
@@ -7995,7 +8118,7 @@ async function frameMap(sk,at,feet){
       *holder.clientWidth/(512*2**m.getZoom())/0.3048);
     const info=()=>{$("#mfinfo").textContent=`About ${across()} ft across. Pinch and drag until it is right. `
       +`The pin marks the address and is not drawn.`};
-    m.on("load",()=>{mapBuildings(m,data,true); $("#mfok").disabled=false; info()});
+    m.on("load",()=>{mapLayers(m,data,true); $("#mfok").disabled=false; info()});
     m.on("move",info);
     $("#mfok").onclick=async()=>{
       const c=m.getCenter(), feet=across();

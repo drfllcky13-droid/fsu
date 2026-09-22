@@ -1,7 +1,7 @@
 /* ---------- reports and upkeep, round ten ----------
    report wording, auto-fill, photograph log, Word export, vector PDF, version stamp,
    vehicle check, part numbers, shift handover, service and calibration, help and change log. */
-const APP_VERSION="2026.09.21.1";
+const APP_VERSION="2026.09.22.1";
 const CHANGELOG=[
   ["2026-09-05","Tapping a bin on the bay wall opens its items in a panel beside the wall on a wide screen, without moving the page. Full screen fills the screen again on an iPad."],
   ["2026-09-05","Every page opens as the main screen; the side-by-side pane is gone. On an iPad the sketch gets the width back: the side bar folds to icons while sketching and the tool rail is narrower."],
@@ -81,7 +81,7 @@ function zipLib(){
   if(window.JSZip)return Promise.resolve();
   if(ZIPP)return ZIPP;
   ZIPP=new Promise((res,rej)=>{const s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+    s.src="lib/jszip.min.js";
     s.onload=res; s.onerror=()=>{ZIPP=null;rej(new Error("The Word export needs a connection the first time"))}; document.head.appendChild(s)});
   return ZIPP;
 }
@@ -130,7 +130,7 @@ function svgPdfLib(){
   if(window.svg2pdf)return Promise.resolve();
   if(SVGP)return SVGP;
   SVGP=new Promise((res,rej)=>{const s=document.createElement("script");
-    s.src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.4/dist/svg2pdf.umd.min.js";
+    s.src="lib/svg2pdf.umd.min.js";
     s.onload=res; s.onerror=()=>{SVGP=null;rej(new Error("no network"))}; document.head.appendChild(s)});
   return SVGP;
 }

@@ -1,36 +1,84 @@
 /* ---------- the map (Scenes only) ----------
    Williamsport's buildings in 3D. Settings › Map opens it for finding a place; the sketch's
    Backdrop › Map drawing uses the same data drawn flat, north up and to scale.
-   It fetches everything on first use and the service worker keeps it: MapLibre from jsdelivr
-   (v6 ships ES modules only, hence import()), the streets from OpenFreeMap, and
-   williamsport-buildings.json beside this page — OpenStreetMap plus Microsoft's footprints,
-   with heights, built by fetch_buildings.py in E:\Claude\Projects\Williamsport3D. */
-const MAPLIB="https://cdn.jsdelivr.net/npm/maplibre-gl@6.10.0/dist/maplibre-gl";
-const MAPSTYLE="https://tiles.openfreemap.org/styles/positron";
-const MAPSRC="OpenStreetMap contributors, Microsoft Building Footprints, OpenMapTiles via OpenFreeMap (ODbL)";
-const MAPHSRC={tag:"Height from OpenStreetMap",levels:"Height from its floor count in OpenStreetMap",
-  ms:"Height estimated by Microsoft from aerial imagery",default:"No height on record, so typical for its type"};
+   Everything is served beside this page, so it works with no signal once the service worker
+   has it (Settings › This device › Download for offline use fetches it all at once): MapLibre
+   in lib/ (v6 ships ES modules only, hence import()), our own street map in
+   williamsport-streets.json, the buildings in williamsport-buildings.json and the addresses in
+   williamsport-addresses.json. The data is built by fetch_buildings.py, fetch_basemap.py and
+   lidar_heights.py in E:\Claude\Projects\Williamsport3D. */
+const MAPLIB="lib/maplibre/maplibre-gl";
+const MAPSRC="OpenStreetMap contributors, Microsoft Building Footprints, USGS LiDAR (ODbL)";
+const MAPHSRC={lidar:"Height measured from the 2024 USGS LiDAR",tag:"Height from OpenStreetMap",
+  levels:"Height from its floor count in OpenStreetMap",ms:"Height estimated by Microsoft from aerial imagery",
+  default:"No height on record, so typical for its type"};
 let mapLib=null, mapBld=null, mapView=null, mapPin=null, mapWant=null, mapBusy=false;
+const MAPGONE="The map is not on this device yet \u2014 open it once with a connection, or use Settings \u203a This device \u203a Download for offline use";
 
 function mapLoad(){
   if(!$("#mlcss"))document.head.insertAdjacentHTML("beforeend",`<link id="mlcss" rel="stylesheet" href="${MAPLIB}.css">`);
-  return mapLib=mapLib||import(MAPLIB+".mjs")
-    .catch(()=>{mapLib=null;throw new Error("The map needs a connection the first time it opens")});
+  return mapLib=mapLib||import("./"+MAPLIB+".mjs").catch(()=>{mapLib=null;throw new Error(MAPGONE)});
 }
+// the buildings, and the address points as map labels
 function mapData(){
-  return mapBld=mapBld||fetch("williamsport-buildings.json").then(r=>{if(!r.ok)throw 0;return r.json()})
-    .catch(()=>{mapBld=null;throw new Error("Could not load the buildings \u2014 check the connection")});
+  return mapBld=mapBld||Promise.all([fetch("williamsport-buildings.json").then(r=>{if(!r.ok)throw 0;return r.json()}),addrLoad()])
+    .then(([bld,idx])=>({bld,idx,adr:{type:"FeatureCollection",features:idx.a.map(a=>({type:"Feature",
+      properties:{n:String(a.num||"")},geometry:{type:"Point",coordinates:[a.lon,a.lat]}}))}}))
+    .catch(()=>{mapBld=null;throw new Error(MAPGONE)});
 }
-// drawn over the basemap's own flat footprints, which stay for the rest of the county
-function mapBuildings(m,data,flat){
-  m.addSource("bld",{type:"geojson",data,attribution:"\u00a9 OpenStreetMap contributors \u00b7 Microsoft Building Footprints"});
-  const under=(m.getStyle().layers.find(l=>l.type==="symbol")||{}).id;   // street names stay on top
+/* Our own street map of the Williamsport box. Streets are drawn at about their real width
+   (a residential street is 9 m, an alley 4.5 m), which is what a to-scale backdrop needs:
+   metres per pixel here is 58,860 / 2^zoom, so the widths double with every zoom level. */
+const MAPPATHS=["footway","path","steps","cycleway","pedestrian","track","bridleway","corridor"];
+function mapStyle(){
+  const wide=(z14,z20)=>["interpolate",["exponential",2],["zoom"],14,z14,20,z20];
+  const byClass=(big,mid,res,alley,k)=>["match",["get","c"],
+    ["motorway","trunk","primary","motorway_link","trunk_link","primary_link"],big/k,
+    ["secondary","tertiary","secondary_link","tertiary_link"],mid/k,
+    ["residential","unclassified","living_street","road"],res/k,alley/k];
+  const m=(big,mid,res,alley)=>wide(byClass(big,mid,res,alley,3.593),byClass(big,mid,res,alley,0.0561));
+  const road=["all",["==",["get","k"],"road"],["!",["in",["get","c"],["literal",MAPPATHS]]]];
+  return {version:8,glyphs:"lib/fonts/{fontstack}/{range}.pbf",
+    sources:{base:{type:"geojson",data:"williamsport-streets.json",attribution:"\u00a9 OpenStreetMap contributors"}},
+    layers:[
+      {id:"land",type:"background",paint:{"background-color":"#f2f3f0"}},
+      {id:"park",type:"fill",source:"base",filter:["==",["get","k"],"park"],paint:{"fill-color":"#e1ebd6"}},
+      {id:"water",type:"fill",source:"base",filter:["==",["get","k"],"water"],paint:{"fill-color":"#bccfda"}},
+      {id:"path",type:"line",source:"base",filter:["all",["==",["get","k"],"road"],["in",["get","c"],["literal",MAPPATHS]]],
+        paint:{"line-color":"#bdbab3","line-width":wide(1.2/3.593,1.2/0.0561),"line-dasharray":[2,1.5]}},
+      {id:"rail",type:"line",source:"base",filter:["==",["get","k"],"rail"],
+        paint:{"line-color":"#9d9a94","line-width":wide(1.5/3.593,1.5/0.0561),"line-dasharray":[4,2]}},
+      {id:"casing",type:"line",source:"base",filter:road,layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":"#c3bfb7","line-width":m(14.5,12.5,10.5,6)}},
+      {id:"road",type:"line",source:"base",filter:road,layout:{"line-cap":"round","line-join":"round"},
+        paint:{"line-color":"#ffffff","line-width":m(13,11,9,4.5)}},
+      {id:"road-name",type:"symbol",source:"base",filter:["all",["==",["get","k"],"road"],["has","n"]],
+        layout:{"symbol-placement":"line","text-field":["get","n"],"text-font":["Noto Sans Regular"],
+          "text-size":["interpolate",["linear"],["zoom"],14,9,20,15],"text-max-angle":35},
+        paint:{"text-color":"#454545","text-halo-color":"#ffffff","text-halo-width":1.4}}]};
+}
+// the buildings under the street names, and house numbers on top once you are close
+function mapLayers(m,d,flat){
+  m.addSource("bld",{type:"geojson",data:d.bld,attribution:"\u00a9 OpenStreetMap contributors \u00b7 Microsoft Building Footprints \u00b7 USGS LiDAR"});
   if(flat){
-    m.addLayer({id:"bld",type:"fill",source:"bld",paint:{"fill-color":"#e6e2dc"}},under);
-    m.addLayer({id:"bldline",type:"line",source:"bld",paint:{"line-color":"#55504a","line-width":1.4}},under);
+    m.addLayer({id:"bld",type:"fill",source:"bld",paint:{"fill-color":"#e6e2dc"}},"road-name");
+    m.addLayer({id:"bldline",type:"line",source:"bld",paint:{"line-color":"#55504a","line-width":1.4}},"road-name");
   }else m.addLayer({id:"bld",type:"fill-extrusion",source:"bld",paint:{"fill-extrusion-color":"#cfc9bf",
     "fill-extrusion-height":["get","height"],"fill-extrusion-base":["coalesce",["get","min_height"],0],
-    "fill-extrusion-opacity":0.95}},under);
+    "fill-extrusion-opacity":0.95}},"road-name");
+  m.addSource("adr",{type:"geojson",data:d.adr});
+  m.addLayer({id:"adr",type:"symbol",source:"adr",minzoom:17.5,layout:{"text-field":["get","n"],
+    "text-font":["Noto Sans Regular"],"text-size":11},
+    paint:{"text-color":"#6b645a","text-halo-color":"#f2f3f0","text-halo-width":1.2}});
+}
+// the county addresses that fall inside a building's outline
+function addrsIn(idx,g){
+  const ring=g.type==="Polygon"?g.coordinates[0]:g.coordinates[0][0];
+  const xs=ring.map(p=>p[0]), ys=ring.map(p=>p[1]);
+  const x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
+  const inside=(x,y)=>{let hit=false; for(let i=0,j=ring.length-1;i<ring.length;j=i++){const [xi,yi]=ring[i],[xj,yj]=ring[j];
+    if((yi>y)!==(yj>y)&&x<xi+(y-yi)*(xj-xi)/(yj-yi))hit=!hit} return hit};
+  return idx.a.filter(a=>a.lon>=x0&&a.lon<=x1&&a.lat>=y0&&a.lat<=y1&&inside(a.lon,a.lat)).map(a=>a.label);
 }
 
 function renderMap(){
@@ -44,9 +92,10 @@ function renderMap(){
       <button class="btn" id="mapgo">Find</button></div>
     <div id="mapsug" class="sugbox"></div><div id="maphits"></div>
     <div id="mapbox"><p class="hint" style="padding:14px">Loading the map\u2026</p></div>
-    <p class="hint">Drag to move, pinch or scroll to zoom, two fingers or a right-drag to tilt and turn.
-      Addresses from Lycoming County Public Safety. Buildings from OpenStreetMap and Microsoft; most
-      heights are Microsoft's estimates from aerial imagery, so read them as rough.</p>`;
+    <p class="hint">Drag to move, pinch or scroll to zoom, two fingers or a right-drag to tilt and turn. Tap a
+      building for its address and height. Addresses from Lycoming County Public Safety; buildings from
+      OpenStreetMap and Microsoft. Heights inside the city are measured from the 2024 USGS LiDAR; the few it
+      could not see, and everything outside the city, are estimates.</p>`;
   addrSearch($("#mapq"),$("#mapsug"),$("#maphits"),$("#mapgo"),mapFly);
   // start the heavy part only once this view is really showing, not while something
   // walks every view in one go, as the render sweep does
@@ -58,14 +107,15 @@ async function mapBoot(){
   try{
     const [ml,data]=await Promise.all([mapLoad(),mapData()]);
     box.innerHTML="";
-    const m=mapView=new ml.Map({container:box,style:MAPSTYLE,center:[-77.0011,41.2412],
+    const m=mapView=new ml.Map({container:box,style:mapStyle(),center:[-77.0011,41.2412],
       zoom:15.5,pitch:55,maxPitch:80});
     m.addControl(new ml.NavigationControl({visualizePitch:true}));
     m.on("error",()=>{});   // a tile that fails to load leaves a gap; nothing to report
-    m.on("load",()=>mapBuildings(m,data,false));
+    m.on("load",()=>mapLayers(m,data,false));
     m.on("click","bld",e=>{
-      const p=e.features[0].properties;
-      new ml.Popup().setLngLat(e.lngLat).setHTML(`<b>${esc(p.name||"Building")}</b><br>About `
+      const p=e.features[0].properties, at=addrsIn(data.idx,e.features[0].geometry);
+      new ml.Popup().setLngLat(e.lngLat).setHTML(`<b>${esc(at[0]||p.name||"Building")}</b>`
+        +`${at.length>1?" and "+(at.length-1)+" more":""}${p.name&&at.length?"<br>"+esc(p.name):""}<br>About `
         +`${Math.round(p.height*3.281)} ft tall${p.levels?", "+esc(p.levels)+" floors":""}<br>`
         +`<span style="color:#666">${MAPHSRC[p.height_source]||""}</span>`).addTo(m)});
     mapPin=new ml.Marker({color:"#c62828"});
@@ -93,14 +143,14 @@ async function fetchPlan(lat,lon,feet,px,py){
   const css=768, box=document.createElement("div");
   box.style.cssText=`position:fixed;top:0;left:${-css-50}px;width:${css}px;height:${Math.round(css*(py||px)/px)}px`;
   document.body.appendChild(box);
-  const m=new ml.Map({container:box,style:MAPSTYLE,center:[lon,lat],zoom:planZoom(lat,feet,css),
+  const m=new ml.Map({container:box,style:mapStyle(),center:[lon,lat],zoom:planZoom(lat,feet,css),
     interactive:false,attributionControl:false,fadeDuration:0,pixelRatio:px/css,
     canvasContextAttributes:{preserveDrawingBuffer:true}});
   m.on("error",()=>{});
   try{
     await new Promise((res,rej)=>{
       const t=setTimeout(()=>rej(new Error("The map did not finish drawing \u2014 check the connection")),25000);
-      m.on("load",()=>{mapBuildings(m,data,true);m.once("idle",()=>{clearTimeout(t);res()})});
+      m.on("load",()=>{mapLayers(m,data,true);m.once("idle",()=>{clearTimeout(t);res()})});
     });
     return {data:m.getCanvas().toDataURL("image/png"),feet};
   }finally{m.remove();box.remove()}
@@ -132,7 +182,7 @@ async function frameMap(sk,at,feet){
   try{
     const [ml,data]=await Promise.all([mapLoad(),mapData()]);
     const holder=el.querySelector(".mfmap");
-    const m=mapFrame=new ml.Map({container:holder,style:MAPSTYLE,center:[at.lon,at.lat],
+    const m=mapFrame=new ml.Map({container:holder,style:mapStyle(),center:[at.lon,at.lat],
       zoom:planZoom(at.lat,feet,holder.clientWidth),dragRotate:false,pitchWithRotate:false,
       touchPitch:false,maxPitch:0,attributionControl:false});
     m.touchZoomRotate.disableRotation();
@@ -142,7 +192,7 @@ async function frameMap(sk,at,feet){
       *holder.clientWidth/(512*2**m.getZoom())/0.3048);
     const info=()=>{$("#mfinfo").textContent=`About ${across()} ft across. Pinch and drag until it is right. `
       +`The pin marks the address and is not drawn.`};
-    m.on("load",()=>{mapBuildings(m,data,true); $("#mfok").disabled=false; info()});
+    m.on("load",()=>{mapLayers(m,data,true); $("#mfok").disabled=false; info()});
     m.on("move",info);
     $("#mfok").onclick=async()=>{
       const c=m.getCenter(), feet=across();

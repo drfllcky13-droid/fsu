@@ -313,42 +313,75 @@ function canvasSVG(sk){
     ${headerSVG(sk)}
   </svg>`;
 }
-const LYCO_ADDR="https://gis.lyco.org/arcgis/rest/services/BuildingAddresses/MapServer/0/query";
 const PEMA_IMG="https://imagery.pasda.psu.edu/arcgis/rest/services/PEMAImagery2021_2023cache/MapServer/export";
 
-function parseAddr(q){
-  const m=String(q).trim().match(/^(\d+)\s+(.*)$/);
-  const num=m?+m[1]:null;
-  // the county stores the bare street name, so drop the number, type and direction
-  const name=(m?m[2]:String(q)).toUpperCase()
-    .replace(/\b(STREET|ST|AVENUE|AVE|ROAD|RD|DRIVE|DR|LANE|LN|BOULEVARD|BLVD|COURT|CT|PLACE|PL|WAY|TERRACE|TER|CIRCLE|CIR|PIKE|HIGHWAY|HWY|TRAIL|TRL|PARKWAY|PKWY|SQUARE|SQ|ALLEY|ALY|RUN)\b\.?/g," ")
-    .replace(/\b(NORTH|SOUTH|EAST|WEST|N|S|E|W|NE|NW|SE|SW)\b\.?/g," ")
-    .replace(/[.,]/g," ").replace(/\s+/g," ").trim();
-  return {num,name};
+/* ---------- finding an address, with or without a connection ----------
+   Every address point in Williamsport city (Lycoming County Public Safety) and every street
+   crossing (OpenStreetMap), from williamsport-addresses.json beside the page. Searching is
+   local: no signal needed, city addresses first, typos forgiven, and "4th and Market" finds
+   the corner. The file is rebuilt by fetch_basemap.py in E:\Claude\Projects\Williamsport3D. */
+const ADDRWORD={NORTH:"N",SOUTH:"S",EAST:"E",WEST:"W",STREET:"ST",AVENUE:"AVE",ROAD:"RD",DRIVE:"DR",
+  LANE:"LN",PLACE:"PL",COURT:"CT",BOULEVARD:"BLVD",TERRACE:"TER",CIRCLE:"CIR",HIGHWAY:"HWY",ALLEY:"ALY",
+  EXTENSION:"EXT",PARKWAY:"PKWY",FIRST:"1ST",SECOND:"2ND",THIRD:"3RD",FOURTH:"4TH",FIFTH:"5TH",SIXTH:"6TH",
+  SEVENTH:"7TH",EIGHTH:"8TH",NINTH:"9TH",TENTH:"10TH",ELEVENTH:"11TH",TWELFTH:"12TH",MOUNT:"MT"};
+const ADDRTYPE=new Set(["ST","AVE","RD","DR","LN","PL","CT","BLVD","TER","CIR","HWY","ALY","EXT","PKWY","WAY"]);
+const ADDRDIR=new Set(["N","S","E","W"]);
+const addrWords=s=>String(s).toUpperCase().replace(/[.,']/g," ").split(/\s+/).filter(Boolean).map(w=>ADDRWORD[w]||w);
+// the name without its direction and type: E CHURCH ST is CHURCH
+const addrCore=ws=>ws.filter((w,i)=>!(ws.length>1&&((i===0&&ADDRDIR.has(w))||(i===ws.length-1&&ADDRTYPE.has(w))))).join(" ");
+function addrLev(a,b){       // edits to turn one name into the other; two letters swapped count as one
+  const d=[...Array(a.length+1)].map((_,i)=>[i,...Array(b.length).fill(0)]);
+  for(let j=1;j<=b.length;j++)d[0][j]=j;
+  for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++){
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+    if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1);
+  }
+  return d[a.length][b.length];
+}
+let addrIdx=null;
+function addrLoad(){
+  return addrIdx=addrIdx||fetch("williamsport-addresses.json").then(r=>{if(!r.ok)throw 0;return r.json()})
+    .then(d=>({
+      a:d.addresses.map(([label,lat,lon])=>{const m=label.match(/^(\d+)\S*\s+(.*)$/), ws=addrWords(m?m[2]:label);
+        return {label:label+", WILLIAMSPORT",lat,lon,num:m?+m[1]:null,st:ws.join(" "),core:addrCore(ws)}}),
+      x:d.intersections.map(([p,q,lat,lon])=>{const a=addrWords(p), b=addrWords(q);
+        return {label:a.join(" ")+" & "+b.join(" ")+", WILLIAMSPORT",lat,lon,a:[a.join(" "),addrCore(a)],b:[b.join(" "),addrCore(b)]}})}))
+    .catch(()=>{addrIdx=null;throw new Error("The address list is not on this device yet \u2014 open it once with a connection, "
+      +"or use Settings \u203a This device \u203a Download for offline use")});
+}
+// how well the typed street matches one street: 0 not at all, up to 4 exactly
+function addrMatch(qw,st,core){
+  const q=qw.join(" "), qc=addrCore(qw);
+  if(!qc)return 0;
+  if(st===q)return 4;
+  if(core===qc)return 3.5;                                  // direction or type left off
+  if(core.startsWith(qc)||st.startsWith(q))return 3;        // the start of the name
+  const cw=core.split(" ");
+  if(qc.split(" ").every(w=>cw.some(c=>c.startsWith(w))))return 2.5;
+  if(qc.length>=4&&addrLev(qc,core)<=(qc.length>6?2:1))return 2;   // a typo
+  return 0;
 }
 async function findAddress(q){
-  const {num,name}=parseAddr(q);
-  if(!name)throw new Error("Type a street name, ideally with a number");
-  const esc2=s=>String(s).replace(/'/g,"''");
-  const where=(num!=null?`Add_Number=${num} AND `:"")+`St_Name LIKE '${esc2(name)}%'`;
-  const url=LYCO_ADDR+"?where="+encodeURIComponent(where)
-    +"&outFields=Add_Number,St_PreDir,St_Name,St_PosTyp,Inc_Muni,Post_Code"
-    +"&returnGeometry=true&outSR=4326&resultRecordCount=12&f=json";
-  const r=await fetch(url);
-  if(!r.ok)throw new Error("County address service unreachable");
-  const j=await r.json();
-  if(j.error)throw new Error(j.error.message||"Address lookup failed");
-  return (j.features||[]).map(f=>({
-    label:[f.attributes.Add_Number,f.attributes.St_PreDir,f.attributes.St_Name,
-           f.attributes.St_PosTyp].map(v=>String(v==null?"":v).trim())
-      .filter(Boolean).join(" ")
-      +(String(f.attributes.Inc_Muni||"").trim()
-        ?", "+String(f.attributes.Inc_Muni).trim():""),
-    lat:f.geometry.y, lon:f.geometry.x }));
+  const idx=await addrLoad(), text=String(q).trim();
+  const two=text.split(/\s+(?:&|and|at|@)\s+|\s*[&@]\s*/i).filter(Boolean);
+  if(two.length===2&&!/^\d+\s/.test(text)){                // two streets: the corner where they cross
+    const [p,r]=two.map(addrWords);
+    return idx.x.map(x=>({x,sc:Math.max(Math.min(addrMatch(p,...x.a),addrMatch(r,...x.b)),
+        Math.min(addrMatch(p,...x.b),addrMatch(r,...x.a)))}))
+      .filter(o=>o.sc>0).sort((u,v)=>v.sc-u.sc).slice(0,8).map(({x})=>({label:x.label,lat:x.lat,lon:x.lon}));
+  }
+  const m=text.match(/^(\d+)\S*\s*(.*)$/), num=m?+m[1]:null, qw=addrWords(m?m[2]:text);
+  if(!qw.length)throw new Error("Type a street name, ideally with a number");
+  const street=new Map();                                   // score each street once, not every address
+  idx.a.forEach(a=>{if(!street.has(a.st))street.set(a.st,addrMatch(qw,a.st,a.core))});
+  return idx.a.filter(a=>street.get(a.st)>0)
+    .sort((u,v)=>street.get(v.st)-street.get(u.st)
+      ||(num==null?0:Math.abs(u.num-num)-Math.abs(v.num-num))||u.num-v.num)
+    .slice(0,8).map(a=>({label:a.label,lat:a.lat,lon:a.lon}));
 }
-// the county search as a control: suggestions while typing, a list from Find, pick(hit) on choosing
+// the address search as a control: suggestions while typing, a list from Find, pick(hit) on choosing
 function addrSearch(qEl,sugBox,hitsBox,findBtn,pick){
-  // suggest as you type, but only after a pause, so the county service is not hammered
+  // suggest as you type, after a short pause so every keystroke does not redraw the list
   let sugT=null, sugSeq=0;
   const showSug=(list)=>{
     sugBox.innerHTML=list.slice(0,6).map((x,i)=>`<button class="sug" data-sug="${i}">${esc(x.label)}</button>`).join("");
@@ -364,7 +397,7 @@ function addrSearch(qEl,sugBox,hitsBox,findBtn,pick){
     sugT=setTimeout(async()=>{
       try{ const hits=await findAddress(q); if(seq===sugSeq)showSug(hits) }
       catch(e){ if(seq===sugSeq)showSug([]) }
-    },350);
+    },150);
   };
   const say=(t,red)=>{hitsBox.innerHTML=`<p class="hint" style="margin:0 0 10px${red?";color:var(--red)":""}">${t}</p>`};
   findBtn.onclick=async()=>{

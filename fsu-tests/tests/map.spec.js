@@ -14,13 +14,37 @@ async function open(page,url){
 test("Settings › Map opens the map on the scene page, and says why when it cannot load",async({page})=>{
   await open(page,"/index.html");
   expect(await page.evaluate(()=>document.getElementById("v-map"))).toBeNull();
-  await page.route(/maplibre-gl@|tiles\.openfreemap\.org|williamsport-buildings\.json/,r=>r.abort());
+  await page.route(/lib\/maplibre|williamsport-/,r=>r.abort());
   await open(page,"/scenes.html");
   await page.click("#side .sset");
   await page.click('#v-data [data-go="map"]');
   expect(await page.evaluate(()=>[view,location.hash])).toEqual(["map","#v=map"]);
   await expect(page.locator("#mapq")).toBeVisible();
   await expect(page.locator("#mapbox")).toContainText("connection");
+});
+
+test("addresses are found on the device: typos forgiven, corners understood",async({page})=>{
+  await open(page,"/scenes.html");
+  // nothing leaves the machine: the search reads the file beside the page
+  await page.route(/^(?!http:\/\/127\.0\.0\.1)/,r=>r.abort());
+  const r=await page.evaluate(async()=>{
+    const first=async q=>((await findAddress(q))[0]||{}).label;
+    const all=async q=>(await findAddress(q)).map(h=>h.label);
+    return {exact:await first("329 Pine St"), typed:await first("329 pine street"), typo:await first("329 pnie st"),
+      corner:await first("4th and Market"), church:await all("church"), near:await first("331 pine")};
+  });
+  expect(r.exact).toBe("329 PINE ST, WILLIAMSPORT");
+  expect(r.typed).toBe("329 PINE ST, WILLIAMSPORT");
+  expect(r.typo).toBe("329 PINE ST, WILLIAMSPORT");
+  expect(r.corner).toMatch(/4TH ST & MARKET ST|MARKET ST & .*4TH ST/);
+  expect(r.church.some(l=>/ E CHURCH ST/.test(l))&&r.church.some(l=>/ W CHURCH ST/.test(l))).toBe(true);
+  expect(r.near,"the nearest number on the street when the exact one is not there").toMatch(/^3\d\d PINE ST/);
+});
+
+test("everything the offline download lists is really there",async({page})=>{
+  await open(page,"/scenes.html");
+  const bad=await page.evaluate(()=>Promise.all(OFFLINE.map(u=>fetch(u).then(r=>r.ok?null:u+" "+r.status))).then(l=>l.filter(Boolean)));
+  expect(bad).toEqual([]);
 });
 
 test("the county aerial covers the ground its scale claims",async({page})=>{

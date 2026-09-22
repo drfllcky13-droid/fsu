@@ -37,7 +37,9 @@ device to the van data. Print it and pin it in the van.
 3. Now open `.../fsu/scenes.html` and add that to the home screen the same way. That icon is
    **Scenes**. Doing both gives the technician one icon for the van and one for the scene; each
    opens straight into its own work, with no route from one into the other.
-4. Open each icon once while online. From then on they work without a connection.
+4. Open each icon once while online. From then on they work without a connection. Then, still
+   online, open **Settings › This device › Download for offline use**: that fetches the map, the
+   address list and the PDF, Word and QR tools, so every part works at a scene with no signal.
 5. To share the van list with the other devices, open **Settings** (top of Home), then
    **Automatic saving**. Owner and repository are already filled in (`drfllcky13-droid` /
    `van-data`). Paste the unit's access token and tap **Connect** — that is the whole form.

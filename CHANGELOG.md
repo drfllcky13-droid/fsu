@@ -1,5 +1,27 @@
 # FSU change log
 
+## 2026.09.22.1
+Everything now works with no signal. **Settings › This device › Download for offline use** fetches
+all of it in one go, about 11 MB: the map of Williamsport, its address list, and the tools that
+make PDFs, Word files and QR labels. Those tools used to come from outside websites the first
+time they were needed, so a device that had never exported with a signal could not export at a
+scene. They now come from the app's own site. The screen says when the app has been updated
+since the last download, so it can be fetched again. County aerial photos still need a
+connection: they are fetched one spot at a time.
+
+Address search no longer asks the county each time. Every address in the city (10,737 of them)
+is kept on the device, so results are instant and work without signal. Williamsport comes first,
+typing slips such as "pnie" for "pine" are forgiven, and two streets, like "4th and Market",
+find the corner.
+
+The map is the app's own too. Its streets are drawn at about their real width, which is what a
+to-scale backdrop needs, and house numbers appear on the buildings once you zoom in, on the map
+and on the map drawing. Tapping a building on the map shows its address.
+
+Building heights inside the city limits are now measured from the 2024 USGS LiDAR survey instead
+of estimated. A building the survey could not see well enough, such as a shed under a tree,
+keeps its estimate, and the building's details say which it is.
+
 ## 2026.09.21.1
 Scenes has a map. **Settings › Map** shows every building in Williamsport, South Williamsport
 and Duboistown in 3D. Search an address the same way as for a backdrop and the map flies there

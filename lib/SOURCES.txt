@@ -1,0 +1,20 @@
+THIRD-PARTY FILES SERVED FROM lib/
+They are kept in the repository instead of loading from a CDN, so the app works with no signal
+once a device has them: Settings › This device › Download for offline use fetches them all, along
+with the map data. They are byte-for-byte copies of the published files; replace each file whole
+to update it, and update this list and the OFFLINE list in src/views-items.js together.
+
+File                                  Version  From                                          Licence
+jspdf.umd.min.js                      2.5.1    cdnjs.cloudflare.com/ajax/libs/jspdf          MIT
+svg2pdf.umd.min.js                    2.2.4    cdn.jsdelivr.net/npm/svg2pdf.js               MIT
+jszip.min.js                          3.10.1   cdnjs.cloudflare.com/ajax/libs/jszip          MIT (or GPLv3)
+qrcode.min.js                         1.4.4    cdnjs.cloudflare.com/ajax/libs/qrcode-generator  MIT
+jsQR.js                               1.4.0    cdn.jsdelivr.net/npm/jsqr                      Apache-2.0
+maplibre/maplibre-gl*.mjs, .css       6.10.0   cdn.jsdelivr.net/npm/maplibre-gl/dist          BSD-3-Clause
+fonts/Noto Sans Regular/0-255.pbf     -        tiles.openfreemap.org/fonts (glyphs for map    SIL Open Font
+                                               labels; street names here are plain ASCII,       License 1.1
+                                               so this one range covers them)
+
+MapLibre finds its worker as ./maplibre-gl-worker.mjs next to maplibre-gl.mjs, so the three .mjs
+files must stay together. Their sourceMappingURL comments point at .map files that are not copied;
+only a browser's developer tools ever ask for them.

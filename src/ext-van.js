@@ -223,7 +223,7 @@ function qrLib(){
   if(window.qrcode)return Promise.resolve();
   if(QRP)return QRP;
   QRP=new Promise((res,rej)=>{const s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js";
+    s.src="lib/qrcode.min.js";
     s.onload=res; s.onerror=()=>{QRP=null;rej(new Error("no network"))}; document.head.appendChild(s)});
   return QRP;
 }
@@ -286,7 +286,7 @@ function jsqrLib(){
   if(window.jsQR)return Promise.resolve();
   if(JSQRP)return JSQRP;
   JSQRP=new Promise((res,rej)=>{const s=document.createElement("script");
-    s.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+    s.src="lib/jsQR.js";
     s.onload=res; s.onerror=()=>{JSQRP=null;rej(new Error("no network"))}; document.head.appendChild(s)});
   return JSQRP;
 }

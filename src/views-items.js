@@ -616,7 +616,9 @@ function settingsSectionBody(k){
       ? "Installed. It opens full screen from its own icon and works without a connection."
       : /iPad|iPhone/.test(navigator.userAgent)
         ? "In Safari, tap Share, then Add to Home Screen. It then opens full screen from its own icon and works without a connection."
-        : "Use the browser's Install option, or add it to the home screen, so it opens full screen and works without a connection."}</p>`;
+        : "Use the browser's Install option, or add it to the home screen, so it opens full screen and works without a connection."}</p>
+    <div class="idsect">Offline use</div>
+    ${offlineHTML()}`;
   else if(k==="activity")body=activityHTML();
   else if(k==="errors")body=(S.errors||[]).length?`<div style="margin-bottom:8px">${S.errors.slice().reverse().map(x=>`<div class="errrow"><span class="et">${esc(String(x.t||"").slice(0,16).replace("T"," "))}${x.v?" \u00b7 "+esc(x.v):""}</span><span class="em">${esc(x.m)}</span></div>`).join("")}</div>
       <button class="btn sec" id="errclear" style="max-width:none;margin:0">Clear the list</button>`
@@ -640,6 +642,44 @@ function renderData(){
   const cp=$("#casepkg"); if(cp)cp.onclick=()=>exportCasePackage("all","fsu-all");
   const ci=$("#casein"); if(ci)ci.onchange=()=>{const f=ci.files&&ci.files[0]; if(!f)return; f.text().then(importCasePackage)};
   const ec=$("#errclear"); if(ec)ec.onclick=()=>{S.errors=[];saveLocal();renderData();toast("Cleared")};
+  const od=$("#offdl"); if(od)od.onclick=()=>offlineDownload(od);
+}
+/* Everything either app fetches on demand, fetched in one go so a device is ready for a scene
+   with no signal. It goes into the service worker's own cache (the name must match sw.js), and
+   the worker hands it back whenever the network is not there. County aerial photos are not in
+   it: they are fetched for one spot at a time and would be gigabytes for the whole city. */
+const OFFLINE=["index.html","scenes.html","manifest.webmanifest","scenes.webmanifest",
+  "icon-180.png","icon-512.png","scenes-icon-180.png","scenes-icon-512.png",
+  "lib/jspdf.umd.min.js","lib/svg2pdf.umd.min.js","lib/jszip.min.js","lib/qrcode.min.js","lib/jsQR.js",
+  "lib/maplibre/maplibre-gl.mjs","lib/maplibre/maplibre-gl-shared.mjs","lib/maplibre/maplibre-gl-worker.mjs",
+  "lib/maplibre/maplibre-gl.css","lib/fonts/Noto Sans Regular/0-255.pbf",
+  "williamsport-buildings.json","williamsport-streets.json","williamsport-addresses.json"];
+const offlineState=()=>{try{return JSON.parse(localStorage.getItem("fsuOffline")||"null")}catch(_){return null}};
+function offlineHTML(){
+  const off=offlineState(), old=off&&off.v!==APP_VERSION;
+  return `<p class="hint" style="margin:0 0 10px">${!off
+      ?"Everything the app needs without a connection: the map of Williamsport and its address list, and the tools that make PDFs, Word files and QR labels. About 11 MB. County aerial photos still need a connection."
+      :old?`Downloaded ${esc(String(off.at).slice(0,10))}, but the app has been updated since. Download again so this device has the new version.`
+      :`Ready without a connection since ${esc(String(off.at).slice(0,10))} (${(+off.mb).toFixed(1)} MB). County aerial photos still need a connection.`}</p>
+    <button class="btn${off&&!old?" sec":""}" id="offdl" style="max-width:none;margin:0">${off?"Download again":"Download for offline use"}</button>
+    <p class="hint" id="offst" style="margin:8px 0 0"></p>`;
+}
+async function offlineDownload(btn){
+  const st=$("#offst"); btn.disabled=true; st.style.color="";
+  try{
+    if(typeof caches==="undefined")throw new Error("This browser cannot keep files for use without a connection");
+    const c=await caches.open("fsu-v1"); let bytes=0;
+    for(let i=0;i<OFFLINE.length;i++){
+      st.textContent=`Downloading ${i+1} of ${OFFLINE.length}\u2026`;
+      const r=await fetch(OFFLINE[i],{cache:"no-store"});
+      if(!r.ok)throw new Error(`Could not fetch ${OFFLINE[i]} (${r.status}). Nothing is lost; try again with a better connection.`);
+      bytes+=(await r.clone().arrayBuffer()).byteLength;
+      await c.put(OFFLINE[i],r);
+    }
+    if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+    localStorage.setItem("fsuOffline",JSON.stringify({at:new Date().toISOString(),mb:bytes/1048576,v:APP_VERSION}));
+    renderData(); toast("Ready for use without a connection");
+  }catch(err){ st.textContent=err.message; st.style.color="var(--red)"; btn.disabled=false }
 }
 
 /* ---------- filtered lists from the strip ---------- */

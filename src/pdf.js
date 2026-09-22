@@ -4,7 +4,7 @@ function loadPDF(){
   if(jsPDFlib)return Promise.resolve(jsPDFlib);
   return new Promise((res,rej)=>{
     const s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    s.src="lib/jspdf.umd.min.js";
     s.onload=()=>{jsPDFlib=(window.jspdf||{}).jsPDF;
       jsPDFlib?res(jsPDFlib):rej(new Error("PDF library loaded oddly"))};
     s.onerror=()=>rej(new Error("Couldn't load the PDF tool. Do one export on wifi and it stays cached."));
