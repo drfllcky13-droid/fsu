@@ -468,7 +468,8 @@ function settingsMenu(){
     ${PAGE==="scenes"?group("Scenes",[
       sec("case","Case packages",S.lastCase?"Last "+esc(S.lastCase.slice(0,10)):"None saved yet"),
       row('data-go="templates"',"Form templates",S.forms.length+" blank form"+(S.forms.length===1?"":"s")),
-      row('data-snipmanage="1"',"Report wording","Standard sentences for reports")]):""}
+      row('data-snipmanage="1"',"Report wording","Standard sentences for reports"),
+      row('data-go="map"',"Map","Williamsport's buildings in 3D")]):""}
     ${group("This device",[
       row('id="modebtn"',"Display",themeTxt+", "+modeTxt+(landscapeOnly()?", landscape only":"")),
       PAGE==="van"?sec("labels","Labels and web address",appUrl()?esc(appUrl().replace(/^https?:\/\//,"")):"No web address"):"",
@@ -495,6 +496,7 @@ function settingsNav(){
     ${item("case","Case packages")}
     ${item(null,"Form templates",'data-go="templates"')}
     ${item(null,"Report wording",'data-snipmanage="1"')}
+    ${item(null,"Map",'data-go="map"')}
     ${grp("This device")}
     ${item(null,"Display",'id="modebtn"')}
     ${item("device","Storage and install")}

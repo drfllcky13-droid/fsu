@@ -9,7 +9,7 @@
 const VIEWS={
   van:["home","compartments","bay","compdetail","inventory","itemdetail","sweep","guide",
        "reorder","tidy","print","labels","search","data"],
-  scenes:["active","incident","fill","sketch","templates","forms","data"],
+  scenes:["active","incident","fill","sketch","templates","forms","map","data"],
 };
 const here=v=>VIEWS[PAGE].includes(v);
 

@@ -15,7 +15,8 @@ It is two pages, and you can put both on the home screen:
 - **FSU** (the address above) is the van: Home, Storage, Items, the sweep, the guide, the printed
   map and labels, restocking, tidying up and Settings.
 - **Scenes** (`.../fsu/scenes.html`) is the scene: the incident list, an incident and the
-  documents it needs, filling a form in, form templates and the sketch.
+  documents it needs, filling a form in, form templates, the sketch, and a 3D map of
+  Williamsport's buildings (Settings › Map, which needs a connection).
 
 They are the same records, not two copies — a sweep logged on one shows up on the other, and
 nothing has to be sent between them — but they are genuinely separate apps. Neither has a button,

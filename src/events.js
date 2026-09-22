@@ -460,6 +460,7 @@ function renderView(v){
   if(v==="reorder")return renderReorder();
   if(v==="tidy")return renderTidy();
   if(v==="templates")return renderTemplates();
+  if(v==="map"&&typeof renderMap==="function")return renderMap();
   if(v==="bay")return renderBay();
   if(v==="compdetail")return renderCompDetail();
   if(v==="data"){renderData();return fitHeader()}

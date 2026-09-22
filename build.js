@@ -15,7 +15,7 @@ const SHARED=["data-van.js","core.js","chrome.js","pages.js","incidents.js","cas
 const TARGETS={
   "index.html":["head.html","app.css","body-van.html","van.js",...SHARED,"init.js","tail.html"],
   "scenes.html":["head-scenes.html","app.css","body-scenes.html","scenes.js",...SHARED,
-    "pdf.js","pdf-sketch.js","sketch-objects.js","sketch-canvas.js",
+    "pdf.js","pdf-sketch.js","sketch-objects.js","sketch-canvas.js","map.js",
     "ext-sketch-1.js","ext-sketch-2.js","ext-sketch-3.js","sketch-controls.js",
     "init-scenes.js","tail.html"],
 };

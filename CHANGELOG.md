@@ -1,5 +1,32 @@
 # FSU change log
 
+## 2026.09.21.1
+Scenes has a map. **Settings › Map** shows every building in Williamsport, South Williamsport
+and Duboistown in 3D. Search an address the same way as for a backdrop and the map flies there
+and drops a pin; tap a building for its height. Buildings come from OpenStreetMap and Microsoft,
+and most heights are Microsoft's estimates from aerial imagery, so read them as rough. The map
+needs a connection the first time it opens.
+
+The sketch backdrop can now be a **map drawing** instead of the aerial photo: the same address
+search and the same choice of width, but streets and building outlines, north up and to scale.
+It stays sharp at any size, and the credit line under the sketch says where it came from.
+The map drawing is the first choice now; the aerial is one tap away.
+
+Pick the address for a map drawing and the map opens right on the sketch page, over the area
+it will fill. Pinch and drag it until it is right, then tap **Lock it in**: that view is drawn
+to scale across the page under the title block, and you sketch on top of it. **Backdrop › Move
+or zoom the map** opens it again later, and whatever you have drawn moves with the ground, so
+every object stays on its spot at its true size. The legend and the north arrow stay where they
+are, and undo still works across it. An aerial photo has **See more** and **See less** instead.
+
+Fixed: on a sketch with no title block yet, the aerial slid under the title block that
+placing it brought in.
+
+Fixed: the county aerial was about a quarter too small for the distance it claimed. An aerial
+set to 320 ft across covered about 240 ft of ground, so any distance measured over it read about
+a third too long. New aerials are right. A sketch that already has an aerial keeps the old scale:
+check any measurement that was taken from the photo rather than typed in.
+
 ## 2026.09.12.7
 FSU and Scenes are now genuinely separate apps, not two pages that happened to share a tab bar.
 The van no longer has a Scenes tab, and Home no longer offers Start an incident or Quick sketch —

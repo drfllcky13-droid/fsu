@@ -160,7 +160,7 @@ async function exportSketch(sk,shared){
   const sc=scaleOf(sk);
   if(sk.bg&&sk.bg.src){
     doc.setFontSize(8);doc.setTextColor(110);
-    doc.text("Aerial imagery from county GIS - "+String(sk.bg.src).replace(/\u2013/g,"-")
+    doc.text((sk.bg.kind==="map"?"Map drawing - ":"Aerial imagery from county GIS - ")+String(sk.bg.src).replace(/\u2013/g,"-")
       +(sk.bg.place?". "+sk.bg.place:"")
       +(sk.bg.ground?". Image covers "+sk.bg.ground+" ft across.":""),
       M,H-36,{maxWidth:W-2*M});

@@ -112,6 +112,26 @@ same-record clash is kept in `S.conflicts` and offered back in Settings › Auto
 **SYNC_DESIGN.txt at the repo root is the full reasoning and every failure case.**
 `fsu-tests/tests/sync.spec.js` drives all of it against a stubbed GitHub.
 
+**The map.** `src/map.js`, scene page only. Settings › Map (the `map` view) shows Williamsport's
+buildings in 3D with the county address search; the sketch's Backdrop › Map drawing renders the
+same data flat and to scale. It is the one part of the app that needs the network: MapLibre GL JS 6
+from jsdelivr (ES modules only, hence `import()`), OpenFreeMap tiles, and
+`williamsport-buildings.json` beside the pages — OSM plus Microsoft footprints with heights, rebuilt
+by `py fetch_buildings.py` in `E:\Claude\Projects\Williamsport3D` and copied here. The live map
+starts on the next tick and only if its view is still showing, so the render sweep and the click
+crawl, which walk every view in one synchronous go, never touch the network.
+Framing a map drawing is `frameMap`: a live, flat, north-up MapLibre map in a fixed, modal
+overlay laid over the page area the backdrop fills. The sketch's own pinch only listens to
+touches that start inside `#skcanvas`, so the two do not collide. Lock it in runs `lockMap`,
+which calls `fetchPlan` at that centre and width and then `setBackdrop`. Every address backdrop
+goes through `setBackdrop`: the map lock, the aerial and See more / See less (`reframeBg`).
+`moveDrawing` carries the objects, the scale and every undo and redo snapshot from the old frame
+to the new, as a zoom plus a shift, with the legend and north arrow excepted. Snapshots do not
+carry `sk.bg`, so leaving history alone would undo old positions onto the new image.
+MapLibre's `.maplibregl-map{position:relative}` lands on its container and overrides a
+one-class `position:absolute`. That collapsed the live map to nothing once; `.mfbox .mfmap`
+needs its two classes.
+
 **Sketches, filled forms and photographs are
 deliberately excluded** from both sync and backup — that is case material and it stays on the
 device. Keep that. The only way case material leaves the device is a **case package** (Settings › Case packages,
@@ -234,6 +254,13 @@ package.
    open. `foldData` in ext-van.js is no longer called.
 8. **Two stylesheets, still.** Measurement lines and area fills have classes in both the app
    `<style>` and the PDF export string. Add to both or the print loses them.
+18. **Web Mercator is not ground.** A box `m` Web Mercator metres wide covers `m × cos(latitude)`
+   of ground, about 0.75 here. Until 2026.09.21.1 the county aerial asked for the unstretched box,
+   so every aerial covered a quarter less ground than its scale said. `fetchAerial` now divides by
+   `cos(lat)`, and `planZoom` sizes the map drawing the same way; `fsu-tests/tests/map.spec.js`
+   checks both, the drawing against MapLibre's own projection. Both are within 0.15% of the WGS84
+   ellipsoid. That spec blocks the service worker, because the worker makes the fetches itself,
+   out of `page.route`'s reach.
 
 ---
 

@@ -51,6 +51,44 @@ async function bgStore(sk,dataURL,meta){
   BGMEM[id]=dataURL;
   return id;
 }
+/* Carry the drawing from one address backdrop to another so every object keeps its spot on the
+   ground and its true size: page to ground through the old frame, ground to page through the new.
+   The undo history moves too, or undoing would put old positions over the new image. The legend
+   and north arrow belong to the page, not the ground, so they stay put. */
+const PAGEFIXED=new Set(["legend","north"]);
+function moveDrawing(sk,a,b){
+  const sa=a.w/a.ground, sb=b.w/b.ground, f=sb/sa, per=Math.PI/180*6378137/0.3048;  // feet per degree
+  const ax=a.x+a.w/2, ay=a.y+a.h/2, r2=v=>Math.round(v*100)/100;
+  // where the old centre lands in the new frame
+  const tx=b.x+b.w/2+(a.lon-b.lon)*per*Math.cos(b.lat*Math.PI/180)*sb, ty=b.y+b.h/2-(a.lat-b.lat)*per*sb;
+  const move=(objs,scale)=>{
+    (objs||[]).forEach(o=>{ if(PAGEFIXED.has(o.t))return;
+      o.x=r2(tx+(o.x-ax)*f); o.y=r2(ty+(o.y-ay)*f); o.w=r2(o.w*f); o.h=r2(o.h*f) });
+    if(scale&&scale.px)scale.px*=f;
+  };
+  move(sk.objs,sk.scale);
+  for(const st of [UNDO[sk.id],REDO[sk.id]])(st||[]).forEach((j,i)=>{
+    const d=JSON.parse(j);
+    if(Array.isArray(d))move(d,null); else move(d.o,d.s);
+    st[i]=JSON.stringify(d);
+  });
+  persistUndo(sk);
+}
+// an address backdrop goes in, and its known width sets the scale
+function setBackdrop(sk,nb){
+  const old=sk.bg;
+  if(old&&old.lat!=null&&old.ground&&(sk.objs||[]).length)moveDrawing(sk,old,nb);
+  sk.bg=nb; sk.scale={px:nb.w,real:nb.ground,unit:"ft"};
+  resolveMeas(sk);
+}
+// See more or less of the same spot
+async function reframeBg(sk,ground){
+  const b=sk.bg, map=b.kind==="map", px=map?2048:aerialPx(ground), py=map?Math.round(px*b.h/b.w):px;
+  const got=await (map?fetchPlan(b.lat,b.lon,ground,px,py):fetchAerial(b.lat,b.lon,ground,px));
+  await bgStore(sk,got.data,{w:px,hh:py});
+  setBackdrop(sk,Object.assign({},b,{ground,px}));
+  saveLocal();
+}
 // objects belong to a named layer; a sketch starts with one and you split it up yourself
 function layersOf(sk){
   if(!sk.layers||!sk.layers.length)sk.layers=[{id:"L1",name:"Layer 1",locked:false}];
@@ -260,7 +298,7 @@ function scaleBarSVG(sk){
 }
 function creditSVG(sk){
   const b=sk.bg; if(!b||!b.src)return "";
-  const c="Aerial imagery from county GIS \u2014 "+b.src
+  const c=(b.kind==="map"?"Map drawing \u2014 ":"Aerial imagery from county GIS \u2014 ")+b.src
     +(b.place?". "+b.place:"");
   return `<text x="12" y="${pageH(sk)-8}" class="k-credit">${esc(c)}</text>`;
 }
@@ -308,6 +346,42 @@ async function findAddress(q){
         ?", "+String(f.attributes.Inc_Muni).trim():""),
     lat:f.geometry.y, lon:f.geometry.x }));
 }
+// the county search as a control: suggestions while typing, a list from Find, pick(hit) on choosing
+function addrSearch(qEl,sugBox,hitsBox,findBtn,pick){
+  // suggest as you type, but only after a pause, so the county service is not hammered
+  let sugT=null, sugSeq=0;
+  const showSug=(list)=>{
+    sugBox.innerHTML=list.slice(0,6).map((x,i)=>`<button class="sug" data-sug="${i}">${esc(x.label)}</button>`).join("");
+    sugBox.querySelectorAll("[data-sug]").forEach(bq=>bq.onclick=()=>{
+      const hit=list[+bq.dataset.sug]; qEl.value=hit.label; sugBox.innerHTML=""; pick(hit);
+    });
+  };
+  qEl.oninput=()=>{
+    clearTimeout(sugT);
+    const q=qEl.value.trim();
+    if(q.length<4){showSug([]);return}
+    const seq=++sugSeq;
+    sugT=setTimeout(async()=>{
+      try{ const hits=await findAddress(q); if(seq===sugSeq)showSug(hits) }
+      catch(e){ if(seq===sugSeq)showSug([]) }
+    },350);
+  };
+  const say=(t,red)=>{hitsBox.innerHTML=`<p class="hint" style="margin:0 0 10px${red?";color:var(--red)":""}">${t}</p>`};
+  findBtn.onclick=async()=>{
+    const q=qEl.value.trim(); if(!q)return toast("Type an address");
+    say("Searching…");
+    try{
+      const hits=await findAddress(q);
+      if(!hits.length)return say("Nothing matched. Try just the street name.");
+      if(hits.length===1){hitsBox.innerHTML="";return pick(hits[0])}
+      hitsBox.innerHTML=`<div class="rows" style="margin-bottom:10px">`
+        +hits.map((x,i)=>`<button class="row" data-hit="${i}">
+          <span><span class="code" style="font-size:14px">${esc(x.label)}</span></span>
+          <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`;
+      hitsBox.querySelectorAll("[data-hit]").forEach(btn=>btn.onclick=()=>{hitsBox.innerHTML="";pick(hits[+btn.dataset.hit])});
+    }catch(err){ say(esc(err.message),true) }
+  };
+}
 // a square of ground, centred on the point, fetched at a known size so scale is exact
 // the cache is finest at about 0.019 m per pixel; asking for more than that adds bytes, not detail
 function aerialPx(feet){
@@ -318,7 +392,9 @@ async function fetchAerial(lat,lon,feet,px){
   const R=6378137, m=feet*0.3048;
   const cx=lon*Math.PI/180*R;
   const cy=Math.log(Math.tan(Math.PI/4+lat*Math.PI/360))*R;
-  const half=m/2;
+  // Web Mercator stretches ground by 1/cos(latitude), about 1.33 here. Ask for the stretched
+  // box, or the image covers only three quarters of the ground the scale says it does.
+  const half=m/2/Math.cos(lat*Math.PI/180);
   const bbox=[cx-half,cy-half,cx+half,cy+half].join(",");
   const url=PEMA_IMG+"?bbox="+bbox+"&bboxSR=3857&imageSR=3857&size="+px+","+px
     +"&format=jpg&transparent=false&f=image";
@@ -436,10 +512,21 @@ function orthoSheet(sk,src){
 function bgSheet(sk){
   const b=sk.bg||{};
   const has=!!(b.data||b.imgId);
+  let kind=b.kind||"map";
   openSheet(`<h3>Backdrop</h3>
     <p style="margin:0 0 12px;color:var(--ink2);font-size:14.5px;line-height:1.5">Search the address
-      to drop in county aerial imagery, already to scale. Or load your own image and set the scale
-      by hand. Either way it is stored in the sketch and prints with it.</p>
+      to drop in a map drawing or the county aerial photo, already to scale. Or load your own image
+      and set the scale by hand. Either way it is stored in the sketch and prints with it.</p>
+    ${has&&b.lat!=null&&b.ground?`<div class="sect" style="margin:4px 2px 8px">Map area</div>
+    ${b.kind==="map"?`<button class="btn sec" id="bgframe" style="max-width:none;margin:0 0 6px">Move or zoom the map</button>`
+    :`<div class="two" style="margin:0 0 6px">
+      <button class="btn sec" id="bgless" style="max-width:none;margin:0">See less</button>
+      <button class="btn sec" id="bgmore" style="max-width:none;margin:0">See more</button></div>`}
+    <p class="hint" id="bgarea" style="margin:0 0 14px">${b.ground} ft across now. What you have
+      drawn moves with it, so everything stays on its spot at its true size.</p>`:""}
+    <div class="filters" style="margin:0 0 14px">
+      <button data-bgkind="map" class="${kind==="map"?"sel":""}">Map drawing</button>
+      <button data-bgkind="aerial" class="${kind==="map"?"":"sel"}">Aerial photo</button></div>
     <label class="fld"><span>Search an address</span>
       <input type="text" id="bgq" placeholder="329 Pine St" autocapitalize="words"
         autocomplete="off" value="${esc(sk.addr||"")}"></label>
@@ -450,13 +537,15 @@ function bgSheet(sk){
         <option value="320" selected>320 ft</option><option value="500">500 ft</option>
         <option value="800">800 ft</option></select></label>
       <label class="fld"><span>&nbsp;</span>
-        <button class="btn" id="bgfind" style="max-width:none;margin:0">Find imagery</button></label>
+        <button class="btn" id="bgfind" style="max-width:none;margin:0">Find</button></label>
     </div>
     <div id="bghits"></div>
     <p class="hint" style="margin:2px 0 12px">Addresses from Lycoming County Public Safety.
       Imagery from PEMA 2021&ndash;2023 via PASDA. Below about 200&nbsp;ft across you are past the
       resolution the imagery holds, so it turns soft &mdash; pick a wider view and zoom the page
-      instead.</p>
+      instead. The map drawing is streets and building outlines from OpenStreetMap and Microsoft,
+      and stays sharp at any size. After you pick the address it opens on the page: pinch and drag
+      it until it is right, then lock it in.</p>
     <div class="sect" style="margin:4px 2px 8px">Or load an image</div>
     <button class="btn" id="bgortho" style="max-width:none;margin:0 0 10px">Ortho import &mdash; from a FARO scan</button>
     <label class="fld"><span>Any other image</span><input type="file" id="bgf" accept="image/*"></label>
@@ -488,69 +577,43 @@ function bgSheet(sk){
     <button class="btn sec" id="bgx" style="max-width:none">Cancel</button>`);
   $("#bgx").onclick=closeSheet;
   const orth=$("#bgortho"); if(orth)orth.onclick=()=>orthoSheet(sk);
+  $$("#sheet [data-bgkind]").forEach(bq=>bq.onclick=()=>{kind=bq.dataset.bgkind;
+    $$("#sheet [data-bgkind]").forEach(x=>x.classList.toggle("sel",x===bq))});
   const place=async(hit)=>{
     const feet=+$("#bgft").value||200;
+    if(kind==="map")return frameMap(sk,hit,feet);      // framed by hand on the page, then locked in
     $("#bghits").innerHTML=`<p class="hint" style="margin:0 0 10px">Fetching imagery\u2026</p>`;
     try{
       const px=aerialPx(feet);
       const got=await fetchAerial(hit.lat,hit.lon,feet,px);
+      if(!sk.addr)sk.addr=hit.label;       // before measuring the page: it brings in the title block
       const hh=hasHeader(sk)?HEADER_H:0;
       const side=Math.min(pageW(sk),pageH(sk)-hh);
       const imgId=await bgStore(sk,got.data,{w:px,hh:px});
-      sk.bg={imgId,x:(pageW(sk)-side)/2,y:hh+(pageH(sk)-hh-side)/2,
-        w:side,h:side,op:1,br:1,sa:0.95,src:"PEMA 2021\u20132023 via PASDA",
-        place:hit.label||"",lat:hit.lat,lon:hit.lon,ground:feet,px};
       // the image spans a known distance, so the scale follows from it
-      sk.scale={px:side,real:feet,unit:"ft"};
-      if(!sk.addr)sk.addr=hit.label;
+      setBackdrop(sk,{imgId,x:(pageW(sk)-side)/2,y:hh+(pageH(sk)-hh-side)/2,
+        w:side,h:side,op:1,br:1,sa:0.95,kind,src:"PEMA 2021\u20132023 via PASDA",
+        place:hit.label||"",lat:hit.lat,lon:hit.lon,ground:feet,px});
       saveLocal();closeSheet();renderSketch();
       toast("Aerial placed, "+feet+" ft across at "+px+" px \u2014 to scale");
     }catch(err){
       $("#bghits").innerHTML=`<p class="hint" style="margin:0 0 10px;color:var(--red)">${esc(err.message)}</p>`;
     }
   };
-  // suggest as you type, but only after a pause, so the county service is not hammered
-  let sugT=null, sugSeq=0;
-  const qEl=$("#bgq");
-  const showSug=(list)=>{
-    const box=$("#bgsug"); if(!box)return;
-    box.innerHTML=list.length
-      ? list.slice(0,6).map((x,i)=>`<button class="sug" data-sug="${i}">${esc(x.label)}</button>`).join("")
-      : "";
-    box.__list=list;
-    $$("#bgsug [data-sug]").forEach(bq=>bq.onclick=()=>{
-      const hit=(box.__list||[])[+bq.dataset.sug]; if(!hit)return;
-      qEl.value=hit.label; box.innerHTML=""; place(hit);
-    });
-  };
-  if(qEl)qEl.oninput=()=>{
-    clearTimeout(sugT);
-    const q=qEl.value.trim();
-    if(q.length<4){showSug([]);return}
-    const seq=++sugSeq;
-    sugT=setTimeout(async()=>{
-      try{ const hits=await findAddress(q); if(seq===sugSeq)showSug(hits) }
-      catch(e){ if(seq===sugSeq)showSug([]) }
-    },350);
-  };
-  const find=$("#bgfind");
-  if(find)find.onclick=async()=>{
-    const q=$("#bgq").value.trim(); if(!q)return toast("Type an address");
-    $("#bghits").innerHTML=`<p class="hint" style="margin:0 0 10px">Searching\u2026</p>`;
-    try{
-      const hits=await findAddress(q);
-      if(!hits.length){$("#bghits").innerHTML=
-        `<p class="hint" style="margin:0 0 10px">Nothing matched. Try just the street name.</p>`;return}
-      if(hits.length===1)return place(hits[0]);
-      $("#bghits").innerHTML=`<div class="rows" style="margin-bottom:10px">`
-        +hits.map((x,i)=>`<button class="row" data-hit="${i}">
-          <span><span class="code" style="font-size:14px">${esc(x.label)}</span></span>
-          <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`;
-      $$("#bghits [data-hit]").forEach(btn=>btn.onclick=()=>place(hits[+btn.dataset.hit]));
-    }catch(err){
-      $("#bghits").innerHTML=`<p class="hint" style="margin:0 0 10px;color:var(--red)">${esc(err.message)}</p>`;
-    }
-  };
+  addrSearch($("#bgq"),$("#bgsug"),$("#bghits"),$("#bgfind"),place);
+  // half again as much ground, or two thirds as much, rounded to 10 ft
+  const step=(btn,g)=>{ if(!btn)return; btn.disabled=g===b.ground;
+    btn.onclick=async()=>{
+      const el=$("#bgarea"); $$("#bgless,#bgmore").forEach(x=>x.disabled=true);
+      el.textContent=(b.kind==="map"?"Drawing the map":"Fetching imagery")+"…";
+      try{ await reframeBg(sk,g); renderSketch(); bgSheet(sk); toast("Backdrop now "+g+" ft across") }
+      catch(err){ el.textContent=err.message; el.style.color="var(--red)";
+        $$("#bgless,#bgmore").forEach(x=>x.disabled=false) }
+    }};
+  const fr=$("#bgframe");
+  if(fr)fr.onclick=()=>frameMap(sk,{lat:b.lat,lon:b.lon,label:b.place},b.ground);
+  step($("#bgless"),Math.max(60,Math.round(b.ground/1.5/10)*10));
+  step($("#bgmore"),Math.min(3200,Math.round(b.ground*1.5/10)*10));
   $("#bgsave").onclick=()=>{closeSheet();renderSketch()};
   const del=$("#bgdel");
   if(del)del.onclick=()=>{

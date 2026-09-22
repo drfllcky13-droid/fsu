@@ -1386,6 +1386,22 @@ body.wide.sidemin .side button{position:relative}
 .chkrow{display:flex;gap:10px;align-items:flex-start;margin-bottom:14px}
 .chkrow input{width:20px;height:20px;margin-top:2px;flex:0 0 auto}
 .chkrow span{font-size:14px;color:var(--ink2);margin:0}
+/* the map (Scenes › Settings › Map) */
+.mapfind{display:flex;gap:8px;margin:0 0 12px}
+.mapfind input{flex:1;min-width:0}
+.mapfind .btn{flex:none;width:auto;max-width:none;margin:0}
+#mapbox{height:calc(100dvh - 330px);min-height:320px;border-radius:12px;overflow:hidden;
+  border:.5px solid var(--line);background:var(--card);margin:0 0 10px}
+.maplibregl-popup-content{color:#222;font:13px/1.4 var(--sys)}
+/* framing the map drawing on the sketch page: modal until it is locked in or cancelled */
+.mapframe{position:fixed;inset:0;z-index:110;background:rgba(0,0,0,.28);touch-action:none}
+.mfbox{position:absolute;overflow:hidden;background:#f2f3f0;box-shadow:0 0 0 2px #c62828}
+/* two classes, to beat the .maplibregl-map{position:relative} MapLibre puts on its container */
+.mfbox .mfmap{position:absolute;inset:0}
+.mfbar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:8px;align-items:center;
+  padding:8px 10px;border-radius:10px;background:var(--card);box-shadow:0 1px 6px rgba(0,0,0,.3)}
+.mfbar span{flex:1;min-width:0;font-size:13px;line-height:1.35;color:var(--ink2)}
+.mfbar .btn{flex:none;width:auto;max-width:none;margin:0}
 </style>
 </head>
 <body>
@@ -1854,7 +1870,7 @@ if("serviceWorker" in navigator&&/^https?:/.test(location.protocol)){
 const VIEWS={
   van:["home","compartments","bay","compdetail","inventory","itemdetail","sweep","guide",
        "reorder","tidy","print","labels","search","data"],
-  scenes:["active","incident","fill","sketch","templates","forms","data"],
+  scenes:["active","incident","fill","sketch","templates","forms","map","data"],
 };
 const here=v=>VIEWS[PAGE].includes(v);
 
@@ -4016,7 +4032,8 @@ function settingsMenu(){
     ${PAGE==="scenes"?group("Scenes",[
       sec("case","Case packages",S.lastCase?"Last "+esc(S.lastCase.slice(0,10)):"None saved yet"),
       row('data-go="templates"',"Form templates",S.forms.length+" blank form"+(S.forms.length===1?"":"s")),
-      row('data-snipmanage="1"',"Report wording","Standard sentences for reports")]):""}
+      row('data-snipmanage="1"',"Report wording","Standard sentences for reports"),
+      row('data-go="map"',"Map","Williamsport's buildings in 3D")]):""}
     ${group("This device",[
       row('id="modebtn"',"Display",themeTxt+", "+modeTxt+(landscapeOnly()?", landscape only":"")),
       PAGE==="van"?sec("labels","Labels and web address",appUrl()?esc(appUrl().replace(/^https?:\/\//,"")):"No web address"):"",
@@ -4043,6 +4060,7 @@ function settingsNav(){
     ${item("case","Case packages")}
     ${item(null,"Form templates",'data-go="templates"')}
     ${item(null,"Report wording",'data-snipmanage="1"')}
+    ${item(null,"Map",'data-go="map"')}
     ${grp("This device")}
     ${item(null,"Display",'id="modebtn"')}
     ${item("device","Storage and install")}
@@ -4872,6 +4890,7 @@ function renderView(v){
   if(v==="reorder")return renderReorder();
   if(v==="tidy")return renderTidy();
   if(v==="templates")return renderTemplates();
+  if(v==="map"&&typeof renderMap==="function")return renderMap();
   if(v==="bay")return renderBay();
   if(v==="compdetail")return renderCompDetail();
   if(v==="data"){renderData();return fitHeader()}
@@ -5388,7 +5407,7 @@ function appExtraClick9(e){
 /* ---------- reports and upkeep, round ten ----------
    report wording, auto-fill, photograph log, Word export, vector PDF, version stamp,
    vehicle check, part numbers, shift handover, service and calibration, help and change log. */
-const APP_VERSION="2026.09.04.20";
+const APP_VERSION="2026.09.21.1";
 const CHANGELOG=[
   ["2026-09-05","Tapping a bin on the bay wall opens its items in a panel beside the wall on a wide screen, without moving the page. Full screen fills the screen again on an iPad."],
   ["2026-09-05","Every page opens as the main screen; the side-by-side pane is gone. On an iPad the sketch gets the width back: the side bar folds to icons while sketching and the tool rail is narrower."],
