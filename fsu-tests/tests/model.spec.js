@@ -326,3 +326,11 @@ test("an object removed with the Delete key comes back with Undo",async({page})=
   expect(r,"the deleted object is gone for good and the undo took an earlier change with it")
     .toEqual(["chair","table"]);
 });
+// seeding makes dozens of records in one millisecond; before 2026.09.22.2 they now and then
+// shared an id (4 random characters), which failed the random scene run above once in CI
+test("ids made in the same instant do not collide",async({page})=>{
+  await page.goto("/scenes.html");
+  await page.waitForFunction(()=>typeof newId==="function");
+  const n=await page.evaluate(()=>{const s=new Set(); for(let i=0;i<10000;i++)s.add(newId()); return s.size});
+  expect(n).toBe(10000);
+});

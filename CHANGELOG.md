@@ -1,5 +1,12 @@
 # FSU change log
 
+## 2026.09.22.2
+Fixed: two records created in the same instant could, rarely, be given the same id. The van list
+is set up dozens of items at a time on a new device, so about one setup in several hundred had a
+pair. Editing one of the pair could change the other, and automatic saving, which matches
+records by id, could let one overwrite the other. New ids are now practically never shared.
+Records that already exist keep their ids, so nothing saved or printed changes.
+
 ## 2026.09.22.1
 Everything now works with no signal. **Settings › This device › Download for offline use** fetches
 all of it in one go, about 11 MB: the map of Williamsport, its address list, and the tools that

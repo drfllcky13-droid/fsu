@@ -49,7 +49,9 @@ const ic=(k,cls)=>`<svg class="${cls||"g"}" viewBox="0 0 24 24" fill="none" stro
 let toastT; const toast=m=>{const t=$("#toast");t.textContent=m;t.classList.add("on");
   clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),1900)};
 
-const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+// the time, plus 8 random characters: records made in the same millisecond (seeding makes dozens)
+// must not share an id, and 4 characters shared one now and then
+const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,10);
 const live=()=>S.items.filter(i=>i.status!=="Not carried");
 // a date written as 2026-09-12 means that day here, not midnight in London. Parsing it as
 // UTC moved every count and every flag by the offset, so a flag could land a day early and
