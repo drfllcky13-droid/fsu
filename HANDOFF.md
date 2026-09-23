@@ -26,11 +26,12 @@ the problem, not the behaviour.
 Runs from a local file or GitHub Pages. Lives at https://drfllcky13-droid.github.io/fsu/
 (repository `drfllcky13-droid/fsu`, Pages source: branch `main`, root; a push to `main` is live
 within about a minute). `install.html` beside it is the printable install sheet. Works offline. No server. Served over http it registers
-`sw.js` (network first, cache fallback) and can be added to the home screen; Settings › This device says how.
+`sw.js` (network first, cache fallback, this site's own files only: requests to GitHub and the county aerial go straight to the network and are never cached) and can be added to the home screen; Settings › This device says how.
 
 **Test data:** `van-backup-2026-09-04.json` — 72 items, 62 compartments, 41 items placed across
 unit 1. Load it through the app's own restore (Settings › Restore or import), not by assigning to
-`S`, which is a `const`.
+`S`, which is a `const`. With sync connected, restore only adds what is missing and replaces
+nothing; disconnect first to start over from a backup.
 
 ---
 
@@ -109,6 +110,11 @@ not there. Tombstones live in `S.tomb` in memory but travel inside the arrays on
 shaped so an old build's own filters hide them; that is what lets a build that predates all of
 this round-trip the file without corrupting it. Absence is never deletion. The losing side of a
 same-record clash is kept in `S.conflicts` and offered back in Settings › Automatic saving.
+`S.base` is always what the repo holds (the records pushed or pulled), never the live copy after a
+request returns. One pull or push runs at a time across both pages (`navigator.locks`
+"fsu-sync"), every GitHub request gives up after 20 s, a push with nothing to send makes no
+commit, and a rate limit (429, or 403 with retry-after or x-ratelimit-remaining: 0) is waited out
+rather than treated as a dead token.
 **SYNC_DESIGN.txt at the repo root is the full reasoning and every failure case.**
 `fsu-tests/tests/sync.spec.js` drives all of it against a stubbed GitHub.
 
@@ -147,9 +153,13 @@ Address search (`findAddress` and `addrLoad` in `src/sketch-canvas.js`) reads
 Williamsport3D project rebuilds all three data files (`fetch_buildings.py`, `fetch_basemap.py`,
 `lidar_heights.py`).
 
-**Sketches, filled forms and photographs are
+**Incidents, sketches, filled forms and photographs are
 deliberately excluded** from both sync and backup — that is case material and it stays on the
-device. Keep that. The only way case material leaves the device is a **case package** (Settings › Case packages,
+device. Since 2026.09.24.1 the backup (`backupOut`) is a fixed list of van fields (items,
+compartments, form templates, walls, the demo flag, the unit name), so the activity log, handover
+notes, saved sketch templates, errors and sync conflicts stay out too; add a field to that list
+only if it is van data. Deleting an incident also removes its sketches' `fsu-undo-<id>` keys,
+and Scenes clears any undo key whose sketch is gone when it opens. Keep that. The only way case material leaves the device is a **case package** (Settings › Case packages,
 or Scene › Save a case package): one JSON file with incidents, forms, sketches and photographs,
 shared to Files. The same view restores one. A sketch nags after six hours of changes with no
 package.
@@ -274,8 +284,9 @@ package.
    so every aerial covered a quarter less ground than its scale said. `fetchAerial` now divides by
    `cos(lat)`, and `planZoom` sizes the map drawing the same way; `fsu-tests/tests/map.spec.js`
    checks both, the drawing against MapLibre's own projection. Both are within 0.15% of the WGS84
-   ellipsoid. That spec blocks the service worker, because the worker makes the fetches itself,
-   out of `page.route`'s reach.
+   ellipsoid. That spec blocks the service worker, because the worker makes the fetches for this
+   site's own files itself, out of `page.route`'s reach. (Since 2026.09.24.1 it no longer touches
+   the county aerial or GitHub; those go straight from the page.)
 
 ---
 

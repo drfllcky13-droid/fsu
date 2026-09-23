@@ -1,8 +1,9 @@
 /* ---------- reports and upkeep, round ten ----------
    report wording, auto-fill, photograph log, Word export, vector PDF, version stamp,
    vehicle check, part numbers, shift handover, service and calibration, help and change log. */
-const APP_VERSION="2026.09.23.1";
+const APP_VERSION="2026.09.24.1";
 const CHANGELOG=[
+  ["2026-09-24","Automatic saving: a change made while the previous one was still sending, or made offline, is no longer undone, and a delete in that moment no longer comes back. Nothing is sent when nothing in the van changed, and a GitHub slow-down waits and carries on instead of saying the token expired. Backups hold the van only. Restoring while automatic saving is on only adds what is missing. Deleting an incident removes its sketches' undo history too."],
   ["2026-09-23","Design pass. FSU Home: a status strip instead of six tiles, the urgent list first, and one-time setup in its own panel. On a phone the header has a search icon and a gear for Settings. The save status stays beside the title (grey saved here, green synced, blue saving, amber offline, red not saving). Small text is a step larger. Scenes has its own violet colour and a new icon (an evidence marker), no side bar or tab bar, '+ New' and a gear in the header, and the Open and Closed tiles are the filter."],
   ["2026-09-05","Tapping a bin on the bay wall opens its items in a panel beside the wall on a wide screen, without moving the page. Full screen fills the screen again on an iPad."],
   ["2026-09-05","Every page opens as the main screen; the side-by-side pane is gone. On an iPad the sketch gets the width back: the side bar folds to icons while sketching and the tool rail is narrower."],

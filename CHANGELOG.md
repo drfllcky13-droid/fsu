@@ -1,5 +1,36 @@
 # FSU change log
 
+## 2026.09.24.1
+Automatic saving to GitHub is safer, and backups no longer carry case material.
+
+Automatic saving: a change you made while the app was still sending the one before it could be
+undone at the next save, and something you deleted in that moment could come back. A change
+made with no signal could also be undone when you next opened the app. Neither happens now.
+The first device to connect to a new repository kept losing its own next change; that is fixed
+too. FSU and Scenes now take turns saving to GitHub instead of both at once, and if GitHub does
+not answer within 20 seconds the app stops waiting and tries again later.
+
+Saving no longer sends anything to GitHub when nothing in the van has changed. Before, every tap
+that saved made a new copy in the repository, and on a busy day that could hit GitHub's limit.
+If GitHub does ask the app to slow down, the bar now says "GitHub asked this device to slow down"
+and it carries on by itself once GitHub allows it. It used to say the token had expired and stop.
+
+Backups: a backup now holds the van only (items, compartments, form templates and the wall
+layout). Incidents, the activity log, handover notes, saved sketch templates and error notes are
+no longer in it.
+
+Restoring a backup while automatic saving is on only adds what is missing from this device. It
+no longer replaces anything, so it cannot delete items that other devices added after the backup
+was made. The Restore screen says this, and the button reads "Restore what is missing". To start
+over from a backup, disconnect automatic saving first.
+
+Scenes: deleting an incident now also removes its sketches' undo history from the device, and
+undo history left behind by earlier deletes is cleared when Scenes opens. It was case material,
+and it took up storage the app needs.
+
+The app no longer keeps its own copies of what it fetched from GitHub or of county aerial photos.
+Copies saved by the old version are cleared the first time the new version runs.
+
 ## 2026.09.23.1
 A design pass on both apps, to make them quicker to read in the van and at a scene.
 
