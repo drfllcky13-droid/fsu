@@ -2394,10 +2394,18 @@ function stampDirty(){
   if(S.base.walls!==wh){S.wallsV=++S.lam;S.wallsD=S.dev;changed.walls=1}
   return changed;
 }
-function rebase(){
-  KINDS.forEach(k=>{const b=S.base[k]={};
-    S[k].forEach(r=>{const key=kKey(k,r); if(key!=null&&key!=="")b[key]=rhash(r)})});
-  S.base.walls=rhash(S.walls||{});
+// the base is what the repo holds after a sync: the records that went up, or the records that
+// came down. It used to be taken from this device's live copy after the request came back,
+// which counted an edit made while the request was on the wire (or one the repo had not got
+// yet) as already synced, and the next sync then reverted it as if it were the other side's.
+function baseOf(src){
+  const out={};
+  KINDS.forEach(k=>{const b=out[k]={};
+    (Array.isArray(src[k])?src[k]:[]).forEach(r=>{
+      if(!r||typeof r!=="object"||r._x)return;
+      const key=kKey(k,r); if(key!=null&&key!=="")b[key]=rhash(r)})});
+  if(src.walls)out.walls=rhash(src.walls);
+  return out;
 }
 // the edit that lost, kept where the person who typed it can put it back
 function stashLoser(k,key,mine){
@@ -2509,12 +2517,35 @@ function ghExpFrom(r){
     if(/^\d{4}-\d{2}-\d{2}$/.test(d)){S.ghExp=d;S.ghAuto=true}
   }catch(e){}
 }
+// every request to GitHub gives up after GH_TIMEOUT: on a signal that connects and then
+// carries nothing, a request could otherwise hang for minutes and hold up every sync behind it
+let GH_TIMEOUT=20000;
+async function ghFetch(url,opt){
+  const ac=typeof AbortController==="function"?new AbortController():null;
+  const t=ac?setTimeout(()=>ac.abort(),GH_TIMEOUT):null;
+  try{
+    const r=await fetch(url,Object.assign({},opt,ac?{signal:ac.signal}:{}));
+    const text=await r.text();                        // the body is inside the time limit too
+    return {r,text};
+  }catch(e){
+    if(e&&e.name==="AbortError")throw new Error("GitHub did not answer in time");
+    throw e;
+  }finally{clearTimeout(t)}
+}
+// one sync at a time, across both pages: two read-merge-writes interleaving is how an edit
+// ends up judged against the wrong base. navigator.locks is shared by every page of the site.
+let syncChain=Promise.resolve();
+function syncLock(fn){
+  if(typeof navigator!=="undefined"&&navigator.locks&&navigator.locks.request)
+    return navigator.locks.request("fsu-sync",fn);
+  const run=syncChain.then(fn,fn); syncChain=run.catch(()=>{}); return run;
+}
 async function ghGet(){
-  const r=await fetch(ghURL()+"?ref=HEAD&t="+Date.now(),{headers:ghHead(),cache:"no-store"});
+  const {r,text}=await ghFetch(ghURL()+"?ref=HEAD&t="+Date.now(),{headers:ghHead(),cache:"no-store"});
   ghExpFrom(r);
   if(r.status===404)return {missing:true};
   if(!r.ok)throw ghErr(r.status);
-  const j=await r.json();
+  const j=JSON.parse(text);
   let o=null; try{o=JSON.parse(b64dec(j.content))}catch(e){}
   // a file we cannot read is not a file we may write over: if the remote is intact and our
   // parse is what broke, overwriting it would take out every other device
@@ -2535,7 +2566,11 @@ function syncFail(e,silent){
   return "error";
 }
 // a pull can no longer discard anything local, so it is safe to press at any time
-async function ghPull(silent){
+function ghPull(silent){
+  if(!ghOn())return Promise.resolve();
+  return syncLock(()=>ghPullNow(silent));
+}
+async function ghPullNow(silent){
   if(!ghOn())return;
   try{
     const g=await ghGet();
@@ -2548,7 +2583,7 @@ async function ghPull(silent){
     const ahead=mergeRemote(g.data);
     S.gh.sha=g.sha; S.gh.last=new Date().toISOString();
     tokenBad=false; conflict=false; syncErr=""; retries=0;
-    rebase(); dirty=!!ahead; store.set(S);
+    S.base=baseOf(g.data); dirty=!!ahead; store.set(S);
     renderSyncBar(); renderSyncPill(); render();
     if(ahead)queuePush(); else clearTimeout(pushT);
     if(!silent)toast("Synced — "+live().length+" items");
@@ -2557,7 +2592,12 @@ async function ghPull(silent){
 }
 // read, merge, write. A 409 means somebody wrote in the gap between the read and the
 // write, which is a reason to merge again, not a reason to ask anyone anything.
-async function ghPush(force){
+function ghPush(force){
+  if(!ghOn())return Promise.resolve();
+  clearTimeout(pushT);
+  return syncLock(()=>ghPushNow(force));
+}
+async function ghPushNow(force){
   if(!ghOn())return;
   clearTimeout(pushT);
   try{
@@ -2568,19 +2608,26 @@ async function ghPush(force){
         toast(syncErr);return"error"}
       badFile=false;
       if(g.data&&!force)mergeRemote(g.data); else stampDirty();
+      // what goes up, and its base, are taken in the same instant; edits made from here on
+      // are measured against it at the next sync
+      const up=payload(), sent=baseOf({items:S.items,comps:S.comps,forms:S.forms,walls:S.walls}), gen=saveGen;
+      // the merge is on disk before the wait, so the other page picks it up rather than
+      // saving over it with a copy that does not have it
+      store.set(S);
       const body={message:"Van inventory — "+new Date().toISOString().slice(0,16).replace("T"," "),
-        content:b64enc(JSON.stringify(payload(),null,1))};
+        content:b64enc(JSON.stringify(up,null,1))};
       if(g.sha)body.sha=g.sha;
-      const r=await fetch(ghURL(),{method:"PUT",
+      const {r,text}=await ghFetch(ghURL(),{method:"PUT",
         headers:Object.assign({"Content-Type":"application/json"},ghHead()),
         body:JSON.stringify(body)});
       ghExpFrom(r);
       if(r.status===409||r.status===422)continue;
       if(!r.ok)throw ghErr(r.status);
-      const j=await r.json();
+      let j={}; try{j=JSON.parse(text)}catch(e){}
       S.gh.sha=(j.content&&j.content.sha)||"";S.gh.last=new Date().toISOString();
-      dirty=false;conflict=false;tokenBad=false;syncErr="";retries=0;
-      rebase();store.set(S);
+      // anything saved while the request was out is still waiting to go
+      dirty=saveGen!==gen;conflict=false;tokenBad=false;syncErr="";retries=0;
+      S.base=sent; S.synced=true; store.set(S);
       renderSyncBar();renderSyncPill();if(view==="data")renderData();
       return"ok";
     }
@@ -2592,7 +2639,8 @@ async function ghPush(force){
 }
 let retries=0;
 function retryIn(){retries=Math.min(retries+1,6);return Math.min(60000,2000*Math.pow(2,retries-1))}
-function queuePush(){ if(!ghOn()||tokenBad)return; dirty=true; retries=0;
+let saveGen=0;   // counts saves, so a push can tell whether anything changed while it was out
+function queuePush(){ saveGen++; if(!ghOn()||tokenBad)return; dirty=true; retries=0;
   clearTimeout(pushT); pushT=setTimeout(()=>ghPush(false),2500);
   renderSyncPill(); renderSyncBar(); }
 function renderSyncBar(){

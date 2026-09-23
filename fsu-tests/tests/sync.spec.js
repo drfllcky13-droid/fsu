@@ -32,8 +32,12 @@ function remote(state){
         body:JSON.stringify({sha:state.sha,content:state.raw!=null?state.raw:b64(state.data),encoding:"base64"})});
     }
     const sent=JSON.parse(req.postData()||"{}");
+    // a test can act while the PUT is on the wire, as a technician tapping away would
+    if(state.beforePut){const h=state.beforePut; state.beforePut=null; await h(state)}
     if(state.status)return route.fulfill({status:state.status,contentType:"application/json",body:JSON.stringify({message:"no"})});
-    if(sent.sha!==state.sha)
+    // no file yet: GitHub creates it from a PUT that carries no sha
+    if(state.missing&&!sent.sha)state.missing=false;
+    else if(sent.sha!==state.sha)
       return route.fulfill({status:409,contentType:"application/json",body:JSON.stringify({message:"conflict"})});
     state.sha="sha"+(+String(state.sha).replace(/\D/g,"")+1);
     state.data=unb64(sent.content); state.raw=null;
@@ -111,6 +115,103 @@ test("a 409 in the gap between the read and the write is merged again, not surfa
   expect(out.r).toBe("ok");
   expect(out.conflict,"a retriable race was pushed onto the user").toBe(false);
   expect(out.ids).toEqual(["a","mine","z"]);
+});
+
+/* ---------------- while a request is on the wire ---------------- */
+
+test("an edit made while a push is on the wire goes up next time instead of being reverted",async({page})=>{
+  const state={sha:"sha1",data:file([it("a","Gloves",3,"devB",{qty:1})])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  await page.evaluate(()=>{S.items.find(i=>i.id==="a").qty=2;saveLocal()});
+  // the count is tapped again while the first change is still uploading
+  state.beforePut=()=>page.evaluate(()=>{S.items.find(i=>i.id==="a").qty=3;saveLocal()});
+  await page.evaluate(()=>ghPush(false));
+  expect(state.data.items.find(i=>i.id==="a").qty,"the first change should be what went up").toBe(2);
+  const out=await page.evaluate(async()=>{await ghPush(false);
+    return {qty:S.items.find(i=>i.id==="a").qty,stashed:S.conflicts.length}});
+  expect(out.qty,"the edit made during the upload was reverted").toBe(3);
+  expect(state.data.items.find(i=>i.id==="a").qty,"the edit made during the upload never went up").toBe(3);
+  expect(out.stashed).toBe(0);
+});
+
+test("a delete made while a push is on the wire stays deleted",async({page})=>{
+  const state={sha:"sha1",data:file([it("a","Gloves",3,"devB"),it("b","Swabs",3,"devB")])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  await page.evaluate(()=>{S.items.find(i=>i.id==="b").qty=9;saveLocal()});
+  state.beforePut=()=>page.evaluate(()=>{S.items=S.items.filter(i=>i.id!=="a");saveLocal()});
+  await page.evaluate(()=>ghPush(false));
+  const ids=await page.evaluate(async()=>{await ghPush(false);return S.items.map(i=>i.id).sort()});
+  expect(ids,"the deleted item came back").toEqual(["b"]);
+  expect(state.data.items.filter(i=>!i._x).map(i=>i.id)).toEqual(["b"]);
+});
+
+test("an edit made offline survives the pull when the app next opens",async({page})=>{
+  const state={sha:"sha1",data:file([it("a","Gloves",3,"devB",{qty:1})])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  // edited with no signal; the app is closed and opened again, which pulls before it pushes
+  const out=await page.evaluate(async()=>{
+    S.items.find(i=>i.id==="a").qty=4; saveLocal();
+    await ghPull(true); await ghPush(false);
+    return S.items.find(i=>i.id==="a").qty});
+  expect(out,"the offline edit was reverted by the pull").toBe(4);
+  expect(state.data.items.find(i=>i.id==="a").qty).toBe(4);
+});
+
+test("the device that creates the file keeps the edits it makes afterwards",async({page})=>{
+  const state={sha:"sha1",missing:true,data:file([])};
+  await page.route(FILE,remote(state));
+  await open(page);
+  const out=await page.evaluate(async()=>{
+    S.gh={owner:"unit",repo:"van-data",path:"data.json",token:"t",sha:"",last:""};
+    S.items=[{id:"mine",name:"Mine",qty:1,cat:"A",cls:"Consumable",loc:""}]; saveLocal();
+    const pulled=await ghPull(true), created=await ghPush(false);
+    S.items[0].qty=5; saveLocal();
+    const next=await ghPush(false);
+    return {pulled,created,next,qty:S.items[0].qty}});
+  expect(out.pulled).toBe("empty");
+  expect(out.created).toBe("ok");
+  expect(out.next).toBe("ok");
+  expect(out.qty,"its own first edit after creating the file was reverted").toBe(5);
+  expect(state.data.items.find(i=>i.id==="mine").qty).toBe(5);
+});
+
+test("two syncs started at once take turns instead of interleaving",async({page})=>{
+  const state={sha:"sha1",data:file([it("a","Gloves",3,"devB",{qty:1})])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  // count requests in flight at once; a slow PUT gives a second sync every chance to overlap
+  const route=remote(state); let now=0, most=0;
+  state.beforePut=()=>new Promise(r=>setTimeout(r,200));
+  await page.unroute(FILE);
+  await page.route(FILE,async r=>{now++; most=Math.max(most,now); try{await route(r)}finally{now--}});
+  const out=await page.evaluate(async()=>{
+    S.items.find(i=>i.id==="a").qty=6; saveLocal();
+    const rs=await Promise.all([ghPush(false),ghPush(false),ghPull(true)]);
+    return {rs,qty:S.items.find(i=>i.id==="a").qty}});
+  expect(out.rs).toEqual(["ok","ok","ok"]);
+  expect(most,"two syncs were talking to GitHub at the same time").toBe(1);
+  expect(out.qty).toBe(6);
+  expect(state.data.items.find(i=>i.id==="a").qty).toBe(6);
+});
+
+test("a GitHub request that never answers gives up and retries instead of hanging",async({page})=>{
+  const state={sha:"sha1",data:file([])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  await page.unroute(FILE);
+  await page.route(FILE,()=>{});             // the request goes out and nothing ever comes back
+  const out=await page.evaluate(async()=>{
+    GH_TIMEOUT=300;
+    S.items.push({id:"x",name:"Typed on bad signal",qty:1,cat:"A",cls:"Consumable",loc:""}); saveLocal();
+    const t=Date.now(); const r=await ghPush(false);
+    return {r,ms:Date.now()-t,err:syncErr,tokenBad}});
+  expect(out.r).toBe("error");
+  expect(out.ms).toBeLessThan(5000);
+  expect(out.err).toContain("did not answer");
+  expect(out.tokenBad).toBe(false);
 });
 
 /* ---------------- the same record on two devices ---------------- */
