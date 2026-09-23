@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-42V4B6eXtowZikfZ4MBR4ysMVAdWst7gl61nnhiTl5I='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZX4GHWfFiC5Jc53DRGbvN0tWp5m1MVgQWNOavy+o/l8='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FSU Scenes</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2034,7 +2034,7 @@ async function claimStorage(){
   if(view==="data"&&typeof renderData==="function")renderData();
 }
 // The app's record and everything else in localStorage share a ceiling of about 5 MB, measured,
-// not assumed (HANDOFF.md). Photographs live in IndexedDB, whose much larger quota comes from
+// not assumed (BRIEF.md). Photographs live in IndexedDB, whose much larger quota comes from
 // navigator.storage.estimate(). At LS_WARN of the ceiling Home and Scenes say so, before a save
 // is refused and work stops being kept.
 const LS_CEIL=5*1024*1024, LS_WARN=0.7;

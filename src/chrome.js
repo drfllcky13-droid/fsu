@@ -51,7 +51,7 @@ async function claimStorage(){
   if(view==="data"&&typeof renderData==="function")renderData();
 }
 // The app's record and everything else in localStorage share a ceiling of about 5 MB, measured,
-// not assumed (HANDOFF.md). Photographs live in IndexedDB, whose much larger quota comes from
+// not assumed (BRIEF.md). Photographs live in IndexedDB, whose much larger quota comes from
 // navigator.storage.estimate(). At LS_WARN of the ceiling Home and Scenes say so, before a save
 // is refused and work stops being kept.
 const LS_CEIL=5*1024*1024, LS_WARN=0.7;

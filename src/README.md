@@ -32,5 +32,5 @@ page's Content-Security-Policy.
 | `tail.html` | both | the closing tags |
 
 Edit the part, run `node build.js`, and commit the parts and both pages. CI runs
-`node build.js --check` and refuses a commit whose pages do not match `src/`. HANDOFF.md at the
+`node build.js --check` and refuses a commit whose pages do not match `src/`. BRIEF.md at the
 root describes the architecture and the rules to keep.
