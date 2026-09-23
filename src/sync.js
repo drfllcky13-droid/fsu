@@ -107,9 +107,11 @@ function applyRec(k,key,stamp,alive){
 // merge a parsed remote file into this device, record by record. Absence is never a
 // deletion — only a tombstone deletes — which is what stops an old build's whole-file
 // push from destroying anything. Returns true if we hold something the remote does not.
+let mergeTook=0;   // records the last merge took from the repo
 function mergeRemote(o){
   const changed=stampDirty();
   let maxv=+o.lam||0, ahead=false;
+  mergeTook=0;
   // a device that has never synced has no claim that its copy is the newer one, and the
   // stamps it just gave its own seeded defaults would otherwise beat the repo's real van.
   // Local-only records still survive: the merge is a union either way.
@@ -125,27 +127,29 @@ function mergeRemote(o){
       const lv=mine[key]||T[key], rv=ra[key]||rt[key];
       maxv=Math.max(maxv,(rv&&+rv._v)||0,(lv&&+lv._v)||0);
       if(!rv){ahead=true;return}                      // never reached them: keep ours
-      if(!lv){applyRec(k,key,rv,ra[key]);return}
-      if(virgin){applyRec(k,key,rv,ra[key]);return}
       const rH=ra[key]?rhash(ra[key]):-1, lH=mine[key]?rhash(mine[key]):-1;
+      if(!lv){applyRec(k,key,rv,ra[key]);mergeTook++;return}
+      if(virgin){if(rH!==lH)mergeTook++;applyRec(k,key,rv,ra[key]);return}
       if(rH===lH)return;                              // the same record: nothing to settle
       // who moved is decided on content, not on the stamps, so an edit made by a build that
       // does not know about stamps still propagates
       const based=b[key]!=null, theyMoved=!based||rH!==b[key], weMoved=!!ch[key];
       if(weMoved&&!theyMoved){ahead=true;return}
-      if(theyMoved&&!weMoved){applyRec(k,key,rv,ra[key]);return}
+      if(theyMoved&&!weMoved){applyRec(k,key,rv,ra[key]);mergeTook++;return}
       if(!newerRec(rv,lv)){ahead=true;return}
       // both sides moved on from the copy we last synced, so the one about to be replaced
       // is somebody's real work: keep it rather than drop it
       if(based&&mine[key])stashLoser(k,key,mine[key]);
-      applyRec(k,key,rv,ra[key]);
+      applyRec(k,key,rv,ra[key]); mergeTook++;
     });
   });
   if(o.walls&&(virgin||newerRec({_v:+o.wallsV||0,_d:o.wallsD||""},{_v:S.wallsV||0,_d:S.wallsD||""}))){
+    if(rhash(o.walls)!==rhash(S.walls||{}))mergeTook++;
     S.walls=o.walls; S.wallsV=+o.wallsV||0; S.wallsD=o.wallsD||"";
-  } else if(o.wallsV!=null&&(S.wallsV||0)>(+o.wallsV||0)) ahead=true;
+  } else if((S.wallsV||0)>(+o.wallsV||0)) ahead=true;   // also when the file predates wallsV
   maxv=Math.max(maxv,+o.wallsV||0);
   S.lam=Math.max(S.lam,maxv);                          // Lamport receive
+  mergeRemote.ahead=ahead;
   S.synced=true;
   S.demo=S.items.some(i=>i.demo)||S.comps.some(c=>c.demo)||S.forms.some(f=>f.demo);
   if(S.curLoc&&!S.comps.some(c=>c.code===S.curLoc))S.curLoc="";
@@ -165,8 +169,20 @@ const payload=()=>({v:2,lam:S.lam,items:joinWire("items"),comps:joinWire("comps"
   walls:S.walls,wallsV:S.wallsV||0,wallsD:S.wallsD||"",demo:S.demo,
   savedAt:new Date().toISOString()});
 
-const ghErr=s=>{const e=new Error(s===401?"Token rejected":s===403?"No access to that repo"
-  :"GitHub error "+s); e.status=s; return e};
+// GitHub answers 429, or 403 with its rate-limit headers, when a token has made too many
+// requests or commits for now. That is a wait, not a dead token: it must not stop sync.
+function rateWait(r){
+  try{
+    const h=k=>r&&r.headers&&r.headers.get?r.headers.get(k):null;
+    const ra=h("retry-after"), rem=h("x-ratelimit-remaining"), reset=h("x-ratelimit-reset");
+    if(!(r.status===429||(r.status===403&&(ra!=null||rem==="0"))))return 0;
+    let ms=ra!=null&&!isNaN(+ra)?+ra*1000:reset&&!isNaN(+reset)?+reset*1000-Date.now():60000;
+    return Math.min(3600000,Math.max(1000,ms||60000));
+  }catch(e){return 0}
+}
+const ghErr=(s,r)=>{const wait=r?rateWait(r):0;
+  const e=new Error(wait?"GitHub asked this device to slow down":s===401?"Token rejected":s===403?"No access to that repo"
+  :"GitHub error "+s); e.status=s; if(wait)e.wait=wait; return e};
 // GitHub tells us when the token dies, so nobody has to type the date in
 function ghExpFrom(r){
   try{const h=r&&r.headers&&r.headers.get&&r.headers.get("github-authentication-token-expiration");
@@ -201,7 +217,7 @@ async function ghGet(){
   const {r,text}=await ghFetch(ghURL()+"?ref=HEAD&t="+Date.now(),{headers:ghHead(),cache:"no-store"});
   ghExpFrom(r);
   if(r.status===404)return {missing:true};
-  if(!r.ok)throw ghErr(r.status);
+  if(!r.ok)throw ghErr(r.status,r);
   const j=JSON.parse(text);
   let o=null; try{o=JSON.parse(b64dec(j.content))}catch(e){}
   // a file we cannot read is not a file we may write over: if the remote is intact and our
@@ -210,6 +226,13 @@ async function ghGet(){
   return {sha:j.sha,data:o};
 }
 function syncFail(e,silent){
+  if(e&&e.wait){
+    // not the token: wait as long as GitHub asked, then carry on
+    syncErr=e.message; store.set(S); renderSyncBar(); renderSyncPill();
+    if(dirty){clearTimeout(pushT); pushT=setTimeout(()=>ghPush(false),e.wait)}
+    if(!silent)toast(syncErr);
+    return "error";
+  }
   if(e&&(e.status===401||e.status===403)){
     tokenBad=true; syncErr=e.message; retries=0; clearTimeout(pushT);
     store.set(S); renderSyncBar(); renderSyncPill(); if(view==="data")renderData();
@@ -264,7 +287,17 @@ async function ghPushNow(force){
         store.set(S);renderSyncBar();renderSyncPill();if(view==="data")renderData();
         toast(syncErr);return"error"}
       badFile=false;
-      if(g.data&&!force)mergeRemote(g.data); else stampDirty();
+      if(g.data&&!force){
+        mergeRemote(g.data);
+        // nothing here the repo lacks, and nothing new came down: a PUT would be an empty
+        // commit. Every save used to make one, and enough of them trip GitHub's limits.
+        if(!mergeRemote.ahead&&!mergeTook){
+          S.gh.sha=g.sha; S.gh.last=new Date().toISOString(); S.base=baseOf(g.data);
+          dirty=false; conflict=false; tokenBad=false; syncErr=""; retries=0; store.set(S);
+          renderSyncBar(); renderSyncPill(); if(view==="data")renderData();
+          return "ok";
+        }
+      } else stampDirty();
       // what goes up, and its base, are taken in the same instant; edits made from here on
       // are measured against it at the next sync
       const up=payload(), sent=baseOf({items:S.items,comps:S.comps,forms:S.forms,walls:S.walls}), gen=saveGen;
@@ -279,7 +312,7 @@ async function ghPushNow(force){
         body:JSON.stringify(body)});
       ghExpFrom(r);
       if(r.status===409||r.status===422)continue;
-      if(!r.ok)throw ghErr(r.status);
+      if(!r.ok)throw ghErr(r.status,r);
       let j={}; try{j=JSON.parse(text)}catch(e){}
       S.gh.sha=(j.content&&j.content.sha)||"";S.gh.last=new Date().toISOString();
       // anything saved while the request was out is still waiting to go

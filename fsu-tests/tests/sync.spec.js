@@ -25,7 +25,7 @@ function remote(state){
       state.gets++;
       if(state.beforeGet)state.beforeGet(state);
       if(state.missing)return route.fulfill({status:404,contentType:"application/json",body:"{}"});
-      if(state.status)return route.fulfill({status:state.status,contentType:"application/json",body:JSON.stringify({message:"no"})});
+      if(state.status)return route.fulfill({status:state.status,contentType:"application/json",headers:state.headers||{},body:JSON.stringify({message:"no"})});
       return route.fulfill({status:200,contentType:"application/json",
         headers:state.expires?{"github-authentication-token-expiration":state.expires,
           "access-control-expose-headers":"github-authentication-token-expiration"}:{},
@@ -34,7 +34,7 @@ function remote(state){
     const sent=JSON.parse(req.postData()||"{}");
     // a test can act while the PUT is on the wire, as a technician tapping away would
     if(state.beforePut){const h=state.beforePut; state.beforePut=null; await h(state)}
-    if(state.status)return route.fulfill({status:state.status,contentType:"application/json",body:JSON.stringify({message:"no"})});
+    if(state.status)return route.fulfill({status:state.status,contentType:"application/json",headers:state.headers||{},body:JSON.stringify({message:"no"})});
     // no file yet: GitHub creates it from a PUT that carries no sha
     if(state.missing&&!sent.sha)state.missing=false;
     else if(sent.sha!==state.sha)
@@ -437,6 +437,62 @@ test("connecting asks for three things and never asks which copy survives",async
   expect(out.asked,"the choose-a-side dialog is still reachable").toBe(false);
   expect(out.ids,"connecting dropped one side").toEqual(["mine","theirs"]);
   expect(state.data.items.map(i=>i.id).sort()).toEqual(["mine","theirs"]);
+});
+
+/* ---------------- GitHub's limits ---------------- */
+
+test("a push with nothing new makes no commit",async({page})=>{
+  const state={sha:"sha1",data:file([it("a","Gloves",3,"devB")])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  const puts=state.puts.length;
+  const out=await page.evaluate(async()=>{
+    S.curLoc=""; save();                        // a save that touches nothing that syncs
+    const r=await ghPush(false);
+    return {r,dirty,err:syncErr}});
+  expect(out.r).toBe("ok");
+  expect(state.puts.length,"a commit was made with nothing in it").toBe(puts);
+  expect(out.dirty).toBe(false);
+  expect(out.err).toBe("");
+  // and a real change still goes up
+  await page.evaluate(async()=>{S.items.find(i=>i.id==="a").qty=8; save(); await ghPush(false)});
+  expect(state.puts.length).toBe(puts+1);
+  expect(state.data.items.find(i=>i.id==="a").qty).toBe(8);
+});
+
+for(const [name,status,headers] of [
+  ["a 403 that says the rate limit is used up",403,{"x-ratelimit-remaining":"0","x-ratelimit-reset":String(Math.floor(Date.now()/1000)+1)}],
+  ["a 403 with retry-after",403,{"retry-after":"1"}],
+  ["a 429",429,{"retry-after":"1"}]]){
+  test(name+" waits and retries instead of calling the token dead",async({page})=>{
+    const state={sha:"sha1",data:file([])};
+    await page.route(FILE,remote(state));
+    await connected(page,"devA");
+    state.status=status;
+    state.headers=Object.assign({"access-control-expose-headers":"retry-after, x-ratelimit-remaining, x-ratelimit-reset"},headers);
+    const out=await page.evaluate(async()=>{
+      S.items.push({id:"slow",name:"Typed during a busy hour",qty:1,cat:"A",cls:"Consumable",loc:""});
+      save(); await ghPush(false);
+      return {tokenBad,err:syncErr,dirty,bar:(document.querySelector("#syncbar")||{}).textContent||""}});
+    expect(out.tokenBad,"a rate limit was taken for a dead token").toBe(false);
+    expect(out.bar).not.toContain("expired");
+    expect(out.err).toContain("slow down");
+    expect(out.dirty).toBe(true);
+    state.status=0;
+    await expect.poll(()=>!!state.data.items.find(i=>i.id==="slow"),
+      {message:"it never tried again after the wait",timeout:8000}).toBe(true);
+  });
+}
+
+test("a plain 403 is still a token that cannot write",async({page})=>{
+  const state={sha:"sha1",data:file([])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  state.status=403;
+  const out=await page.evaluate(async()=>{
+    S.items.push({id:"x",name:"X",qty:1,cat:"A",cls:"Consumable",loc:""}); save();
+    await ghPush(false); return tokenBad});
+  expect(out).toBe(true);
 });
 
 /* ---------------- the file itself ---------------- */
