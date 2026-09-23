@@ -62,7 +62,7 @@ function renderHome(){
     <p class="hint" style="margin:6px 0 0">One-time jobs. This panel goes away once they are done.</p></div></div>`:"";
   if(cs.length&&!unchk)rows.push(["","Count the stock",'data-countrun="1"',""]);
   const needRows=need.slice(0,10).map(i=>{const s=itemStatus(i);
-    return `<button class="act" data-item="${i.id}"><span>${esc(i.name)}<span class="lc" style="margin-left:6px">${esc(i.loc||"\u2014")}</span></span><span class="badge b-${s[0]}">${esc(s[1])}</span></button>`});
+    return `<button class="act" data-item="${esc(i.id)}"><span>${esc(i.name)}<span class="lc" style="margin-left:6px">${esc(i.loc||"\u2014")}</span></span><span class="badge b-${s[0]}">${esc(s[1])}</span></button>`});
   const feedCount=rows.length+needRows.length;
   const todo=`<div class="panel todo"><div class="ph2">Everything, most urgent first${feedCount?" \u2014 "+feedCount:""}</div><div class="pb">
     ${feedCount?rows.map(([k,t,attr,lc])=>`<button class="act${k?" "+k:""}" ${attr}>${k==="setup"?`<span class="tag">Setup</span>`:""}<span>${esc(t)}</span>${lc?`<span class="lc">${lc}</span>`:`<span class="chev">&#8250;</span>`}</button>`).join("")+needRows.join("")
@@ -72,7 +72,7 @@ function renderHome(){
 
   const pop=L.slice().sort((a,b)=>((b.fav?1e6:0)+(b.uses||[]).length)-((a.fav?1e6:0)+(a.uses||[]).length)).slice(0,3);
   const quick=pop.length?`<div class="panel"><div class="ph2">Quick find</div><div class="pb"><div class="qf">${pop.map(i=>
-      `<button data-item="${i.id}"><span class="nm">${esc(i.name)}</span><span class="lc${i.loc?"":" np"}">${esc(i.loc||"Not placed")}</span></button>`).join("")}</div>
+      `<button data-item="${esc(i.id)}"><span class="nm">${esc(i.name)}</span><span class="lc${i.loc?"":" np"}">${esc(i.loc||"Not placed")}</span></button>`).join("")}</div>
       <p class="hint" style="margin:8px 0 0">Star an item and it appears here.</p></div></div>`:"";
 
   $("#v-home").innerHTML=head+tiles+todo+setupPanel+`<div class="dash2">
@@ -187,7 +187,7 @@ function renderBay(){
       <div class="bayplan" id="bayplan" style="--cols:${W};--rows:${H};--k:${bayZoomK}">
       ${cs.map(c=>{const s=compState(c.code), n=s.items.length;
         return `<button class="bcell s-${s.k}${c.desc?"":" un"}${bayPick===c.code?" sel":""}" data-comp="${esc(c.code)}"
-          style="grid-column:${c.x-minX+1}/span ${c.w};grid-row:${c.y-minY+1}/span ${c.h}">
+          style="grid-column:${(+c.x||0)-(+minX||0)+1}/span ${Math.max(1,(+c.w||0))};grid-row:${(+c.y||0)-(+minY||0)+1}/span ${Math.max(1,(+c.h||0))}">
           <span class="bc">${esc(c.code)}${n?`<span class="bk">${n}</span>`:""}</span>
           ${c.desc?`<span class="bn">${esc(c.desc)}</span>`:`<span class="bn un">Not named yet</span>`}
           ${n?"":`<span class="bn em">${c.checked?"Empty":"Nothing logged"}</span>`}
@@ -325,7 +325,7 @@ function renderCompDetail(){
     </div>
     <div class="cdright">
       ${sorted.length?`<div class="rows">`+sorted.map(i=>{const f=flag(i);
-        return `<button class="row" data-item="${i.id}">
+        return `<button class="row" data-item="${esc(i.id)}">
           <span><span class="code">${esc(i.name)}</span>
           <span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}${
             i.cls?" · "+esc(i.cls):""}${i.date?" · "+esc(i.date):""}<br>${esc(catName(i.cat))}</span></span>
@@ -358,9 +358,9 @@ function miniWall(code){
   const mine=comps().filter(o=>o.side===c.side&&o.x!=null);
   return `<div class="mini">
     <div class="minihead"><b>${esc(c.code)}</b> &middot; ${esc(c.side)}</div>
-    <div class="minigrid" style="grid-template-columns:repeat(${W.cols},minmax(0,1fr));grid-template-rows:repeat(${W.rows},minmax(0,1fr));gap:${W.cols>60?1:2}px">
+    <div class="minigrid" style="grid-template-columns:repeat(${Math.max(1,(+W.cols||0))},minmax(0,1fr));grid-template-rows:repeat(${Math.max(1,(+W.rows||0))},minmax(0,1fr));gap:${(+W.cols||0)>60?1:2}px">
       ${mine.map(o=>`<div class="mslot${o.code===c.code?" hit":""}"
-        style="grid-column:${o.x+1}/span ${o.w};grid-row:${o.y+1}/span ${o.h}"
+        style="grid-column:${(+o.x||0)+1}/span ${Math.max(1,(+o.w||0))};grid-row:${(+o.y||0)+1}/span ${Math.max(1,(+o.h||0))}"
         ></div>`).join("")}
     </div>
     <div class="miniorient"><span>${capLeft(c.side)}</span><span>${capRight(c.side)}</span></div>
@@ -384,7 +384,7 @@ function renderItemDetail(){
         <h2 class="idtitle">${esc(i.name)}</h2>
         <div class="idsub">${esc(i.cls)}${i.par?" · par level "+esc(i.par):""}</div>
       </div>
-      <button class="star ${i.fav?"on":""}" data-fav="${i.id}" aria-label="Favourite">${i.fav?"&#9733;":"&#9734;"}</button>
+      <button class="star ${i.fav?"on":""}" data-fav="${esc(i.id)}" aria-label="Favourite">${i.fav?"&#9733;":"&#9734;"}</button>
     </div>
 
     ${isRequest(i)?`
@@ -396,7 +396,7 @@ function renderItemDetail(){
         ${i.lead?`<div><dt>Typical lead time</dt><dd>${esc(i.lead)}</dd></div>`:""}
       </div>
       ${!i.contact&&!i.phone?`<p class="hint">No contact recorded yet. Add one so this is useful at a scene.</p>`:""}
-      <button class="btn sec" data-editreq="${i.id}" style="margin:10px 0 0;max-width:none">Edit request details</button>`
+      <button class="btn sec" data-editreq="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Edit request details</button>`
     :`<div class="locline">
        <span class="lc2">${esc(i.loc||"Not placed")}</span>
        <span class="ld2">${esc(c?(c.desc||c.side||"No description"):"No compartment set")}</span>
@@ -414,30 +414,30 @@ function renderItemDetail(){
         :isStale(i)?`<div class="unver bad">Last checked ${esc(i.verified)}, over a year ago. Confirm against the current sheet.</div>`:""}`
     :`<div class="empty" style="padding:20px 16px"><strong>No instructions yet</strong>
        <p>Paste the steps from the manufacturer sheet or your SOP, and record where they came from.</p>
-       <button class="btn sec" data-editsteps="${i.id}" style="margin-top:12px">Add instructions</button></div>`}
-    ${steps.length?`<button class="btn sec" data-editsteps="${i.id}" style="margin:10px 0 0;max-width:none">Edit instructions</button>`:""}
+       <button class="btn sec" data-editsteps="${esc(i.id)}" style="margin-top:12px">Add instructions</button></div>`}
+    ${steps.length?`<button class="btn sec" data-editsteps="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Edit instructions</button>`:""}
 
     <div class="idsect">Guides and documents</div>
     ${(i.links||[]).length?`<div class="links">`+(i.links||[]).map(l=>
-      `<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">
+      !okUrl(l.url)?"":`<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">
         <span class="ln">${esc(l.label)}</span>
         <span class="lu">${esc(l.url.replace(/^https?:\/\//,"").split("/")[0])}</span></a>`).join("")+`</div>
-      <button class="btn sec" data-editlinks="${i.id}" style="margin:9px 0 0;max-width:none">Edit links</button>`
+      <button class="btn sec" data-editlinks="${esc(i.id)}" style="margin:9px 0 0;max-width:none">Edit links</button>`
     :`<div class="empty" style="padding:18px 16px"><strong>No documents linked</strong>
        <p>Link the manufacturer manual, a training video, or the SOP on your shared drive.</p>
-       <button class="btn sec" data-editlinks="${i.id}" style="margin-top:12px">Add a link</button></div>`}
+       <button class="btn sec" data-editlinks="${esc(i.id)}" style="margin-top:12px">Add a link</button></div>`}
 
     <div class="idsect">Works with</div>
     ${(()=>{const r=(i.rel||[]).map(id=>S.items.find(x=>x.id===id)).filter(Boolean);
       return r.length?`<div class="rel">`+r.map(o=>{const rs=itemStatus(o);
-        return `<button class="reltile" data-item="${o.id}">
+        return `<button class="reltile" data-item="${esc(o.id)}">
           <span class="rn">${esc(o.name)}</span>
           <span class="rl">${esc(o.loc||"—")}</span>
           <span class="rq b-${rs[0]}">${esc(o.qty)} in stock</span></button>`}).join("")+`</div>
-        <button class="btn sec" data-editrel="${i.id}" style="margin:10px 0 0;max-width:none">Edit what it works with</button>`
+        <button class="btn sec" data-editrel="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Edit what it works with</button>`
       :`<div class="empty" style="padding:18px 16px"><strong>Nothing linked</strong>
          <p>Link the gear you need alongside this — applicator, lifters, a scale — so it's one tap away at a scene.</p>
-         <button class="btn sec" data-editrel="${i.id}" style="margin-top:12px">Link items</button></div>`})()}
+         <button class="btn sec" data-editrel="${esc(i.id)}" style="margin-top:12px">Link items</button></div>`})()}
 
     <div class="idsect">Details</div>
     <div class="kv">
@@ -453,11 +453,11 @@ function renderItemDetail(){
       ${i.verifyNote?`<div><dt>Instructions</dt><dd>${esc(i.verifyNote)}</dd></div>`:""}
       ${i.vendor||i.part||i.pack?`<div><dt>Ordering</dt><dd>${esc([i.vendor,i.part,i.pack].filter(Boolean).join(" \u00b7 "))}</dd></div>`:""}
       ${i.cls==="Durable"?`<div><dt>Last serviced</dt><dd>${esc(i.lastService||"\u2014")}</dd></div>
-      <div><dt>Certificate</dt><dd>${i.cert?`<a href="${esc(i.cert)}" target="_blank" rel="noopener">Open</a>`:"\u2014"}</dd></div>`:""}
+      <div><dt>Certificate</dt><dd>${okUrl(i.cert)?`<a href="${esc(i.cert)}" target="_blank" rel="noopener">Open</a>`:"\u2014"}</dd></div>`:""}
     </div>
-    ${i.cls==="Durable"?`<button class="btn sec" data-editsvc="${i.id}" style="margin:10px 0 0;max-width:none">Service and calibration</button>`:""}
-    ${i.cls==="Reagent"?`<button class="btn sec" data-editlot="${i.id}" style="margin:10px 0 0;max-width:none">Lot, received and opened dates</button>`:""}
-    ${i.cls==="Regulated"?`<button class="btn sec" data-countnow="${i.id}" style="margin:10px 0 0;max-width:none">Count it now</button>`:""}
+    ${i.cls==="Durable"?`<button class="btn sec" data-editsvc="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Service and calibration</button>`:""}
+    ${i.cls==="Reagent"?`<button class="btn sec" data-editlot="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Lot, received and opened dates</button>`:""}
+    ${i.cls==="Regulated"?`<button class="btn sec" data-countnow="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Count it now</button>`:""}
     ${i.note?`<div class="idsect">Notes</div><div class="kv"><div style="display:block">${esc(i.note).replace(/\n/g,"<br>")}</div></div>`:""}
     ${(()=>{const all=i.uses||[]; if(!all.length)return "";
       const cut=Date.now()-90*86400000;
@@ -483,10 +483,10 @@ function renderItemDetail(){
           `<div><dt>${esc(u.d)}</dt><dd>used ${esc(u.n)}</dd></div>`).join("")}</div>`:""}`})()}
 
     <div class="actbar"${isRequest(i)?' style="grid-template-columns:1fr 1fr"':""}>
-      ${isRequest(i)?"":`<button class="primary" data-loguse="${i.id}">Log use</button>
-      <button data-adjust="${i.id}">Adjust qty</button>`}
-      ${isRequest(i)?`<button class="primary" data-editreq="${i.id}">Request details</button>`:""}
-      <button data-edititem="${i.id}">Edit</button>
+      ${isRequest(i)?"":`<button class="primary" data-loguse="${esc(i.id)}">Log use</button>
+      <button data-adjust="${esc(i.id)}">Adjust qty</button>`}
+      ${isRequest(i)?`<button class="primary" data-editreq="${esc(i.id)}">Request details</button>`:""}
+      <button data-edititem="${esc(i.id)}">Edit</button>
     </div>
     </div></div>`;
 }
@@ -620,7 +620,7 @@ function relSheet(it){
       .sort((a,b)=>{const s=(it.rel||[]).includes(b.id)-(it.rel||[]).includes(a.id);
         return s||a.name.localeCompare(b.name)}).slice(0,60);
     $("#rellist").innerHTML=list.map(o=>{const on=(it.rel||[]).includes(o.id);
-      return `<button class="relrow${on?" on":""}" data-pick="${o.id}">
+      return `<button class="relrow${on?" on":""}" data-pick="${esc(o.id)}">
         <span class="tick">${on?"&#10003;":""}</span>
         <span><span class="rn">${esc(o.name)}</span><span class="rl">${esc(o.loc||"—")} · ${esc(catName(o.cat))}</span></span>
       </button>`}).join("")||`<p class="hint">Nothing matches that.</p>`;
@@ -664,7 +664,7 @@ function renderPrint(){
         grid-template-rows:repeat(${H},minmax(0,1fr));aspect-ratio:${(W/H).toFixed(3)};
         gap:${W>40?1:4}px">
         ${mine.map(c=>`<div class="pslot"
-          style="grid-column:${c.x-minX+1}/span ${c.w};grid-row:${c.y-minY+1}/span ${c.h}">
+          style="grid-column:${(+c.x||0)-(+minX||0)+1}/span ${Math.max(1,(+c.w||0))};grid-row:${(+c.y||0)-(+minY||0)+1}/span ${Math.max(1,(+c.h||0))}">
           <b>${esc(c.code)}</b>${c.desc?`<i>${esc(c.desc)}</i>`:""}</div>`).join("")}
       </div>
       <div class="porient"><span>${capLeft(side)}</span><span>${capRight(side)}</span></div>

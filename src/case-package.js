@@ -52,6 +52,7 @@ async function exportCasePackage(scope,label){
 async function importCasePackage(text){
   let pkg; try{pkg=JSON.parse(text)}catch(e){return toast("That isn't a case package")}
   if(!pkg||pkg.fsuCase!==1)return toast("That isn't a case package");
+  const N=cleanCase(pkg,"a case package");
   let n=0;
   const merge=key=>{ S[key]=S[key]||[]; (pkg[key]||[]).forEach(r=>{ if(!r||!r.id)return;
     const i=S[key].findIndex(x=>x.id===r.id); if(i>-1)S[key][i]=r; else S[key].push(r); n++ }) };
@@ -59,5 +60,5 @@ async function importCasePackage(text){
   S.forms=S.forms||[]; (pkg.forms||[]).forEach(f=>{ if(f&&f.id&&!S.forms.some(x=>x.id===f.id))S.forms.push(f) });
   let np=0; for(const id in (pkg.photos||{})){ try{ await photoPut(id,pkg.photos[id]); np++ }catch(e){} }
   saveLocal(); render();
-  toast("Restored "+n+" record"+(n===1?"":"s")+" and "+np+" photograph"+(np===1?"":"s"));
+  toast("Restored "+n+" record"+(n===1?"":"s")+" and "+np+" photograph"+(np===1?"":"s")+"."+tellBad(N));
 }

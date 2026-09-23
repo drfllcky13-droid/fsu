@@ -60,7 +60,7 @@ function baseOf(src){
   KINDS.forEach(k=>{const b=out[k]={};
     (Array.isArray(src[k])?src[k]:[]).forEach(r=>{
       if(!r||typeof r!=="object"||r._x)return;
-      const key=kKey(k,r); if(key!=null&&key!=="")b[key]=rhash(r)})});
+      const key=kKey(k,r); if(okId(key))b[key]=rhash(r)})});   // an unsafe key is never taken in
   if(src.walls)out.walls=rhash(src.walls);
   return out;
 }
@@ -227,7 +227,11 @@ async function ghGet(){
   // a file we cannot read is not a file we may write over: if the remote is intact and our
   // parse is what broke, overwriting it would take out every other device
   if(!o||typeof o!=="object"||!Array.isArray(o.items))return {sha:j.sha,bad:true};
-  return {sha:j.sha,data:o};
+  // the base is what the repo holds, taken before anything is repaired here: a repaired
+  // record then differs from it, is stamped, and the repair goes up to the file
+  const base=baseOf(o), N=cleanVan(o,"the repo");
+  if(N.fresh)toast("Something in the synced file was not safe to use and was left out or repaired. Settings › Recent errors lists it.");
+  return {sha:j.sha,data:o,base};
 }
 // A device that synced with the build before merging has no stamps, no base and no synced
 // flag, so it looked like a brand-new device and deferred to the repo: every edit it had not
@@ -293,7 +297,7 @@ async function ghPullNow(silent){
     const ahead=mergeRemote(g.data);
     S.gh.sha=g.sha; S.gh.last=new Date().toISOString();
     tokenBad=false; conflict=false; syncErr=""; retries=0;
-    S.base=baseOf(g.data); dirty=!!ahead; store.set(S);
+    S.base=g.base; dirty=!!ahead; store.set(S);
     renderSyncBar(); renderSyncPill(); render();
     if(ahead)queuePush(); else clearTimeout(pushT);
     if(!silent)toast("Synced — "+live().length+" items");
@@ -323,7 +327,7 @@ async function ghPushNow(force){
         // nothing here the repo lacks, and nothing new came down: a PUT would be an empty
         // commit. Every save used to make one, and enough of them trip GitHub's limits.
         if(!mergeRemote.ahead&&!mergeTook){
-          S.gh.sha=g.sha; S.gh.last=new Date().toISOString(); S.base=baseOf(g.data);
+          S.gh.sha=g.sha; S.gh.last=new Date().toISOString(); S.base=g.base;
           dirty=false; conflict=false; tokenBad=false; syncErr=""; retries=0; store.set(S);
           renderSyncBar(); renderSyncPill(); if(view==="data")renderData();
           return "ok";

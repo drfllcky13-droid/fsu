@@ -198,13 +198,16 @@ function objSVG(o,sel){
   catch(err){
     console.error("object failed to draw",o&&o.id,err);
     const w=(+o.w>0?o.w:60), h=(+o.h>0?o.h:40);
-    return `<g data-obj="${o.id}" transform="translate(${+o.x||0},${+o.y||0})"><rect width="${w}" height="${h}" class="k-broken"/>
+    return `<g data-obj="${esc(o.id)}" transform="translate(${+o.x||0},${+o.y||0})"><rect width="${w}" height="${h}" class="k-broken"/>
       <text x="4" y="${h/2+4}" class="k-brokent">Could not draw ${esc(SHAPENAME(o.t||"object"))}</text></g>`;
   }
 }
 const SKETCH_V=4;
 function repairSketch(sk){
   let fixed=0; const num=(v,d)=>(typeof v==="number"&&isFinite(v))?v:d;
+  // ids, references, the backdrop and the scale, for a sketch stored before these were checked
+  // on the way in (core.js). Anything repaired is listed under Recent errors.
+  fixed+=cleanSketchParts(sk,makeNote("a stored sketch"));
   if(!Array.isArray(sk.objs)){sk.objs=[];fixed++}
   const before=sk.objs.length; sk.objs=sk.objs.filter(o=>o&&typeof o==="object"); fixed+=before-sk.objs.length;
   sk.objs.forEach(o=>{

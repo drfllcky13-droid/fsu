@@ -40,7 +40,7 @@ function snippetSheet(fieldId){
   const list=snippets();
   openSheet(`<h3>Insert wording</h3>
     <p class="hint" style="margin:0 0 12px">Tap a line to insert it at the cursor. Square brackets mark what to fill in. The library is under Settings › Report wording.</p>
-    <div class="rows">${list.map(s=>`<button class="row" data-snipins="${s.id}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
+    <div class="rows">${list.map(s=>`<button class="row" data-snipins="${esc(s.id)}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
     <button class="btn sec" id="snx" style="max-width:none;margin:12px 0 0">Cancel</button>`);
   $("#snx").onclick=closeSheet;
   $$("[data-snipins]").forEach(b=>b.onclick=()=>{
@@ -69,7 +69,7 @@ function snippetManage(){
   };
   openSheet(`<h3>Report wording</h3>
     <p class="hint" style="margin:0 0 12px">Standard sentences for the narrative report. Keep them in the unit's approved wording.</p>
-    <div class="rows">${list.map(s=>`<button class="row" data-snipedit="${s.id}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
+    <div class="rows">${list.map(s=>`<button class="row" data-snipedit="${esc(s.id)}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
     <button class="btn" id="snnew" style="max-width:none;margin:12px 0 0">Add wording</button>
     <button class="btn sec" id="snx2" style="max-width:none">Close</button>`);
   $("#snx2").onclick=closeSheet; $("#snnew").onclick=()=>edit(null);

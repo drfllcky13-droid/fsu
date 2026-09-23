@@ -33,7 +33,7 @@ function renderInventory(){
         <th>Item</th><th>Compartment</th><th>Category</th><th>Class</th>
         <th class="num">Par</th><th class="num">In stock</th><th>Status</th></tr></thead><tbody>
       ${rows.map(i=>{const s=itemStatus(i);
-        return `<tr data-item="${i.id}"${i.id===curItem?' class="on"':""}>
+        return `<tr data-item="${esc(i.id)}"${i.id===curItem?' class="on"':""}>
           <td class="nm">${esc(i.name)}</td>
           <td class="mono">${esc(i.loc||"—")}</td>
           <td>${esc(catName(i.cat))}</td>
@@ -45,7 +45,7 @@ function renderInventory(){
     return;
   }
   const kcard=i=>{const s=itemStatus(i);
-    return `<button class="kcard" data-item="${i.id}"><b>${esc(i.name)}</b>
+    return `<button class="kcard" data-item="${esc(i.id)}"><b>${esc(i.name)}</b>
       <span>${esc(i.loc||"—")} &middot; ${esc(i.qty)} in stock</span></button>`};
   const body=invGroup==="az"
     ? `<div class="rows">`+L.slice().sort((a,b)=>a.name.localeCompare(b.name))
@@ -76,7 +76,7 @@ function renderGuide(){
   const L=live(), withS=L.concat(requests()).filter(i=>(i.steps||[]).length), without=L.filter(i=>!(i.steps||[]).length);
   const reqs=requests().sort((a,b)=>a.name.localeCompare(b.name));
   const reqBlock=`<div class="sect">Available on request — ${reqs.length}</div>`
-    +(reqs.length?`<div class="rows">`+reqs.map(i=>`<button class="row" data-item="${i.id}">
+    +(reqs.length?`<div class="rows">`+reqs.map(i=>`<button class="row" data-item="${esc(i.id)}">
         <span><span class="code">${esc(i.name)}</span>
         <span class="desc">${esc(i.contact||"No contact recorded")}${i.lead?" · "+esc(i.lead):""}</span></span>
         <span class="rt"><span class="badge b-req">On request</span><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`
@@ -88,7 +88,7 @@ function renderGuide(){
     return nv?`<button data-verifyrun="1">Verify ${nv} set${nv===1?"":"s"}</button>`:""})()}</div>`;
   const missingList=without.length?`<div class="sect">No instructions yet — ${without.length}</div><div class="rows">`
       +without.slice().sort((a,b)=>a.name.localeCompare(b.name)).slice(0,40).map(i=>
-        `<button class="row" data-item="${i.id}">
+        `<button class="row" data-item="${esc(i.id)}">
           <span><span class="code">${esc(i.name)}</span>
           <span class="desc">${esc(i.loc||"—")} · ${esc(catName(i.cat))}</span></span>
           <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")
@@ -107,7 +107,7 @@ function renderGuide(){
     +(Object.keys(g).length||guideFilter==="none"?"":`<p class="hint">Nothing matches that filter.</p>`)
     +Object.keys(g).sort().map(k=>
     `<div class="sect">${esc(k)}</div><div class="rows">`+g[k].sort((a,b)=>a.name.localeCompare(b.name)).map(i=>
-      `<button class="row" data-item="${i.id}">
+      `<button class="row" data-item="${esc(i.id)}">
         <span><span class="code">${esc(i.name)}</span>
         <span class="desc">${[(i.steps||[]).length+" steps", i.loc?esc(i.loc):"", i.source?esc(i.source):""].filter(Boolean).join(" · ")}</span></span>
         <span class="rt">${badge(i)}<span class="chev">&#8250;</span></span></button>`).join("")+`</div>`).join("")
@@ -245,17 +245,18 @@ function ingest(text,replace){
   text=(text||"").trim(); if(!text)return toast("Nothing pasted");
   if(text[0]==="{"){let o;try{o=JSON.parse(text)}catch(e){return toast("That backup didn't parse")}
     if(!o.items)return toast("No items in that file");
+    const N=cleanVan(o,"the backup");
     if(ghOn()){
       const m=missingFrom(o);
       S.items=S.items.concat(m.items); S.comps=S.comps.concat(m.comps); S.forms=S.forms.concat(m.forms);
       nameComps(); save(); renderData();
-      return toast("Added "+missingText(m)+" that were missing. Nothing was replaced, because sync is on")}
+      return toast("Added "+missingText(m)+" that were missing. Nothing was replaced, because sync is on."+tellBad(N))}
     if(replace){S.items=o.items;S.comps=o.comps||[];S.forms=o.forms||[];if(o.walls)S.walls=o.walls;S.demo=!!o.demo}
     else o.items.forEach(x=>{x.id=newId();S.items.push(x)});
     nameComps();
-    save();renderData();return toast(o.items.length+" items "+(replace?"restored":"added"))}
+    save();renderData();return toast(o.items.length+" items "+(replace?"restored":"added")+"."+tellBad(N))}
   const rows=parseCSV(text); if(rows.length<2)return toast("Nothing to import");
-  const add=[];
+  const add=[], N=makeNote("the CSV");
   rows.slice(1).forEach(r=>{if(!r[0]||!r[0].trim())return;
     const o={id:newId(),uses:[],fav:false};
     COLS.forEach((c,j)=>o[c]=(r[j]??"").trim());
@@ -263,11 +264,13 @@ function ingest(text,replace){
     if(!STATUSES.includes(o.status))o.status="Stocked";
     if(!CATS.some(c=>c[0]===o.cat))o.cat="A";
     if(!CLASSES.includes(o.cls))o.cls="Consumable";
+    // a compartment code becomes an attribute and a synced key, so it has to be a safe one
+    if(o.loc&&!okId(o.loc)){N.note("row "+shortVal(o.name)+" named compartment "+shortVal(o.loc)+", which is not a usable code, so it was left unplaced");o.loc=""}
     add.push(o)});
   if(replace)S.items=add; else S.items=S.items.concat(add);
   add.forEach(o=>{if(o.loc&&!S.comps.some(c=>c.code===o.loc))
     S.comps.push({code:o.loc,desc:"",side:"",x:null,y:null,w:6,h:4})});
-  save();renderData();toast(add.length+" rows "+(replace?"loaded":"added"));
+  save();renderData();toast(add.length+" rows "+(replace?"loaded":"added")+"."+tellBad(N));
 }
 // the share sheet puts the file straight into Drive or Mail; download is the fallback
 async function backupOut(){
@@ -363,12 +366,12 @@ function activeSpotlightHTML(incs,loose){
       <span class="s">${esc(top.inc.addr||"No address")}</span>
       <div class="bar"><i style="width:${pct}%"></i></div>
       <span class="barlab">${top.done} of ${top.plan.length} done${top.open?", "+top.open+" in progress":""}</span>
-      <button class="herocta" data-inc="${top.inc.id}">Continue &rarr;</button>
+      <button class="herocta" data-inc="${esc(top.inc.id)}">Continue &rarr;</button>
     </div>`:"";
   const restRow=x=>`<div class="urow"><span>${esc(x.inc.caseNo||"No case number")} &middot; ${esc(x.inc.offence||"No offence recorded")}</span>
-    <span class="lc" data-inc="${x.inc.id}">${x.done===x.plan.length&&x.plan.length?"Done":x.done+" of "+x.plan.length}</span></div>`;
+    <span class="lc" data-inc="${esc(x.inc.id)}">${x.done===x.plan.length&&x.plan.length?"Done":x.done+" of "+x.plan.length}</span></div>`;
   const looseRow=d=>`<div class="urow"><span>${esc(d.caseNo||"No case number")} &middot; ${esc(d.type)}</span>
-    <span class="lc" data-doc="${d.kind}:${d.id}">Open</span></div>`;
+    <span class="lc" data-doc="${d.kind}:${esc(d.id)}">Open</span></div>`;
   const also=(rest.length||loose.length)?`<div class="card2"><h4>Also open</h4>
     ${rest.map(restRow).join("")}${loose.map(looseRow).join("")}</div>`:"";
   return hero+also;
@@ -378,10 +381,10 @@ function activeCardsHTML(incs,loose){
   const row=(attr,title,sub,prog,dot)=>`<button class="act inccard" ${attr}><span class="ic1"><b>${title}</b><span class="ic2">${sub}</span>
     <span class="ic3"><span class="dot ${dot}"></span>${prog}</span></span><span class="chev">&#8250;</span></button>`;
   return `<div class="panel"><div class="pb">`+incs.map(inc=>{const x=incProgress(inc);
-      return row(`data-inc="${inc.id}"`,esc(inc.caseNo||"No case number")+" &middot; "+esc(inc.offence||"No offence recorded"),
+      return row(`data-inc="${esc(inc.id)}"`,esc(inc.caseNo||"No case number")+" &middot; "+esc(inc.offence||"No offence recorded"),
         esc(inc.addr||"No address"),x.done+" of "+x.plan.length+" done"+(x.open?", "+x.open+" in progress":""),
         x.open?"a":(x.done===x.plan.length&&x.plan.length?"g":"n"))}).join("")
-    +loose.map(d=>row(`data-doc="${d.kind}:${d.id}"`,esc(d.caseNo||"No case number")+" &middot; "+esc(d.type),
+    +loose.map(d=>row(`data-doc="${d.kind}:${esc(d.id)}"`,esc(d.caseNo||"No case number")+" &middot; "+esc(d.type),
         "Not filed to an incident","Not exported","a")).join("")+`</div></div>`;
 }
 /* desktop: everything as one dense table, built for the back office */
@@ -390,11 +393,11 @@ function activeTableHTML(incs,loose){
   const incRow=x=>`<tr><td>${esc(x.inc.caseNo||"No case number")}</td><td>${esc(x.inc.offence||"No offence recorded")}</td>
     <td>${esc(x.inc.addr||"No address")}</td>
     <td><span class="dot ${x.open?"a":(x.done===x.plan.length&&x.plan.length?"g":"n")}"></span>${x.done} of ${x.plan.length} done${x.open?", "+x.open+" in progress":""}</td>
-    <td class="lc" data-inc="${x.inc.id}">Open &rsaquo;</td></tr>`;
+    <td class="lc" data-inc="${esc(x.inc.id)}">Open &rsaquo;</td></tr>`;
   const looseRow=d=>`<tr><td>${esc(d.caseNo||"No case number")}</td><td>${esc(d.type)}</td>
     <td>Not filed to an incident</td>
     <td><span class="dot a"></span>Not exported</td>
-    <td class="lc" data-doc="${d.kind}:${d.id}">Open &rsaquo;</td></tr>`;
+    <td class="lc" data-doc="${d.kind}:${esc(d.id)}">Open &rsaquo;</td></tr>`;
   return `<div class="panel"><div class="ph2">Incidents and documents</div><div class="pb flush">
       <table class="datatable"><thead><tr><th>Case</th><th>Type</th><th>Detail</th><th>Progress</th><th></th></tr></thead>
       <tbody>${withP.map(incRow).join("")}${loose.map(looseRow).join("")}</tbody></table>
@@ -432,7 +435,7 @@ function renderIncident(){
     <div class="sect">Documents</div>
     <div class="rows">${plan.map(row).join("")}</div>
     ${extras.length?`<div class="sect">Also attached</div><div class="rows">`
-      +extras.map(x=>`<button class="row" data-doc="${x.kind}:${x.id}">
+      +extras.map(x=>`<button class="row" data-doc="${x.kind}:${esc(x.id)}">
         <span><span class="code">${esc(x.type)}</span>
         <span class="desc">${x.exported?"Exported":"In progress"}</span></span>
         <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:""}`;
@@ -785,14 +788,14 @@ function renderReorder(){
   $("#title").textContent="Reorder";
   const all=reorderRows(), rows=all.filter(r=>!r.i.ordered), onOrder=all.filter(r=>r.i.ordered);
   const byCat={}; rows.forEach(r=>{const c=catName(r.i.cat);(byCat[c]=byCat[c]||[]).push(r)});
-  const card=r=>`<div class="icard"><button class="row" data-item="${r.i.id}">
+  const card=r=>`<div class="icard"><button class="row" data-item="${esc(r.i.id)}">
       <span><span class="code">${r.need?r.need+" &times; ":""}${esc(r.i.name)}</span>
       <span class="desc">${esc(r.i.loc||"not placed")} &middot; ${esc(r.i.qty)} in stock${
         r.i.par!==""&&r.i.par!=null?" &middot; par "+esc(r.i.par):""}${r.i.ordered?" &middot; ordered "+esc(r.i.ordered):""}${r.i.vendor||r.i.part?"<br>"+esc([r.i.vendor,r.i.part,r.i.pack].filter(Boolean).join(" &middot; ")):""}</span></span>
       <span class="rt"><span class="badge b-${r.why==="Below par"?"attn":"action"}">${esc(r.why)}</span><span class="chev">&#8250;</span></span></button>
     <div class="iq">${r.i.ordered
-      ?`<button data-received="${r.i.id}">Received</button><button data-unordered="${r.i.id}">Not ordered after all</button>`
-      :`<button data-ordered="${r.i.id}">Ordered</button>`}</div></div>`;
+      ?`<button data-received="${esc(r.i.id)}">Received</button><button data-unordered="${esc(r.i.id)}">Not ordered after all</button>`
+      :`<button data-ordered="${esc(r.i.id)}">Ordered</button>`}</div></div>`;
   const total=all.length, done=onOrder.length, pct=total?Math.round(100*done/total):0;
   const progress=total?`<div class="ropct">
       <div class="ropctlab"><span>${done} of ${total} ordered</span><span>${rows.length?"Copy list &middot; Send":"All in hand"}</span></div>
@@ -824,7 +827,7 @@ function renderList(key){
     +(arr.length?`<div class="rows">`+arr.map(i=>{
       const s=isOut(i)?["action","Out"]:isExpired(i)?["action","Expired"]:isLow(i)?["attn","Below par"]
         :isService(i)?["attn","Service due"]:isExpiring(i)?["attn",daysOut(i.date)+" days"]:["good","OK"];
-      return `<button class="row" data-item="${i.id}">
+      return `<button class="row" data-item="${esc(i.id)}">
         <span><span class="code">${esc(i.name)}</span>
         <span class="desc">${esc(i.loc||"—")} · ${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}${
       i.cls?" · "+esc(i.cls):""}<br>${esc(catName(i.cat))}</span></span>
@@ -860,7 +863,7 @@ function renderSearch(){
   let body=(searchScope!=="forms"&&hits.length)
     ? `<div class="sect">${scoped.length>hits.length?"Showing "+hits.length+" of "+scoped.length:hits.length+" result"+(hits.length===1?"":"s")}</div><div class="rows">`
       +hits.map(i=>{const cp=S.comps.find(c=>c.code===i.loc);
-        return `<button class="row" data-item="${i.id}">
+        return `<button class="row" data-item="${esc(i.id)}">
           <span><span class="code">${esc(i.name)}</span>
           <span class="desc">${isRequest(i)?esc(i.contact||"Not in the van")
             :i.status==="Not carried"?"Not in the van"+(i.note?" · "+esc(i.note):"")
@@ -870,7 +873,7 @@ function renderSearch(){
             :""}<span class="chev">&#8250;</span></span></button>`}).join("")+`</div>`
     : (searchScope==="forms"?"":`<div class="empty"><strong>Nothing found</strong><p>No item, compartment, or category matches that.</p></div>`);
   if(fhits.length)body+=`<div class="sect">Forms — ${fhits.length}</div><div class="rows">`+fhits.map(f=>
-      `<button class="row" data-form="${f.id}">
+      `<button class="row" data-form="${esc(f.id)}">
         <span><span class="code">${esc(f.name)}</span>
         <span class="desc">${esc(f.rev?"Rev "+f.rev+" · ":"")}${esc(f.cat||"")}</span></span>
         <span class="rt"><span class="badge b-req">Form</span><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`;
@@ -925,7 +928,7 @@ function renderSweep(){
         <label class="fld"><span>Expiry or service date</span><input type="date" id="f-date"></label>
         <button class="btn" id="add" style="margin:4px 0 0;max-width:none">Add to ${esc(cur)}</button>`}
       <div id="sweeplist">${here.length?`<div class="sect">In ${esc(cur)} — ${here.length}</div><div class="rows">`
-        +here.slice().reverse().map(i=>`<button class="row" data-item="${i.id}">
+        +here.slice().reverse().map(i=>`<button class="row" data-item="${esc(i.id)}">
           <span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span>
           <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:""}</div>
       <button class="btn" data-sweepdone="${esc(cur)}" style="max-width:none;margin-top:12px">Swept, next &rarr;</button>

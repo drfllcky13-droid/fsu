@@ -85,13 +85,13 @@ function markSweptNext(code){
 
 /* item cards on a phone, with counts you can tap */
 function itemCard(i,flagHtml){
-  return `<div class="icard"><button class="row" data-item="${i.id}">
+  return `<div class="icard"><button class="row" data-item="${esc(i.id)}">
       <span><span class="code">${esc(i.name)}</span>
       <span class="desc">${esc(i.loc||"—")}${i.par?" · par "+esc(i.par):""}${i.cls?" · "+esc(i.cls):""}<br>${esc(catName(i.cat))}</span></span>
       <span class="rt">${flagHtml}<span class="chev">&#8250;</span></span></button>
-    <div class="iq"><button data-qty="${i.id}:-1" aria-label="One fewer">&minus;</button><span class="qn">${esc(i.qty)}</span>
-      <button data-qty="${i.id}:1" aria-label="One more">+</button>
-      <button data-qout="${i.id}"${isOut(i)?' class="on"':''}>${isOut(i)?"Out":"Mark out"}</button></div></div>`;
+    <div class="iq"><button data-qty="${esc(i.id)}:-1" aria-label="One fewer">&minus;</button><span class="qn">${esc(i.qty)}</span>
+      <button data-qty="${esc(i.id)}:1" aria-label="One more">+</button>
+      <button data-qout="${esc(i.id)}"${isOut(i)?' class="on"':''}>${isOut(i)?"Out":"Mark out"}</button></div></div>`;
 }
 function setQty(i,q){
   i.qty=String(Math.max(0,q));
@@ -129,7 +129,7 @@ function verifyRun(){
 /* counts: every compartment in turn, or the regulated items in one */
 function countRows(items){
   return items.map(i=>`<div class="countrow"><span>${esc(i.name)}${i.par?` <span class="hint" style="display:inline">· par ${esc(i.par)}</span>`:""}</span>
-    <input type="text" inputmode="numeric" data-cnt="${i.id}" value="${esc(i.qty)}" aria-label="Count of ${esc(i.name)}"></div>`).join("");
+    <input type="text" inputmode="numeric" data-cnt="${esc(i.id)}" value="${esc(i.qty)}" aria-label="Count of ${esc(i.name)}"></div>`).join("");
 }
 function applyCounts(who){
   let changed=0;
@@ -150,7 +150,7 @@ function countRun(){
       save();
       openSheet(`<h3>Count finished</h3>
         <p class="hint" style="margin:0 0 12px">${cs.length} compartments counted, ${changed} quantit${changed===1?"y":"ies"} changed.</p>
-        ${short.length?`<div class="sect" style="margin-top:0">Below par or out — ${short.length}</div><div class="rows">${short.map(i=>`<button class="row" data-item="${i.id}"><span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.loc||"")} · ${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
+        ${short.length?`<div class="sect" style="margin-top:0">Below par or out — ${short.length}</div><div class="rows">${short.map(i=>`<button class="row" data-item="${esc(i.id)}"><span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.loc||"")} · ${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
           <button class="btn" data-go="reorder" style="max-width:none;margin:12px 0 0">Open the reorder list</button>`
           :`<div class="okbox">Nothing is short.</div>`}
         <button class="btn sec" id="ctx" style="max-width:none">Close</button>`);
@@ -242,7 +242,7 @@ function renderLabels(){
     <div class="editbar"><button data-labelkind="comps"${kind==="comps"?' class="on"':''}>Compartments</button>
       <button data-labelkind="items"${kind==="items"?' class="on"':''}>Items</button>
       <button data-doprint="1">Print</button></div>
-    <div class="filters">${["all"].concat(bays).map(b=>`<button data-labelbay="${b}" class="${sel===b?"sel":""}">${b==="all"?"All":esc(BAYNAME[b]||"Bay "+b)}</button>`).join("")}</div>
+    <div class="filters">${["all"].concat(bays).map(b=>`<button data-labelbay="${esc(b)}" class="${sel===b?"sel":""}">${b==="all"?"All":esc(BAYNAME[b]||"Bay "+b)}</button>`).join("")}</div>
     <p class="hint" style="margin:0 0 12px">${appUrl()
       ?"Scan one with the camera app, or with Scan a label inside this app, and it opens at that "+(kind==="comps"?"compartment":"item")+". Print on plain paper or label stock; three across."
       :"No web address is set under Settings › Labels, so these codes only work with the in-app scanner."}</p></div>

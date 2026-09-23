@@ -20,7 +20,7 @@ function renderForms(){
       `<div class="sect">${esc(y)}</div><div class="rows">`+g[y].map(inc=>{
         const docs=docsFor(inc.id);
         const sk=docs.filter(d=>d.kind==="sketch").length;
-        return `<button class="row" data-inc="${inc.id}">
+        return `<button class="row" data-inc="${esc(inc.id)}">
           <span><span class="code">${esc(inc.caseNo||"No case number")}</span>
           <span class="desc">${esc(inc.offence||"No offence recorded")}${
             inc.addr?" \u00b7 "+esc(inc.addr):""}<br>${docs.length} document${docs.length===1?"":"s"}${
@@ -41,7 +41,7 @@ function renderTemplates(){
     ${(stale||unver)?`<div class="unver">${stale?stale+(stale===1?" form hasn't":" forms haven't")+" been checked in over a year. ":""}${unver?unver+(unver===1?" has":" have")+" no checked date. ":""}Forms get revised — confirm you're carrying the current one.</div>`:""}
     `+FORMCATS.filter(k=>g[k]).concat(Object.keys(g).filter(k=>!FORMCATS.includes(k))).map(k=>
       `<div class="sect">${esc(k)}</div><div class="rows">`+g[k].map(f=>
-        `<button class="row" data-form="${f.id}">
+        `<button class="row" data-form="${esc(f.id)}">
           <span><span class="code">${esc(f.name)}${f.stock?"":" \u00b7 yours"}</span>
           <span class="desc">${esc(f.desc||"No description")}${f.rev?" \u00b7 Rev "+esc(f.rev):""}</span></span>
           <span class="rt">${badge(f)}<span class="chev">&#8250;</span></span></button>`).join("")+`</div>`).join("");
@@ -55,7 +55,7 @@ function formSheet(f){
       ${f.desc?`<div style="display:block"><dt style="margin-bottom:3px">When to use it</dt><dd style="text-align:left">${esc(f.desc)}</dd></div>`:""}
     </div>
     ${(f.links||[]).length?`<div class="links" style="margin-bottom:12px">`+(f.links||[]).map(l=>
-      `<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">
+      !okUrl(l.url)?"":`<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">
         <span class="ln">${esc(l.label)}</span>
         <span class="lu">${esc(l.url.replace(/^https?:\/\//,"").split("/")[0])}</span></a>`).join("")+`</div>`
       :`<p class="hint" style="margin:0 0 12px">No link to the blank form yet.</p>`}`}
@@ -132,7 +132,7 @@ function docTabs(kind,id){
   if(docs.length<2)return "";
   return `<div class="doctabs">${docs.map(d=>{
     const on=d.kind===kind&&d.id===id;
-    return `<button class="doctab${on?" on":""}" data-doc="${d.kind}:${d.id}">
+    return `<button class="doctab${on?" on":""}" data-doc="${d.kind}:${esc(d.id)}">
       <span class="dgw">${docIcon(docKind(d.kind,d.type))}</span>
       <span class="dtx"><span class="dc">${esc(d.caseNo||"No case number")}</span>
       <span class="dt">${esc(d.type)}</span></span></button>`}).join("")}</div>`;
@@ -144,20 +144,20 @@ function renderFill(){
   $("#title").textContent=r.formName;
   const ctl=x=>{
     const v=r.values[x.id];
-    if(x.type==="textarea")return `<textarea rows="3" data-fv="${x.id}">${esc(v||"")}</textarea><button type="button" class="lnkbtn snipbtn" data-snip="${x.id}">Insert wording</button>`;
-    if(x.type==="check")return `<button class="chk${v?" on":""}" data-fchk="${x.id}"><i>${v?"&#10003;":""}</i>${esc(x.label)}</button>`;
+    if(x.type==="textarea")return `<textarea rows="3" data-fv="${esc(x.id)}">${esc(v||"")}</textarea><button type="button" class="lnkbtn snipbtn" data-snip="${esc(x.id)}">Insert wording</button>`;
+    if(x.type==="check")return `<button class="chk${v?" on":""}" data-fchk="${esc(x.id)}"><i>${v?"&#10003;":""}</i>${esc(x.label)}</button>`;
     if(x.type==="table"){
       const rows=Array.isArray(v)?v:[{}];
       return `<div class="ftab">${rows.map((row,ri)=>`<div class="frow">
           <span class="fnum">${ri+1}</span>
-          ${(x.cols||[]).map(c=>`<label class="fcell"><span>${esc(c)}</span><input type="text" placeholder="${esc(c)}" data-ftab="${x.id}" data-tr="${ri}" data-tc="${esc(c)}" value="${esc(row[c]||"")}"></label>`).join("")}
-          ${rows.length>1?`<button class="frem" data-frem="${x.id}" data-tr="${ri}" aria-label="Remove row">&#215;</button>`:""}
+          ${(x.cols||[]).map(c=>`<label class="fcell"><span>${esc(c)}</span><input type="text" placeholder="${esc(c)}" data-ftab="${esc(x.id)}" data-tr="${ri}" data-tc="${esc(c)}" value="${esc(row[c]||"")}"></label>`).join("")}
+          ${rows.length>1?`<button class="frem" data-frem="${esc(x.id)}" data-tr="${ri}" aria-label="Remove row">&#215;</button>`:""}
         </div>`).join("")}
-        <button class="btn sec" data-fadd="${x.id}" style="margin:8px 0 0;max-width:none">Add a row</button></div>`;
+        <button class="btn sec" data-fadd="${esc(x.id)}" style="margin:8px 0 0;max-width:none">Add a row</button></div>`;
     }
     const t=x.type==="date"?"date":x.type==="time"?"time":"text";
     const im=x.type==="number"?' inputmode="numeric"':"";
-    return `<input type="${t}"${im} data-fv="${x.id}" value="${esc(v||"")}">`;
+    return `<input type="${t}"${im} data-fv="${esc(x.id)}" value="${esc(v||"")}">`;
   };
   $("#v-fill").innerHTML=`
     <button class="back" data-navback="${r.incidentId&&incidentOf(r.incidentId)?"incident":"active"}">&#8249; ${
@@ -192,12 +192,12 @@ function renderFill(){
       :`<div class="empty"><strong>This form has no fields yet</strong>
         <p>Open it from the Forms tab and add fields before filling it in.</p></div>`}
     ${r.incidentId&&incidentOf(r.incidentId)?`<div class="actbar" style="grid-template-columns:1fr">
-      <button class="primary" data-fdone="${r.id}">${r.completed
+      <button class="primary" data-fdone="${esc(r.id)}">${r.completed
         ? "Completed \u2014 reopen" : "Mark complete and go back"}</button></div>`:""}
     <div class="actbar" style="grid-template-columns:1fr 1fr 1fr">
-      <button class="${r.incidentId?"":"primary"}" data-export="${r.id}">Export PDF</button>
-      <button data-exportdocx="${r.id}">Export Word</button>
-      <button data-discard="${r.id}" class="danger">Delete form</button>
+      <button class="${r.incidentId?"":"primary"}" data-export="${esc(r.id)}">Export PDF</button>
+      <button data-exportdocx="${esc(r.id)}">Export Word</button>
+      <button data-discard="${esc(r.id)}" class="danger">Delete form</button>
     </div>
     <p class="hint">This stays in the app until you export it. It is not synced and not in any
       backup, so a lost phone loses it. Export the PDF to Drive or the case file, then clear it.</p>`;

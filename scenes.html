@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-VYy76Jro9gIhiDI0iCeLNNQbDrcdDx7KO1C+6VNZsIg='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FSU Scenes</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1696,7 +1697,7 @@ const save=()=>{store.set(S);if(typeof queuePush==='function')queuePush()};
 const saveLocal=()=>store.set(S);
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const n=v=>+v||0;
 const catName=c=>(CATS.find(x=>x[0]===c)||["","Uncategorised"])[1];
 ICONS.gear="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z";
@@ -1776,6 +1777,166 @@ window.addEventListener("storage",ev=>{
 const today=()=>localISO(new Date());
 
 const compassOf=r=>["N","NE","E","SE","S","SW","W","NW"][Math.round((((+r||0)%360)+360)%360/45)%8];
+
+/* ---------- data from outside the device ----------
+   A synced file, a restored backup and a case package are written somewhere else, and what is
+   in them ends up in this page's markup: ids in attributes, geometry in style, images in src,
+   links in href. Every record is checked on the way in. One that cannot be made safe is left
+   out, one that can is repaired, and either way it is listed under Settings › Recent errors.
+   One bad record never stops the rest from arriving. */
+const okId=v=>(typeof v==="string"||typeof v==="number")&&/^[\w-]{1,64}$/.test(String(v));
+const okImg=v=>typeof v==="string"&&/^data:image\/(png|jpe?g|gif|webp|bmp);base64,[A-Za-z0-9+/=\s]*$/i.test(v);
+const okUrl=v=>typeof v==="string"&&/^https?:\/\/[^\s"'<>`]+$/i.test(v.trim());
+// a number, or a string that is one; anything else is null
+const toNum=v=>(typeof v==="number"&&isFinite(v))?v:(typeof v==="string"&&v.trim()!==""&&isFinite(+v))?+v:null;
+const shortVal=v=>String(typeof v==="string"?v:JSON.stringify(v)).slice(0,40);
+// listed once: a synced file is read again at every sync and would otherwise fill the list
+function noteBad(m){
+  try{ m=String(m).slice(0,300); S.errors=Array.isArray(S.errors)?S.errors:[];
+    if(S.errors.some(e=>e&&e.m===m))return false;
+    S.errors=S.errors.slice(-19);
+    S.errors.push({t:new Date().toISOString(),m,v:typeof view==="string"?view:""});
+    return true }catch(_){return false}
+}
+function makeNote(src){
+  const N={n:0,fresh:0,note(m){N.n++; if(noteBad("From "+src+": "+m))N.fresh++}};
+  return N;
+}
+const tellBad=N=>N.n?" "+N.n+" unsafe value"+(N.n===1?" was":"s were")+" left out or repaired; Settings › Recent errors lists "+(N.n===1?"it":"them")+".":"";
+function cleanList(a,fn,N){
+  return (Array.isArray(a)?a:[]).map(r=>{
+    if(!r||typeof r!=="object")return null;
+    try{return fn(r,N)}catch(e){N.note("a record that could not be read was left out");return null}
+  }).filter(Boolean);
+}
+function cleanLinks(r,N,what){
+  if(r.links==null)return;
+  const keep=Array.isArray(r.links)?r.links.filter(l=>l&&okUrl(l.url)):[];
+  if(!Array.isArray(r.links)||keep.length!==r.links.length)
+    N.note("a link on "+what+" that was not a web address was removed");
+  r.links=keep;
+}
+function cleanItem(r,N){
+  if(!okId(r.id)){N.note("an item with an unsafe id "+shortVal(r.id)+" was left out");return null}
+  if(r._x)return r;                                   // a tombstone draws nothing
+  cleanLinks(r,N,"item "+shortVal(r.name||r.id));
+  if(r.cert!=null&&r.cert!==""&&!okUrl(r.cert)){
+    N.note("the certificate link on item "+shortVal(r.name||r.id)+" was not a web address and was removed");delete r.cert}
+  if(Array.isArray(r.rel))r.rel=r.rel.filter(okId); else if(r.rel!=null)r.rel=[];
+  return r;
+}
+function cleanComp(r,N){
+  if(!okId(r.code)){N.note("a compartment with an unsafe code "+shortVal(r.code)+" was left out");return null}
+  if(r._x)return r;
+  let fixed=0;
+  ["x","y"].forEach(k=>{ if(r[k]==null)return; const v=toNum(r[k]); if(v===null)fixed++; r[k]=v });
+  if(r.x==null||r.y==null){r.x=null;r.y=null}
+  ["w","h"].forEach(k=>{ const v=toNum(r[k]); if(v===null||v<=0){ if(r[k]!=null)fixed++; r[k]=k==="w"?6:4 } else r[k]=v });
+  if(fixed)N.note("compartment "+r.code+": a size or position that was not a number was reset");
+  return r;
+}
+function cleanForm(r,N){
+  if(!okId(r.id)){N.note("a form with an unsafe id "+shortVal(r.id)+" was left out");return null}
+  if(r._x)return r;
+  if(r.fields!=null&&!Array.isArray(r.fields))r.fields=[];
+  if((r.fields||[]).some(f=>!f||!okId(f.id))){
+    N.note("form "+shortVal(r.name||r.id)+" has a field with an unsafe id and was left out");return null}
+  (r.fields||[]).forEach(f=>{
+    if(typeof FTYPES!=="undefined"&&!FTYPES.includes(f.type))f.type="text";
+    if(f.cols!=null)f.cols=Array.isArray(f.cols)?f.cols.map(String):null});
+  cleanLinks(r,N,"form "+shortVal(r.name||r.id));
+  return r;
+}
+function cleanWalls(w,N){
+  if(!w||typeof w!=="object"||Array.isArray(w)){N.note("the wall layout could not be read and was not used");return null}
+  const out={};
+  for(const side of Object.keys(w)){
+    const v=w[side]||{}, c=toNum(v.cols), r=toNum(v.rows);
+    if(!(c>0&&c<=1000&&r>0&&r<=1000)){N.note("the wall layout has a size that is not a number and was not used");return null}
+    out[side]=Object.assign({},v,{cols:Math.round(c),rows:Math.round(r)});
+  }
+  return out;
+}
+// items, compartments, forms and walls: the synced file and a backup
+function cleanVan(o,src){
+  const N=makeNote(src);
+  o.items=cleanList(o.items,cleanItem,N);
+  o.comps=cleanList(o.comps,cleanComp,N);
+  o.forms=cleanList(o.forms,cleanForm,N);
+  if(o.walls!=null){const w=cleanWalls(o.walls,N); if(w)o.walls=w; else delete o.walls}
+  return N;
+}
+// a sketch's own parts: object and layer ids, references, geometry, the backdrop, the scale.
+// Also run on stored sketches before they are drawn (repairSketch), so it must be harmless twice.
+function cleanSketchParts(sk,N){
+  let fixed=0;
+  if(sk.incidentId!=null&&!okId(sk.incidentId)){delete sk.incidentId;fixed++}
+  const ren={};
+  if(Array.isArray(sk.layers))
+    sk.layers=sk.layers.filter(L=>L&&typeof L==="object").map(L=>{
+      if(!okId(L.id)){const id=newId(); ren[String(L.id)]=id; L.id=id; fixed++} return L});
+  else if(sk.layers!=null){sk.layers=[];fixed++}
+  (Array.isArray(sk.objs)?sk.objs:[]).forEach(o=>{
+    if(!o||typeof o!=="object")return;
+    if(!okId(o.id)){o.id=newId();fixed++}
+    if(o.lay!=null&&!okId(o.lay)){ if(ren[String(o.lay)])o.lay=ren[String(o.lay)]; else delete o.lay; fixed++ }
+    if(o.photoId!=null&&!okId(o.photoId)){delete o.photoId;fixed++}
+    // a measurement names its fixed points as "<object id>:<point>", e.g. "k3x9:c" or "k3x9:tl"
+    const okRef=v=>typeof v==="string"&&/^[\w-]{1,64}:[\w-]{1,8}$/.test(v);
+    if(o.meas&&typeof o.meas==="object"&&((o.meas.a!=null&&!okRef(o.meas.a))||(o.meas.b!=null&&!okRef(o.meas.b)))){delete o.meas;fixed++}
+    ["x","y","w","h","r"].forEach(k=>{ if(o[k]==null)return; const v=toNum(o[k]); if(v===null){delete o[k];fixed++} else o[k]=v });
+    if(Array.isArray(o.pts)){
+      if(!o.pts.every(p=>Array.isArray(p)&&toNum(p[0])!==null&&toNum(p[1])!==null)){delete o.pts;fixed++}
+      else if(o.pts.some(p=>typeof p[0]!=="number"||typeof p[1]!=="number"))
+        o.pts=o.pts.map(p=>[toNum(p[0]),toNum(p[1])].concat(p.slice(2)));
+    }
+  });
+  const b=sk.bg;
+  if(b!=null){
+    if(typeof b!=="object"){delete sk.bg;fixed++}
+    else {
+      if(b.data!=null&&!okImg(b.data)){delete b.data;fixed++}
+      if(b.imgId!=null&&!okId(b.imgId)){delete b.imgId;fixed++}
+      ["x","y","w","h","op","br","sa"].forEach(k=>{ if(b[k]==null)return; const v=toNum(b[k]); if(v===null){delete b[k];fixed++} else b[k]=v });
+      if(!b.data&&!b.imgId)delete sk.bg;
+    }
+  }
+  if(sk.scale!=null&&(typeof sk.scale!=="object"||!(toNum(sk.scale.px)>0)||!(toNum(sk.scale.real)>0))){delete sk.scale;fixed++}
+  else if(sk.scale){sk.scale.px=toNum(sk.scale.px);sk.scale.real=toNum(sk.scale.real)}
+  if(fixed)N.note("sketch "+shortVal(sk.caseNo||sk.id)+": "+fixed+" unsafe value"+(fixed===1?"":"s")+" repaired");
+  return fixed;
+}
+function cleanSketch(sk,N){
+  if(!okId(sk.id)){N.note("a sketch with an unsafe id "+shortVal(sk.id)+" was left out");return null}
+  cleanSketchParts(sk,N);
+  return sk;
+}
+// incidents, filled forms, sketches, forms and photographs: a case package
+function cleanCase(pkg,src){
+  const N=makeNote(src);
+  pkg.incidents=cleanList(pkg.incidents,(r,N)=>{
+    if(!okId(r.id)){N.note("an incident with an unsafe id "+shortVal(r.id)+" was left out");return null}
+    if(r.plan!=null&&!Array.isArray(r.plan))r.plan=[];
+    return r},N);
+  pkg.fills=cleanList(pkg.fills,(r,N)=>{
+    if(!okId(r.id)||(r.formId!=null&&!okId(r.formId))||(r.incidentId!=null&&!okId(r.incidentId))){
+      N.note("a filled form with an unsafe id "+shortVal(r.id)+" was left out");return null}
+    if(!r.values||typeof r.values!=="object")r.values={};
+    return r},N);
+  pkg.sketches=cleanList(pkg.sketches,cleanSketch,N);
+  pkg.forms=cleanList(pkg.forms,cleanForm,N);
+  const src2=pkg.photos&&typeof pkg.photos==="object"?pkg.photos:{}, ph={};
+  Object.keys(src2).forEach(id=>{
+    const d=src2[id];
+    if(!okId(id)){N.note("a photograph with an unsafe id "+shortVal(id)+" was left out");return}
+    if(!d||!okImg(d.data)){N.note("photograph "+id+" was not an image and was left out");return}
+    const w=toNum(d.w), hh=toNum(d.hh);
+    if(w===null||hh===null)N.note("photograph "+id+": a size that was not a number was reset");
+    ph[id]=Object.assign({},d,{w:w===null?0:w,hh:hh===null?0:hh});
+  });
+  pkg.photos=ph;
+  return N;
+}
 /* ---------- the furniture both apps share ----------
    the sheet and the confirm dialog, the photo store, handing the browser a file, theme and
    display mode, the rotation gate, and the claim on persistent storage ---------- */
@@ -2172,6 +2333,7 @@ async function exportCasePackage(scope,label){
 async function importCasePackage(text){
   let pkg; try{pkg=JSON.parse(text)}catch(e){return toast("That isn't a case package")}
   if(!pkg||pkg.fsuCase!==1)return toast("That isn't a case package");
+  const N=cleanCase(pkg,"a case package");
   let n=0;
   const merge=key=>{ S[key]=S[key]||[]; (pkg[key]||[]).forEach(r=>{ if(!r||!r.id)return;
     const i=S[key].findIndex(x=>x.id===r.id); if(i>-1)S[key][i]=r; else S[key].push(r); n++ }) };
@@ -2179,7 +2341,7 @@ async function importCasePackage(text){
   S.forms=S.forms||[]; (pkg.forms||[]).forEach(f=>{ if(f&&f.id&&!S.forms.some(x=>x.id===f.id))S.forms.push(f) });
   let np=0; for(const id in (pkg.photos||{})){ try{ await photoPut(id,pkg.photos[id]); np++ }catch(e){} }
   saveLocal(); render();
-  toast("Restored "+n+" record"+(n===1?"":"s")+" and "+np+" photograph"+(np===1?"":"s"));
+  toast("Restored "+n+" record"+(n===1?"":"s")+" and "+np+" photograph"+(np===1?"":"s")+"."+tellBad(N));
 }
 /* ---------- sample van ---------- */
 const DEMO_COMPS=[
@@ -2393,7 +2555,7 @@ function baseOf(src){
   KINDS.forEach(k=>{const b=out[k]={};
     (Array.isArray(src[k])?src[k]:[]).forEach(r=>{
       if(!r||typeof r!=="object"||r._x)return;
-      const key=kKey(k,r); if(key!=null&&key!=="")b[key]=rhash(r)})});
+      const key=kKey(k,r); if(okId(key))b[key]=rhash(r)})});   // an unsafe key is never taken in
   if(src.walls)out.walls=rhash(src.walls);
   return out;
 }
@@ -2560,7 +2722,11 @@ async function ghGet(){
   // a file we cannot read is not a file we may write over: if the remote is intact and our
   // parse is what broke, overwriting it would take out every other device
   if(!o||typeof o!=="object"||!Array.isArray(o.items))return {sha:j.sha,bad:true};
-  return {sha:j.sha,data:o};
+  // the base is what the repo holds, taken before anything is repaired here: a repaired
+  // record then differs from it, is stamped, and the repair goes up to the file
+  const base=baseOf(o), N=cleanVan(o,"the repo");
+  if(N.fresh)toast("Something in the synced file was not safe to use and was left out or repaired. Settings › Recent errors lists it.");
+  return {sha:j.sha,data:o,base};
 }
 // A device that synced with the build before merging has no stamps, no base and no synced
 // flag, so it looked like a brand-new device and deferred to the repo: every edit it had not
@@ -2626,7 +2792,7 @@ async function ghPullNow(silent){
     const ahead=mergeRemote(g.data);
     S.gh.sha=g.sha; S.gh.last=new Date().toISOString();
     tokenBad=false; conflict=false; syncErr=""; retries=0;
-    S.base=baseOf(g.data); dirty=!!ahead; store.set(S);
+    S.base=g.base; dirty=!!ahead; store.set(S);
     renderSyncBar(); renderSyncPill(); render();
     if(ahead)queuePush(); else clearTimeout(pushT);
     if(!silent)toast("Synced — "+live().length+" items");
@@ -2656,7 +2822,7 @@ async function ghPushNow(force){
         // nothing here the repo lacks, and nothing new came down: a PUT would be an empty
         // commit. Every save used to make one, and enough of them trip GitHub's limits.
         if(!mergeRemote.ahead&&!mergeTook){
-          S.gh.sha=g.sha; S.gh.last=new Date().toISOString(); S.base=baseOf(g.data);
+          S.gh.sha=g.sha; S.gh.last=new Date().toISOString(); S.base=g.base;
           dirty=false; conflict=false; tokenBad=false; syncErr=""; retries=0; store.set(S);
           renderSyncBar(); renderSyncPill(); if(view==="data")renderData();
           return "ok";
@@ -2867,7 +3033,7 @@ function renderHome(){
     <p class="hint" style="margin:6px 0 0">One-time jobs. This panel goes away once they are done.</p></div></div>`:"";
   if(cs.length&&!unchk)rows.push(["","Count the stock",'data-countrun="1"',""]);
   const needRows=need.slice(0,10).map(i=>{const s=itemStatus(i);
-    return `<button class="act" data-item="${i.id}"><span>${esc(i.name)}<span class="lc" style="margin-left:6px">${esc(i.loc||"\u2014")}</span></span><span class="badge b-${s[0]}">${esc(s[1])}</span></button>`});
+    return `<button class="act" data-item="${esc(i.id)}"><span>${esc(i.name)}<span class="lc" style="margin-left:6px">${esc(i.loc||"\u2014")}</span></span><span class="badge b-${s[0]}">${esc(s[1])}</span></button>`});
   const feedCount=rows.length+needRows.length;
   const todo=`<div class="panel todo"><div class="ph2">Everything, most urgent first${feedCount?" \u2014 "+feedCount:""}</div><div class="pb">
     ${feedCount?rows.map(([k,t,attr,lc])=>`<button class="act${k?" "+k:""}" ${attr}>${k==="setup"?`<span class="tag">Setup</span>`:""}<span>${esc(t)}</span>${lc?`<span class="lc">${lc}</span>`:`<span class="chev">&#8250;</span>`}</button>`).join("")+needRows.join("")
@@ -2877,7 +3043,7 @@ function renderHome(){
 
   const pop=L.slice().sort((a,b)=>((b.fav?1e6:0)+(b.uses||[]).length)-((a.fav?1e6:0)+(a.uses||[]).length)).slice(0,3);
   const quick=pop.length?`<div class="panel"><div class="ph2">Quick find</div><div class="pb"><div class="qf">${pop.map(i=>
-      `<button data-item="${i.id}"><span class="nm">${esc(i.name)}</span><span class="lc${i.loc?"":" np"}">${esc(i.loc||"Not placed")}</span></button>`).join("")}</div>
+      `<button data-item="${esc(i.id)}"><span class="nm">${esc(i.name)}</span><span class="lc${i.loc?"":" np"}">${esc(i.loc||"Not placed")}</span></button>`).join("")}</div>
       <p class="hint" style="margin:8px 0 0">Star an item and it appears here.</p></div></div>`:"";
 
   $("#v-home").innerHTML=head+tiles+todo+setupPanel+`<div class="dash2">
@@ -2992,7 +3158,7 @@ function renderBay(){
       <div class="bayplan" id="bayplan" style="--cols:${W};--rows:${H};--k:${bayZoomK}">
       ${cs.map(c=>{const s=compState(c.code), n=s.items.length;
         return `<button class="bcell s-${s.k}${c.desc?"":" un"}${bayPick===c.code?" sel":""}" data-comp="${esc(c.code)}"
-          style="grid-column:${c.x-minX+1}/span ${c.w};grid-row:${c.y-minY+1}/span ${c.h}">
+          style="grid-column:${(+c.x||0)-(+minX||0)+1}/span ${Math.max(1,(+c.w||0))};grid-row:${(+c.y||0)-(+minY||0)+1}/span ${Math.max(1,(+c.h||0))}">
           <span class="bc">${esc(c.code)}${n?`<span class="bk">${n}</span>`:""}</span>
           ${c.desc?`<span class="bn">${esc(c.desc)}</span>`:`<span class="bn un">Not named yet</span>`}
           ${n?"":`<span class="bn em">${c.checked?"Empty":"Nothing logged"}</span>`}
@@ -3130,7 +3296,7 @@ function renderCompDetail(){
     </div>
     <div class="cdright">
       ${sorted.length?`<div class="rows">`+sorted.map(i=>{const f=flag(i);
-        return `<button class="row" data-item="${i.id}">
+        return `<button class="row" data-item="${esc(i.id)}">
           <span><span class="code">${esc(i.name)}</span>
           <span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}${
             i.cls?" · "+esc(i.cls):""}${i.date?" · "+esc(i.date):""}<br>${esc(catName(i.cat))}</span></span>
@@ -3163,9 +3329,9 @@ function miniWall(code){
   const mine=comps().filter(o=>o.side===c.side&&o.x!=null);
   return `<div class="mini">
     <div class="minihead"><b>${esc(c.code)}</b> &middot; ${esc(c.side)}</div>
-    <div class="minigrid" style="grid-template-columns:repeat(${W.cols},minmax(0,1fr));grid-template-rows:repeat(${W.rows},minmax(0,1fr));gap:${W.cols>60?1:2}px">
+    <div class="minigrid" style="grid-template-columns:repeat(${Math.max(1,(+W.cols||0))},minmax(0,1fr));grid-template-rows:repeat(${Math.max(1,(+W.rows||0))},minmax(0,1fr));gap:${(+W.cols||0)>60?1:2}px">
       ${mine.map(o=>`<div class="mslot${o.code===c.code?" hit":""}"
-        style="grid-column:${o.x+1}/span ${o.w};grid-row:${o.y+1}/span ${o.h}"
+        style="grid-column:${(+o.x||0)+1}/span ${Math.max(1,(+o.w||0))};grid-row:${(+o.y||0)+1}/span ${Math.max(1,(+o.h||0))}"
         ></div>`).join("")}
     </div>
     <div class="miniorient"><span>${capLeft(c.side)}</span><span>${capRight(c.side)}</span></div>
@@ -3189,7 +3355,7 @@ function renderItemDetail(){
         <h2 class="idtitle">${esc(i.name)}</h2>
         <div class="idsub">${esc(i.cls)}${i.par?" · par level "+esc(i.par):""}</div>
       </div>
-      <button class="star ${i.fav?"on":""}" data-fav="${i.id}" aria-label="Favourite">${i.fav?"&#9733;":"&#9734;"}</button>
+      <button class="star ${i.fav?"on":""}" data-fav="${esc(i.id)}" aria-label="Favourite">${i.fav?"&#9733;":"&#9734;"}</button>
     </div>
 
     ${isRequest(i)?`
@@ -3201,7 +3367,7 @@ function renderItemDetail(){
         ${i.lead?`<div><dt>Typical lead time</dt><dd>${esc(i.lead)}</dd></div>`:""}
       </div>
       ${!i.contact&&!i.phone?`<p class="hint">No contact recorded yet. Add one so this is useful at a scene.</p>`:""}
-      <button class="btn sec" data-editreq="${i.id}" style="margin:10px 0 0;max-width:none">Edit request details</button>`
+      <button class="btn sec" data-editreq="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Edit request details</button>`
     :`<div class="locline">
        <span class="lc2">${esc(i.loc||"Not placed")}</span>
        <span class="ld2">${esc(c?(c.desc||c.side||"No description"):"No compartment set")}</span>
@@ -3219,30 +3385,30 @@ function renderItemDetail(){
         :isStale(i)?`<div class="unver bad">Last checked ${esc(i.verified)}, over a year ago. Confirm against the current sheet.</div>`:""}`
     :`<div class="empty" style="padding:20px 16px"><strong>No instructions yet</strong>
        <p>Paste the steps from the manufacturer sheet or your SOP, and record where they came from.</p>
-       <button class="btn sec" data-editsteps="${i.id}" style="margin-top:12px">Add instructions</button></div>`}
-    ${steps.length?`<button class="btn sec" data-editsteps="${i.id}" style="margin:10px 0 0;max-width:none">Edit instructions</button>`:""}
+       <button class="btn sec" data-editsteps="${esc(i.id)}" style="margin-top:12px">Add instructions</button></div>`}
+    ${steps.length?`<button class="btn sec" data-editsteps="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Edit instructions</button>`:""}
 
     <div class="idsect">Guides and documents</div>
     ${(i.links||[]).length?`<div class="links">`+(i.links||[]).map(l=>
-      `<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">
+      !okUrl(l.url)?"":`<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">
         <span class="ln">${esc(l.label)}</span>
         <span class="lu">${esc(l.url.replace(/^https?:\/\//,"").split("/")[0])}</span></a>`).join("")+`</div>
-      <button class="btn sec" data-editlinks="${i.id}" style="margin:9px 0 0;max-width:none">Edit links</button>`
+      <button class="btn sec" data-editlinks="${esc(i.id)}" style="margin:9px 0 0;max-width:none">Edit links</button>`
     :`<div class="empty" style="padding:18px 16px"><strong>No documents linked</strong>
        <p>Link the manufacturer manual, a training video, or the SOP on your shared drive.</p>
-       <button class="btn sec" data-editlinks="${i.id}" style="margin-top:12px">Add a link</button></div>`}
+       <button class="btn sec" data-editlinks="${esc(i.id)}" style="margin-top:12px">Add a link</button></div>`}
 
     <div class="idsect">Works with</div>
     ${(()=>{const r=(i.rel||[]).map(id=>S.items.find(x=>x.id===id)).filter(Boolean);
       return r.length?`<div class="rel">`+r.map(o=>{const rs=itemStatus(o);
-        return `<button class="reltile" data-item="${o.id}">
+        return `<button class="reltile" data-item="${esc(o.id)}">
           <span class="rn">${esc(o.name)}</span>
           <span class="rl">${esc(o.loc||"—")}</span>
           <span class="rq b-${rs[0]}">${esc(o.qty)} in stock</span></button>`}).join("")+`</div>
-        <button class="btn sec" data-editrel="${i.id}" style="margin:10px 0 0;max-width:none">Edit what it works with</button>`
+        <button class="btn sec" data-editrel="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Edit what it works with</button>`
       :`<div class="empty" style="padding:18px 16px"><strong>Nothing linked</strong>
          <p>Link the gear you need alongside this — applicator, lifters, a scale — so it's one tap away at a scene.</p>
-         <button class="btn sec" data-editrel="${i.id}" style="margin-top:12px">Link items</button></div>`})()}
+         <button class="btn sec" data-editrel="${esc(i.id)}" style="margin-top:12px">Link items</button></div>`})()}
 
     <div class="idsect">Details</div>
     <div class="kv">
@@ -3258,11 +3424,11 @@ function renderItemDetail(){
       ${i.verifyNote?`<div><dt>Instructions</dt><dd>${esc(i.verifyNote)}</dd></div>`:""}
       ${i.vendor||i.part||i.pack?`<div><dt>Ordering</dt><dd>${esc([i.vendor,i.part,i.pack].filter(Boolean).join(" \u00b7 "))}</dd></div>`:""}
       ${i.cls==="Durable"?`<div><dt>Last serviced</dt><dd>${esc(i.lastService||"\u2014")}</dd></div>
-      <div><dt>Certificate</dt><dd>${i.cert?`<a href="${esc(i.cert)}" target="_blank" rel="noopener">Open</a>`:"\u2014"}</dd></div>`:""}
+      <div><dt>Certificate</dt><dd>${okUrl(i.cert)?`<a href="${esc(i.cert)}" target="_blank" rel="noopener">Open</a>`:"\u2014"}</dd></div>`:""}
     </div>
-    ${i.cls==="Durable"?`<button class="btn sec" data-editsvc="${i.id}" style="margin:10px 0 0;max-width:none">Service and calibration</button>`:""}
-    ${i.cls==="Reagent"?`<button class="btn sec" data-editlot="${i.id}" style="margin:10px 0 0;max-width:none">Lot, received and opened dates</button>`:""}
-    ${i.cls==="Regulated"?`<button class="btn sec" data-countnow="${i.id}" style="margin:10px 0 0;max-width:none">Count it now</button>`:""}
+    ${i.cls==="Durable"?`<button class="btn sec" data-editsvc="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Service and calibration</button>`:""}
+    ${i.cls==="Reagent"?`<button class="btn sec" data-editlot="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Lot, received and opened dates</button>`:""}
+    ${i.cls==="Regulated"?`<button class="btn sec" data-countnow="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Count it now</button>`:""}
     ${i.note?`<div class="idsect">Notes</div><div class="kv"><div style="display:block">${esc(i.note).replace(/\n/g,"<br>")}</div></div>`:""}
     ${(()=>{const all=i.uses||[]; if(!all.length)return "";
       const cut=Date.now()-90*86400000;
@@ -3288,10 +3454,10 @@ function renderItemDetail(){
           `<div><dt>${esc(u.d)}</dt><dd>used ${esc(u.n)}</dd></div>`).join("")}</div>`:""}`})()}
 
     <div class="actbar"${isRequest(i)?' style="grid-template-columns:1fr 1fr"':""}>
-      ${isRequest(i)?"":`<button class="primary" data-loguse="${i.id}">Log use</button>
-      <button data-adjust="${i.id}">Adjust qty</button>`}
-      ${isRequest(i)?`<button class="primary" data-editreq="${i.id}">Request details</button>`:""}
-      <button data-edititem="${i.id}">Edit</button>
+      ${isRequest(i)?"":`<button class="primary" data-loguse="${esc(i.id)}">Log use</button>
+      <button data-adjust="${esc(i.id)}">Adjust qty</button>`}
+      ${isRequest(i)?`<button class="primary" data-editreq="${esc(i.id)}">Request details</button>`:""}
+      <button data-edititem="${esc(i.id)}">Edit</button>
     </div>
     </div></div>`;
 }
@@ -3425,7 +3591,7 @@ function relSheet(it){
       .sort((a,b)=>{const s=(it.rel||[]).includes(b.id)-(it.rel||[]).includes(a.id);
         return s||a.name.localeCompare(b.name)}).slice(0,60);
     $("#rellist").innerHTML=list.map(o=>{const on=(it.rel||[]).includes(o.id);
-      return `<button class="relrow${on?" on":""}" data-pick="${o.id}">
+      return `<button class="relrow${on?" on":""}" data-pick="${esc(o.id)}">
         <span class="tick">${on?"&#10003;":""}</span>
         <span><span class="rn">${esc(o.name)}</span><span class="rl">${esc(o.loc||"—")} · ${esc(catName(o.cat))}</span></span>
       </button>`}).join("")||`<p class="hint">Nothing matches that.</p>`;
@@ -3469,7 +3635,7 @@ function renderPrint(){
         grid-template-rows:repeat(${H},minmax(0,1fr));aspect-ratio:${(W/H).toFixed(3)};
         gap:${W>40?1:4}px">
         ${mine.map(c=>`<div class="pslot"
-          style="grid-column:${c.x-minX+1}/span ${c.w};grid-row:${c.y-minY+1}/span ${c.h}">
+          style="grid-column:${(+c.x||0)-(+minX||0)+1}/span ${Math.max(1,(+c.w||0))};grid-row:${(+c.y||0)-(+minY||0)+1}/span ${Math.max(1,(+c.h||0))}">
           <b>${esc(c.code)}</b>${c.desc?`<i>${esc(c.desc)}</i>`:""}</div>`).join("")}
       </div>
       <div class="porient"><span>${capLeft(side)}</span><span>${capRight(side)}</span></div>
@@ -3562,7 +3728,7 @@ function renderForms(){
       `<div class="sect">${esc(y)}</div><div class="rows">`+g[y].map(inc=>{
         const docs=docsFor(inc.id);
         const sk=docs.filter(d=>d.kind==="sketch").length;
-        return `<button class="row" data-inc="${inc.id}">
+        return `<button class="row" data-inc="${esc(inc.id)}">
           <span><span class="code">${esc(inc.caseNo||"No case number")}</span>
           <span class="desc">${esc(inc.offence||"No offence recorded")}${
             inc.addr?" \u00b7 "+esc(inc.addr):""}<br>${docs.length} document${docs.length===1?"":"s"}${
@@ -3583,7 +3749,7 @@ function renderTemplates(){
     ${(stale||unver)?`<div class="unver">${stale?stale+(stale===1?" form hasn't":" forms haven't")+" been checked in over a year. ":""}${unver?unver+(unver===1?" has":" have")+" no checked date. ":""}Forms get revised — confirm you're carrying the current one.</div>`:""}
     `+FORMCATS.filter(k=>g[k]).concat(Object.keys(g).filter(k=>!FORMCATS.includes(k))).map(k=>
       `<div class="sect">${esc(k)}</div><div class="rows">`+g[k].map(f=>
-        `<button class="row" data-form="${f.id}">
+        `<button class="row" data-form="${esc(f.id)}">
           <span><span class="code">${esc(f.name)}${f.stock?"":" \u00b7 yours"}</span>
           <span class="desc">${esc(f.desc||"No description")}${f.rev?" \u00b7 Rev "+esc(f.rev):""}</span></span>
           <span class="rt">${badge(f)}<span class="chev">&#8250;</span></span></button>`).join("")+`</div>`).join("");
@@ -3597,7 +3763,7 @@ function formSheet(f){
       ${f.desc?`<div style="display:block"><dt style="margin-bottom:3px">When to use it</dt><dd style="text-align:left">${esc(f.desc)}</dd></div>`:""}
     </div>
     ${(f.links||[]).length?`<div class="links" style="margin-bottom:12px">`+(f.links||[]).map(l=>
-      `<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">
+      !okUrl(l.url)?"":`<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">
         <span class="ln">${esc(l.label)}</span>
         <span class="lu">${esc(l.url.replace(/^https?:\/\//,"").split("/")[0])}</span></a>`).join("")+`</div>`
       :`<p class="hint" style="margin:0 0 12px">No link to the blank form yet.</p>`}`}
@@ -3674,7 +3840,7 @@ function docTabs(kind,id){
   if(docs.length<2)return "";
   return `<div class="doctabs">${docs.map(d=>{
     const on=d.kind===kind&&d.id===id;
-    return `<button class="doctab${on?" on":""}" data-doc="${d.kind}:${d.id}">
+    return `<button class="doctab${on?" on":""}" data-doc="${d.kind}:${esc(d.id)}">
       <span class="dgw">${docIcon(docKind(d.kind,d.type))}</span>
       <span class="dtx"><span class="dc">${esc(d.caseNo||"No case number")}</span>
       <span class="dt">${esc(d.type)}</span></span></button>`}).join("")}</div>`;
@@ -3686,20 +3852,20 @@ function renderFill(){
   $("#title").textContent=r.formName;
   const ctl=x=>{
     const v=r.values[x.id];
-    if(x.type==="textarea")return `<textarea rows="3" data-fv="${x.id}">${esc(v||"")}</textarea><button type="button" class="lnkbtn snipbtn" data-snip="${x.id}">Insert wording</button>`;
-    if(x.type==="check")return `<button class="chk${v?" on":""}" data-fchk="${x.id}"><i>${v?"&#10003;":""}</i>${esc(x.label)}</button>`;
+    if(x.type==="textarea")return `<textarea rows="3" data-fv="${esc(x.id)}">${esc(v||"")}</textarea><button type="button" class="lnkbtn snipbtn" data-snip="${esc(x.id)}">Insert wording</button>`;
+    if(x.type==="check")return `<button class="chk${v?" on":""}" data-fchk="${esc(x.id)}"><i>${v?"&#10003;":""}</i>${esc(x.label)}</button>`;
     if(x.type==="table"){
       const rows=Array.isArray(v)?v:[{}];
       return `<div class="ftab">${rows.map((row,ri)=>`<div class="frow">
           <span class="fnum">${ri+1}</span>
-          ${(x.cols||[]).map(c=>`<label class="fcell"><span>${esc(c)}</span><input type="text" placeholder="${esc(c)}" data-ftab="${x.id}" data-tr="${ri}" data-tc="${esc(c)}" value="${esc(row[c]||"")}"></label>`).join("")}
-          ${rows.length>1?`<button class="frem" data-frem="${x.id}" data-tr="${ri}" aria-label="Remove row">&#215;</button>`:""}
+          ${(x.cols||[]).map(c=>`<label class="fcell"><span>${esc(c)}</span><input type="text" placeholder="${esc(c)}" data-ftab="${esc(x.id)}" data-tr="${ri}" data-tc="${esc(c)}" value="${esc(row[c]||"")}"></label>`).join("")}
+          ${rows.length>1?`<button class="frem" data-frem="${esc(x.id)}" data-tr="${ri}" aria-label="Remove row">&#215;</button>`:""}
         </div>`).join("")}
-        <button class="btn sec" data-fadd="${x.id}" style="margin:8px 0 0;max-width:none">Add a row</button></div>`;
+        <button class="btn sec" data-fadd="${esc(x.id)}" style="margin:8px 0 0;max-width:none">Add a row</button></div>`;
     }
     const t=x.type==="date"?"date":x.type==="time"?"time":"text";
     const im=x.type==="number"?' inputmode="numeric"':"";
-    return `<input type="${t}"${im} data-fv="${x.id}" value="${esc(v||"")}">`;
+    return `<input type="${t}"${im} data-fv="${esc(x.id)}" value="${esc(v||"")}">`;
   };
   $("#v-fill").innerHTML=`
     <button class="back" data-navback="${r.incidentId&&incidentOf(r.incidentId)?"incident":"active"}">&#8249; ${
@@ -3734,12 +3900,12 @@ function renderFill(){
       :`<div class="empty"><strong>This form has no fields yet</strong>
         <p>Open it from the Forms tab and add fields before filling it in.</p></div>`}
     ${r.incidentId&&incidentOf(r.incidentId)?`<div class="actbar" style="grid-template-columns:1fr">
-      <button class="primary" data-fdone="${r.id}">${r.completed
+      <button class="primary" data-fdone="${esc(r.id)}">${r.completed
         ? "Completed \u2014 reopen" : "Mark complete and go back"}</button></div>`:""}
     <div class="actbar" style="grid-template-columns:1fr 1fr 1fr">
-      <button class="${r.incidentId?"":"primary"}" data-export="${r.id}">Export PDF</button>
-      <button data-exportdocx="${r.id}">Export Word</button>
-      <button data-discard="${r.id}" class="danger">Delete form</button>
+      <button class="${r.incidentId?"":"primary"}" data-export="${esc(r.id)}">Export PDF</button>
+      <button data-exportdocx="${esc(r.id)}">Export Word</button>
+      <button data-discard="${esc(r.id)}" class="danger">Delete form</button>
     </div>
     <p class="hint">This stays in the app until you export it. It is not synced and not in any
       backup, so a lost phone loses it. Export the PDF to Drive or the case file, then clear it.</p>`;
@@ -3780,7 +3946,7 @@ function renderInventory(){
         <th>Item</th><th>Compartment</th><th>Category</th><th>Class</th>
         <th class="num">Par</th><th class="num">In stock</th><th>Status</th></tr></thead><tbody>
       ${rows.map(i=>{const s=itemStatus(i);
-        return `<tr data-item="${i.id}"${i.id===curItem?' class="on"':""}>
+        return `<tr data-item="${esc(i.id)}"${i.id===curItem?' class="on"':""}>
           <td class="nm">${esc(i.name)}</td>
           <td class="mono">${esc(i.loc||"—")}</td>
           <td>${esc(catName(i.cat))}</td>
@@ -3792,7 +3958,7 @@ function renderInventory(){
     return;
   }
   const kcard=i=>{const s=itemStatus(i);
-    return `<button class="kcard" data-item="${i.id}"><b>${esc(i.name)}</b>
+    return `<button class="kcard" data-item="${esc(i.id)}"><b>${esc(i.name)}</b>
       <span>${esc(i.loc||"—")} &middot; ${esc(i.qty)} in stock</span></button>`};
   const body=invGroup==="az"
     ? `<div class="rows">`+L.slice().sort((a,b)=>a.name.localeCompare(b.name))
@@ -3823,7 +3989,7 @@ function renderGuide(){
   const L=live(), withS=L.concat(requests()).filter(i=>(i.steps||[]).length), without=L.filter(i=>!(i.steps||[]).length);
   const reqs=requests().sort((a,b)=>a.name.localeCompare(b.name));
   const reqBlock=`<div class="sect">Available on request — ${reqs.length}</div>`
-    +(reqs.length?`<div class="rows">`+reqs.map(i=>`<button class="row" data-item="${i.id}">
+    +(reqs.length?`<div class="rows">`+reqs.map(i=>`<button class="row" data-item="${esc(i.id)}">
         <span><span class="code">${esc(i.name)}</span>
         <span class="desc">${esc(i.contact||"No contact recorded")}${i.lead?" · "+esc(i.lead):""}</span></span>
         <span class="rt"><span class="badge b-req">On request</span><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`
@@ -3835,7 +4001,7 @@ function renderGuide(){
     return nv?`<button data-verifyrun="1">Verify ${nv} set${nv===1?"":"s"}</button>`:""})()}</div>`;
   const missingList=without.length?`<div class="sect">No instructions yet — ${without.length}</div><div class="rows">`
       +without.slice().sort((a,b)=>a.name.localeCompare(b.name)).slice(0,40).map(i=>
-        `<button class="row" data-item="${i.id}">
+        `<button class="row" data-item="${esc(i.id)}">
           <span><span class="code">${esc(i.name)}</span>
           <span class="desc">${esc(i.loc||"—")} · ${esc(catName(i.cat))}</span></span>
           <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")
@@ -3854,7 +4020,7 @@ function renderGuide(){
     +(Object.keys(g).length||guideFilter==="none"?"":`<p class="hint">Nothing matches that filter.</p>`)
     +Object.keys(g).sort().map(k=>
     `<div class="sect">${esc(k)}</div><div class="rows">`+g[k].sort((a,b)=>a.name.localeCompare(b.name)).map(i=>
-      `<button class="row" data-item="${i.id}">
+      `<button class="row" data-item="${esc(i.id)}">
         <span><span class="code">${esc(i.name)}</span>
         <span class="desc">${[(i.steps||[]).length+" steps", i.loc?esc(i.loc):"", i.source?esc(i.source):""].filter(Boolean).join(" · ")}</span></span>
         <span class="rt">${badge(i)}<span class="chev">&#8250;</span></span></button>`).join("")+`</div>`).join("")
@@ -3992,17 +4158,18 @@ function ingest(text,replace){
   text=(text||"").trim(); if(!text)return toast("Nothing pasted");
   if(text[0]==="{"){let o;try{o=JSON.parse(text)}catch(e){return toast("That backup didn't parse")}
     if(!o.items)return toast("No items in that file");
+    const N=cleanVan(o,"the backup");
     if(ghOn()){
       const m=missingFrom(o);
       S.items=S.items.concat(m.items); S.comps=S.comps.concat(m.comps); S.forms=S.forms.concat(m.forms);
       nameComps(); save(); renderData();
-      return toast("Added "+missingText(m)+" that were missing. Nothing was replaced, because sync is on")}
+      return toast("Added "+missingText(m)+" that were missing. Nothing was replaced, because sync is on."+tellBad(N))}
     if(replace){S.items=o.items;S.comps=o.comps||[];S.forms=o.forms||[];if(o.walls)S.walls=o.walls;S.demo=!!o.demo}
     else o.items.forEach(x=>{x.id=newId();S.items.push(x)});
     nameComps();
-    save();renderData();return toast(o.items.length+" items "+(replace?"restored":"added"))}
+    save();renderData();return toast(o.items.length+" items "+(replace?"restored":"added")+"."+tellBad(N))}
   const rows=parseCSV(text); if(rows.length<2)return toast("Nothing to import");
-  const add=[];
+  const add=[], N=makeNote("the CSV");
   rows.slice(1).forEach(r=>{if(!r[0]||!r[0].trim())return;
     const o={id:newId(),uses:[],fav:false};
     COLS.forEach((c,j)=>o[c]=(r[j]??"").trim());
@@ -4010,11 +4177,13 @@ function ingest(text,replace){
     if(!STATUSES.includes(o.status))o.status="Stocked";
     if(!CATS.some(c=>c[0]===o.cat))o.cat="A";
     if(!CLASSES.includes(o.cls))o.cls="Consumable";
+    // a compartment code becomes an attribute and a synced key, so it has to be a safe one
+    if(o.loc&&!okId(o.loc)){N.note("row "+shortVal(o.name)+" named compartment "+shortVal(o.loc)+", which is not a usable code, so it was left unplaced");o.loc=""}
     add.push(o)});
   if(replace)S.items=add; else S.items=S.items.concat(add);
   add.forEach(o=>{if(o.loc&&!S.comps.some(c=>c.code===o.loc))
     S.comps.push({code:o.loc,desc:"",side:"",x:null,y:null,w:6,h:4})});
-  save();renderData();toast(add.length+" rows "+(replace?"loaded":"added"));
+  save();renderData();toast(add.length+" rows "+(replace?"loaded":"added")+"."+tellBad(N));
 }
 // the share sheet puts the file straight into Drive or Mail; download is the fallback
 async function backupOut(){
@@ -4110,12 +4279,12 @@ function activeSpotlightHTML(incs,loose){
       <span class="s">${esc(top.inc.addr||"No address")}</span>
       <div class="bar"><i style="width:${pct}%"></i></div>
       <span class="barlab">${top.done} of ${top.plan.length} done${top.open?", "+top.open+" in progress":""}</span>
-      <button class="herocta" data-inc="${top.inc.id}">Continue &rarr;</button>
+      <button class="herocta" data-inc="${esc(top.inc.id)}">Continue &rarr;</button>
     </div>`:"";
   const restRow=x=>`<div class="urow"><span>${esc(x.inc.caseNo||"No case number")} &middot; ${esc(x.inc.offence||"No offence recorded")}</span>
-    <span class="lc" data-inc="${x.inc.id}">${x.done===x.plan.length&&x.plan.length?"Done":x.done+" of "+x.plan.length}</span></div>`;
+    <span class="lc" data-inc="${esc(x.inc.id)}">${x.done===x.plan.length&&x.plan.length?"Done":x.done+" of "+x.plan.length}</span></div>`;
   const looseRow=d=>`<div class="urow"><span>${esc(d.caseNo||"No case number")} &middot; ${esc(d.type)}</span>
-    <span class="lc" data-doc="${d.kind}:${d.id}">Open</span></div>`;
+    <span class="lc" data-doc="${d.kind}:${esc(d.id)}">Open</span></div>`;
   const also=(rest.length||loose.length)?`<div class="card2"><h4>Also open</h4>
     ${rest.map(restRow).join("")}${loose.map(looseRow).join("")}</div>`:"";
   return hero+also;
@@ -4125,10 +4294,10 @@ function activeCardsHTML(incs,loose){
   const row=(attr,title,sub,prog,dot)=>`<button class="act inccard" ${attr}><span class="ic1"><b>${title}</b><span class="ic2">${sub}</span>
     <span class="ic3"><span class="dot ${dot}"></span>${prog}</span></span><span class="chev">&#8250;</span></button>`;
   return `<div class="panel"><div class="pb">`+incs.map(inc=>{const x=incProgress(inc);
-      return row(`data-inc="${inc.id}"`,esc(inc.caseNo||"No case number")+" &middot; "+esc(inc.offence||"No offence recorded"),
+      return row(`data-inc="${esc(inc.id)}"`,esc(inc.caseNo||"No case number")+" &middot; "+esc(inc.offence||"No offence recorded"),
         esc(inc.addr||"No address"),x.done+" of "+x.plan.length+" done"+(x.open?", "+x.open+" in progress":""),
         x.open?"a":(x.done===x.plan.length&&x.plan.length?"g":"n"))}).join("")
-    +loose.map(d=>row(`data-doc="${d.kind}:${d.id}"`,esc(d.caseNo||"No case number")+" &middot; "+esc(d.type),
+    +loose.map(d=>row(`data-doc="${d.kind}:${esc(d.id)}"`,esc(d.caseNo||"No case number")+" &middot; "+esc(d.type),
         "Not filed to an incident","Not exported","a")).join("")+`</div></div>`;
 }
 /* desktop: everything as one dense table, built for the back office */
@@ -4137,11 +4306,11 @@ function activeTableHTML(incs,loose){
   const incRow=x=>`<tr><td>${esc(x.inc.caseNo||"No case number")}</td><td>${esc(x.inc.offence||"No offence recorded")}</td>
     <td>${esc(x.inc.addr||"No address")}</td>
     <td><span class="dot ${x.open?"a":(x.done===x.plan.length&&x.plan.length?"g":"n")}"></span>${x.done} of ${x.plan.length} done${x.open?", "+x.open+" in progress":""}</td>
-    <td class="lc" data-inc="${x.inc.id}">Open &rsaquo;</td></tr>`;
+    <td class="lc" data-inc="${esc(x.inc.id)}">Open &rsaquo;</td></tr>`;
   const looseRow=d=>`<tr><td>${esc(d.caseNo||"No case number")}</td><td>${esc(d.type)}</td>
     <td>Not filed to an incident</td>
     <td><span class="dot a"></span>Not exported</td>
-    <td class="lc" data-doc="${d.kind}:${d.id}">Open &rsaquo;</td></tr>`;
+    <td class="lc" data-doc="${d.kind}:${esc(d.id)}">Open &rsaquo;</td></tr>`;
   return `<div class="panel"><div class="ph2">Incidents and documents</div><div class="pb flush">
       <table class="datatable"><thead><tr><th>Case</th><th>Type</th><th>Detail</th><th>Progress</th><th></th></tr></thead>
       <tbody>${withP.map(incRow).join("")}${loose.map(looseRow).join("")}</tbody></table>
@@ -4179,7 +4348,7 @@ function renderIncident(){
     <div class="sect">Documents</div>
     <div class="rows">${plan.map(row).join("")}</div>
     ${extras.length?`<div class="sect">Also attached</div><div class="rows">`
-      +extras.map(x=>`<button class="row" data-doc="${x.kind}:${x.id}">
+      +extras.map(x=>`<button class="row" data-doc="${x.kind}:${esc(x.id)}">
         <span><span class="code">${esc(x.type)}</span>
         <span class="desc">${x.exported?"Exported":"In progress"}</span></span>
         <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:""}`;
@@ -4532,14 +4701,14 @@ function renderReorder(){
   $("#title").textContent="Reorder";
   const all=reorderRows(), rows=all.filter(r=>!r.i.ordered), onOrder=all.filter(r=>r.i.ordered);
   const byCat={}; rows.forEach(r=>{const c=catName(r.i.cat);(byCat[c]=byCat[c]||[]).push(r)});
-  const card=r=>`<div class="icard"><button class="row" data-item="${r.i.id}">
+  const card=r=>`<div class="icard"><button class="row" data-item="${esc(r.i.id)}">
       <span><span class="code">${r.need?r.need+" &times; ":""}${esc(r.i.name)}</span>
       <span class="desc">${esc(r.i.loc||"not placed")} &middot; ${esc(r.i.qty)} in stock${
         r.i.par!==""&&r.i.par!=null?" &middot; par "+esc(r.i.par):""}${r.i.ordered?" &middot; ordered "+esc(r.i.ordered):""}${r.i.vendor||r.i.part?"<br>"+esc([r.i.vendor,r.i.part,r.i.pack].filter(Boolean).join(" &middot; ")):""}</span></span>
       <span class="rt"><span class="badge b-${r.why==="Below par"?"attn":"action"}">${esc(r.why)}</span><span class="chev">&#8250;</span></span></button>
     <div class="iq">${r.i.ordered
-      ?`<button data-received="${r.i.id}">Received</button><button data-unordered="${r.i.id}">Not ordered after all</button>`
-      :`<button data-ordered="${r.i.id}">Ordered</button>`}</div></div>`;
+      ?`<button data-received="${esc(r.i.id)}">Received</button><button data-unordered="${esc(r.i.id)}">Not ordered after all</button>`
+      :`<button data-ordered="${esc(r.i.id)}">Ordered</button>`}</div></div>`;
   const total=all.length, done=onOrder.length, pct=total?Math.round(100*done/total):0;
   const progress=total?`<div class="ropct">
       <div class="ropctlab"><span>${done} of ${total} ordered</span><span>${rows.length?"Copy list &middot; Send":"All in hand"}</span></div>
@@ -4571,7 +4740,7 @@ function renderList(key){
     +(arr.length?`<div class="rows">`+arr.map(i=>{
       const s=isOut(i)?["action","Out"]:isExpired(i)?["action","Expired"]:isLow(i)?["attn","Below par"]
         :isService(i)?["attn","Service due"]:isExpiring(i)?["attn",daysOut(i.date)+" days"]:["good","OK"];
-      return `<button class="row" data-item="${i.id}">
+      return `<button class="row" data-item="${esc(i.id)}">
         <span><span class="code">${esc(i.name)}</span>
         <span class="desc">${esc(i.loc||"—")} · ${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}${
       i.cls?" · "+esc(i.cls):""}<br>${esc(catName(i.cat))}</span></span>
@@ -4607,7 +4776,7 @@ function renderSearch(){
   let body=(searchScope!=="forms"&&hits.length)
     ? `<div class="sect">${scoped.length>hits.length?"Showing "+hits.length+" of "+scoped.length:hits.length+" result"+(hits.length===1?"":"s")}</div><div class="rows">`
       +hits.map(i=>{const cp=S.comps.find(c=>c.code===i.loc);
-        return `<button class="row" data-item="${i.id}">
+        return `<button class="row" data-item="${esc(i.id)}">
           <span><span class="code">${esc(i.name)}</span>
           <span class="desc">${isRequest(i)?esc(i.contact||"Not in the van")
             :i.status==="Not carried"?"Not in the van"+(i.note?" · "+esc(i.note):"")
@@ -4617,7 +4786,7 @@ function renderSearch(){
             :""}<span class="chev">&#8250;</span></span></button>`}).join("")+`</div>`
     : (searchScope==="forms"?"":`<div class="empty"><strong>Nothing found</strong><p>No item, compartment, or category matches that.</p></div>`);
   if(fhits.length)body+=`<div class="sect">Forms — ${fhits.length}</div><div class="rows">`+fhits.map(f=>
-      `<button class="row" data-form="${f.id}">
+      `<button class="row" data-form="${esc(f.id)}">
         <span><span class="code">${esc(f.name)}</span>
         <span class="desc">${esc(f.rev?"Rev "+f.rev+" · ":"")}${esc(f.cat||"")}</span></span>
         <span class="rt"><span class="badge b-req">Form</span><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`;
@@ -4672,7 +4841,7 @@ function renderSweep(){
         <label class="fld"><span>Expiry or service date</span><input type="date" id="f-date"></label>
         <button class="btn" id="add" style="margin:4px 0 0;max-width:none">Add to ${esc(cur)}</button>`}
       <div id="sweeplist">${here.length?`<div class="sect">In ${esc(cur)} — ${here.length}</div><div class="rows">`
-        +here.slice().reverse().map(i=>`<button class="row" data-item="${i.id}">
+        +here.slice().reverse().map(i=>`<button class="row" data-item="${esc(i.id)}">
           <span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span>
           <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:""}</div>
       <button class="btn" data-sweepdone="${esc(cur)}" style="max-width:none;margin-top:12px">Swept, next &rarr;</button>
@@ -5092,14 +5261,14 @@ function paintJust(){
     +rows.map(i=>`<div class="justrow${i.dupOf?" dup":""}">
       <span class="jn">${esc(i.name)}${i.dupOf?`<span class="jdup">also in ${esc(i.dupOf)}</span>`:""}</span>
       <span class="jq">${esc(i.qty)}</span>
-      <button class="jx" data-item="${i.id}">Details</button>
-      <button class="jx" data-undo="${i.id}">Undo</button></div>`).join(""):"";
+      <button class="jx" data-item="${esc(i.id)}">Details</button>
+      <button class="jx" data-undo="${esc(i.id)}">Undo</button></div>`).join(""):"";
 }
 function refreshSweepList(){
   const here=live().filter(i=>i.loc===S.curLoc);
   const host=$("#sweeplist"); if(!host)return;
   host.innerHTML=here.length?`<div class="sect">In ${esc(S.curLoc)} — ${here.length}</div><div class="rows">`
-    +here.slice().reverse().map(i=>`<button class="row" data-item="${i.id}">
+    +here.slice().reverse().map(i=>`<button class="row" data-item="${esc(i.id)}">
       <span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span>
       <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:"";
 }
@@ -5307,13 +5476,13 @@ function markSweptNext(code){
 
 /* item cards on a phone, with counts you can tap */
 function itemCard(i,flagHtml){
-  return `<div class="icard"><button class="row" data-item="${i.id}">
+  return `<div class="icard"><button class="row" data-item="${esc(i.id)}">
       <span><span class="code">${esc(i.name)}</span>
       <span class="desc">${esc(i.loc||"—")}${i.par?" · par "+esc(i.par):""}${i.cls?" · "+esc(i.cls):""}<br>${esc(catName(i.cat))}</span></span>
       <span class="rt">${flagHtml}<span class="chev">&#8250;</span></span></button>
-    <div class="iq"><button data-qty="${i.id}:-1" aria-label="One fewer">&minus;</button><span class="qn">${esc(i.qty)}</span>
-      <button data-qty="${i.id}:1" aria-label="One more">+</button>
-      <button data-qout="${i.id}"${isOut(i)?' class="on"':''}>${isOut(i)?"Out":"Mark out"}</button></div></div>`;
+    <div class="iq"><button data-qty="${esc(i.id)}:-1" aria-label="One fewer">&minus;</button><span class="qn">${esc(i.qty)}</span>
+      <button data-qty="${esc(i.id)}:1" aria-label="One more">+</button>
+      <button data-qout="${esc(i.id)}"${isOut(i)?' class="on"':''}>${isOut(i)?"Out":"Mark out"}</button></div></div>`;
 }
 function setQty(i,q){
   i.qty=String(Math.max(0,q));
@@ -5351,7 +5520,7 @@ function verifyRun(){
 /* counts: every compartment in turn, or the regulated items in one */
 function countRows(items){
   return items.map(i=>`<div class="countrow"><span>${esc(i.name)}${i.par?` <span class="hint" style="display:inline">· par ${esc(i.par)}</span>`:""}</span>
-    <input type="text" inputmode="numeric" data-cnt="${i.id}" value="${esc(i.qty)}" aria-label="Count of ${esc(i.name)}"></div>`).join("");
+    <input type="text" inputmode="numeric" data-cnt="${esc(i.id)}" value="${esc(i.qty)}" aria-label="Count of ${esc(i.name)}"></div>`).join("");
 }
 function applyCounts(who){
   let changed=0;
@@ -5372,7 +5541,7 @@ function countRun(){
       save();
       openSheet(`<h3>Count finished</h3>
         <p class="hint" style="margin:0 0 12px">${cs.length} compartments counted, ${changed} quantit${changed===1?"y":"ies"} changed.</p>
-        ${short.length?`<div class="sect" style="margin-top:0">Below par or out — ${short.length}</div><div class="rows">${short.map(i=>`<button class="row" data-item="${i.id}"><span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.loc||"")} · ${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
+        ${short.length?`<div class="sect" style="margin-top:0">Below par or out — ${short.length}</div><div class="rows">${short.map(i=>`<button class="row" data-item="${esc(i.id)}"><span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.loc||"")} · ${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
           <button class="btn" data-go="reorder" style="max-width:none;margin:12px 0 0">Open the reorder list</button>`
           :`<div class="okbox">Nothing is short.</div>`}
         <button class="btn sec" id="ctx" style="max-width:none">Close</button>`);
@@ -5464,7 +5633,7 @@ function renderLabels(){
     <div class="editbar"><button data-labelkind="comps"${kind==="comps"?' class="on"':''}>Compartments</button>
       <button data-labelkind="items"${kind==="items"?' class="on"':''}>Items</button>
       <button data-doprint="1">Print</button></div>
-    <div class="filters">${["all"].concat(bays).map(b=>`<button data-labelbay="${b}" class="${sel===b?"sel":""}">${b==="all"?"All":esc(BAYNAME[b]||"Bay "+b)}</button>`).join("")}</div>
+    <div class="filters">${["all"].concat(bays).map(b=>`<button data-labelbay="${esc(b)}" class="${sel===b?"sel":""}">${b==="all"?"All":esc(BAYNAME[b]||"Bay "+b)}</button>`).join("")}</div>
     <p class="hint" style="margin:0 0 12px">${appUrl()
       ?"Scan one with the camera app, or with Scan a label inside this app, and it opens at that "+(kind==="comps"?"compartment":"item")+". Print on plain paper or label stock; three across."
       :"No web address is set under Settings › Labels, so these codes only work with the in-app scanner."}</p></div>
@@ -5709,7 +5878,7 @@ function snippetSheet(fieldId){
   const list=snippets();
   openSheet(`<h3>Insert wording</h3>
     <p class="hint" style="margin:0 0 12px">Tap a line to insert it at the cursor. Square brackets mark what to fill in. The library is under Settings › Report wording.</p>
-    <div class="rows">${list.map(s=>`<button class="row" data-snipins="${s.id}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
+    <div class="rows">${list.map(s=>`<button class="row" data-snipins="${esc(s.id)}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
     <button class="btn sec" id="snx" style="max-width:none;margin:12px 0 0">Cancel</button>`);
   $("#snx").onclick=closeSheet;
   $$("[data-snipins]").forEach(b=>b.onclick=()=>{
@@ -5738,7 +5907,7 @@ function snippetManage(){
   };
   openSheet(`<h3>Report wording</h3>
     <p class="hint" style="margin:0 0 12px">Standard sentences for the narrative report. Keep them in the unit's approved wording.</p>
-    <div class="rows">${list.map(s=>`<button class="row" data-snipedit="${s.id}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
+    <div class="rows">${list.map(s=>`<button class="row" data-snipedit="${esc(s.id)}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
     <button class="btn" id="snnew" style="max-width:none;margin:12px 0 0">Add wording</button>
     <button class="btn sec" id="snx2" style="max-width:none">Close</button>`);
   $("#snx2").onclick=closeSheet; $("#snnew").onclick=()=>edit(null);
@@ -7185,15 +7354,15 @@ function objSVGRaw(o,sel){
   // a locked layer is part of the picture: nothing to grab, nothing drawn round it
   const locked=skNow?layerLocked(skNow,o):false;
   const live=sel&&!locked;
-  return `<g data-obj="${o.id}" style="--kc:${inkHex(o.ink)}"
+  return `<g data-obj="${esc(o.id)}" style="--kc:${inkHex(o.ink)}"
     ${locked?'pointer-events="none"':""}
     transform="translate(${o.x},${o.y}) rotate(${o.r||0} ${o.w/2} ${o.h/2})">
     ${locked?"":`<rect width="${o.w}" height="${o.h}" fill="transparent"/>`}
     ${inner}${num}${tag}
     ${live?`<rect width="${o.w}" height="${o.h}" class="k-sel"/>
       ${o.lockR?"":`<line x1="${o.w/2}" y1="0" x2="${o.w/2}" y2="${-hs*.9}" class="k-rotstem"/>`}
-      ${o.lockR?"":`<circle data-rot="${o.id}" cx="${o.w/2}" cy="${-hs}" r="${hs/2}" class="k-rot"/>`}
-      <rect data-handle="${o.id}" x="${o.w-hs/2}" y="${o.h-hs/2}" width="${hs}" height="${hs}" class="k-handle"/>`:""}
+      ${o.lockR?"":`<circle data-rot="${esc(o.id)}" cx="${o.w/2}" cy="${-hs}" r="${hs/2}" class="k-rot"/>`}
+      <rect data-handle="${esc(o.id)}" x="${o.w-hs/2}" y="${o.h-hs/2}" width="${hs}" height="${hs}" class="k-handle"/>`:""}
     ${live&&o.t==="poly"?polyHandles(o):""}
   </g>`;
 }
@@ -7246,6 +7415,8 @@ function bgSVG(sk){
   if(!b)return "";
   const src=b.data||(b.imgId?BGMEM[b.imgId]:null);
   if(!src){ if(b.imgId)bgLoad(b.imgId); return "" }
+  if(!okImg(src))return "";                        // only an image, and only as an attribute value
+  const num=(v,d)=>{const x=toNum(v); return x===null?d:x};
   const br=(b.br==null?1:+b.br), sa=(b.sa==null?1:+b.sa);
   const needs=Math.abs(br-1)>0.01||Math.abs(sa-1)>0.01;
   const fid="bgf_"+(sk.id||"x").replace(/[^a-z0-9]/gi,"");
@@ -7255,9 +7426,9 @@ function bgSVG(sk){
         <feFuncG type="linear" slope="${br.toFixed(2)}"/>
         <feFuncB type="linear" slope="${br.toFixed(2)}"/></feComponentTransfer>
     </filter>`:"";
-  return `${filt}<image href="${src}" x="${b.x||0}" y="${b.y||0}"
-    width="${b.w||pageW(sk)}" height="${b.h||pageH(sk)}"
-    opacity="${b.op==null?0.55:b.op}" preserveAspectRatio="none"
+  return `${filt}<image href="${esc(src)}" x="${num(b.x,0)}" y="${num(b.y,0)}"
+    width="${num(b.w,0)||pageW(sk)}" height="${num(b.h,0)||pageH(sk)}"
+    opacity="${num(b.op,0.55)}" preserveAspectRatio="none"
     ${needs?`filter="url(#${fid})"`:""}/>`;
 }
 // a printed scale bar, so the reader can measure off the page
@@ -7722,12 +7893,12 @@ function objsetFloat(sk,sel){
           <button class="osclose" id="osx" aria-label="Close">&#215;</button></div>
         ${layersOf(sk).length>1?`<label class="fld"><span>Layer</span>
           <select id="olay">${layersOf(sk).map(L=>
-            `<option value="${L.id}"${(sel.lay||layersOf(sk)[0].id)===L.id?" selected":""}>${esc(L.name)}</option>`).join("")}
+            `<option value="${esc(L.id)}"${(sel.lay||layersOf(sk)[0].id)===L.id?" selected":""}>${esc(L.name)}</option>`).join("")}
           </select></label>`:""}
         <div class="osgrid">
           ${(sel.t==="marker"||sel.t==="photopoint")?`<label class="fld osnum"><span>Number</span>
             <input type="text" id="onum" inputmode="numeric" value="${esc(sel.n||"")}"></label>
-            <button class="numnext" data-onext="${sel.id}">${sel.n?"Renumber":"Next number"}</button>`:""}
+            <button class="numnext" data-onext="${esc(sel.id)}">${sel.n?"Renumber":"Next number"}</button>`:""}
           <label class="fld osname"><span>${sel.t==="marker"?"Name it — prints on the sketch and in the legend"
             :sel.t==="legend"?"Name it (not shown on the sketch)":"Name it — prints on the sketch"}</span>
             <input type="text" id="oname" value="${esc(sel.label||"")}"
@@ -7739,16 +7910,16 @@ function objsetFloat(sk,sel){
             style="background:${hex}"></button>`).join("")}</div>
         ${sizeRow(sel,sk)}
         ${sel.t==="photopoint"?`<div class="objbar" style="margin-top:10px">
-          <button data-ophoto="${sel.id}">${sel.photoId?"Change photograph":"Attach photograph"}</button>
-          ${sel.photoId?`<button data-ophotox="${sel.id}">Remove</button>`:""}</div>
+          <button data-ophoto="${esc(sel.id)}">${sel.photoId?"Change photograph":"Attach photograph"}</button>
+          ${sel.photoId?`<button data-ophotox="${esc(sel.id)}">Remove</button>`:""}</div>
           <div id="photoprev"></div>`:""}
         <div class="objbar">
-          <button data-orotlock="${sel.id}"${sel.lockR?' class="on"':""}>${sel.lockR?"Rotation locked":"Lock rotation"}</button>
-          ${sel.lockR?"":`<button data-orot="${sel.id}">Rotate 15&#176;</button>
-          <button data-orot0="${sel.id}">Straighten</button>`}
-          <button data-odup="${sel.id}">Duplicate</button>
-          <button data-ofwd="${sel.id}">Front</button>
-          <button data-odel="${sel.id}" class="danger">Delete</button>
+          <button data-orotlock="${esc(sel.id)}"${sel.lockR?' class="on"':""}>${sel.lockR?"Rotation locked":"Lock rotation"}</button>
+          ${sel.lockR?"":`<button data-orot="${esc(sel.id)}">Rotate 15&#176;</button>
+          <button data-orot0="${esc(sel.id)}">Straighten</button>`}
+          <button data-odup="${esc(sel.id)}">Duplicate</button>
+          <button data-ofwd="${esc(sel.id)}">Front</button>
+          <button data-odel="${esc(sel.id)}" class="danger">Delete</button>
         </div>
         <p class="hint" style="margin:8px 0 0">Drag to move, corner to ${LOCKED.has(sel.t)?"scale":"resize"}, ${sel.lockR?"rotation is locked so it cannot turn by accident.":"the circle above it to rotate. Hold shift while rotating to snap to 15&#176;. Lock rotation keeps a placed object square."}</p>
       </div>`
@@ -7819,11 +7990,11 @@ function renderSketch(){
           .filter(x=>(x.o.lay||ls[0].id)===L.id).reverse();
         return `<div class="laygrp${curLayer===L.id?" cur":""}">
           <div class="layhead">
-            <button class="laypick" data-laysel="${L.id}">
+            <button class="laypick" data-laysel="${esc(L.id)}">
               <span class="ln2">${esc(L.name)}</span>
               <span class="laycount">${mine.length} object${mine.length===1?"":"s"}${
                 curLayer===L.id?" \u00b7 drawing here":""}</span></button>
-            <button class="laybig${L.locked?" lockon":""}" data-laylock="${L.id}"
+            <button class="laybig${L.locked?" lockon":""}" data-laylock="${esc(L.id)}"
               aria-label="${L.locked?"Unlock layer":"Lock layer"}">
               <svg viewBox="0 0 24 24" class="lki" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -7831,21 +8002,21 @@ function renderSketch(){
                 ${L.locked?`<path d="M8 11V7a4 4 0 0 1 8 0v4"/>`
                           :`<path d="M8 11V7a4 4 0 0 1 7.5-2"/>`}
               </svg></button>
-            <button class="laybig" data-laymore="${L.id}" aria-label="Layer options">&#8943;</button>
+            <button class="laybig" data-laymore="${esc(L.id)}" aria-label="Layer options">&#8943;</button>
           </div>
           ${mine.length?mine.map(({o,i})=>
             `<div class="lay${o.id===selObj?" on":""}${L.locked?" locked":""}">
-              <button class="laypick" data-osel="${o.id}">
+              <button class="laypick" data-osel="${esc(o.id)}">
                 <span class="lp" style="--kc:${inkUI(o.ink)}">${palPreview(o.t)}</span>
                 <span class="ln2">${esc(o.label||SHAPENAME(o.t))}${(o.t==="marker"||o.t==="photopoint")&&o.n?" "+esc(o.n):""}</span>
               </button>
-              <button class="laybig" data-omore="${o.id}" aria-label="Object options">&#8943;</button>
+              <button class="laybig" data-omore="${esc(o.id)}" aria-label="Object options">&#8943;</button>
             </div>`).join("")
             :`<p class="hint" style="margin:6px 0 10px 12px">Empty. Tap the name, then add objects.</p>`}
         </div>`}).join("")+`</div>
         <p class="hint">Tap a layer name to draw into it. Top of each list is the front.</p>`})()}
     ${legend.length?`<div class="sect">Legend</div><div class="rows">`+legend.map(o=>
-      `<button class="row" data-osel="${o.id}">
+      `<button class="row" data-osel="${esc(o.id)}">
         <span><span class="code">${o.t==="marker"&&o.n?esc(o.n)+" · ":""}${esc(o.label)}</span>
         <span class="desc">${esc(SHAPENAME(o.t))}</span></span>
         <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`
@@ -8028,9 +8199,9 @@ function scaleSheet(sk){
       gets its measurements from that.</p>
     <div class="two">
       <label class="fld"><span>Drawn length</span>
-        <input type="text" id="scpx" inputmode="decimal" value="${s.px}"></label>
+        <input type="text" id="scpx" inputmode="decimal" value="${esc(s.px)}"></label>
       <label class="fld"><span>Real length</span>
-        <input type="text" id="screal" inputmode="decimal" value="${s.real}"></label></div>
+        <input type="text" id="screal" inputmode="decimal" value="${esc(s.real)}"></label></div>
     <label class="fld"><span>Units</span><select id="scunit">
       ${["ft","m","in","cm"].map(u=>`<option${u===(s.unit||"ft")?" selected":""}>${u}</option>`).join("")}
     </select></label>
@@ -8121,8 +8292,8 @@ function photoSheet(o){
     <button class="btn sec" id="phx" style="max-width:none">Cancel</button>`);
   const show=id=>{ if(!id)return;
     photoGet(id).then(d=>{const el=$("#phprev");
-      if(el&&d)el.innerHTML=`<img src="${d.data}" style="width:100%;border-radius:10px">
-        <p class="hint" style="margin:6px 0 0">${d.w}&times;${d.hh} reference copy</p>`}).catch(()=>{})};
+      if(el&&d&&okImg(d.data))el.innerHTML=`<img src="${esc(d.data)}" style="width:100%;border-radius:10px">
+        <p class="hint" style="margin:6px 0 0">${+d.w||0}&times;${+d.hh||0} reference copy</p>`}).catch(()=>{})};
   show(o.photoId);
   $("#phx").onclick=closeSheet;
   const del=$("#phdel");
@@ -8488,7 +8659,7 @@ function measSheet(sk,o){
   const u=sk.scale.unit||"ft";
   const m=Object.assign({},o.meas||{},MEASPRE||{}); MEASPRE=null;
   let mode=m.m||"tri";
-  const opt=sel=>refs.map(r=>`<option value="${r.key}"${r.key===sel?" selected":""}>${esc(r.name)}</option>`).join("");
+  const opt=sel=>refs.map(r=>`<option value="${esc(r.key)}"${r.key===sel?" selected":""}>${esc(r.name)}</option>`).join("");
   const sideSel=`<select id="mside">
       <option value="l"${m.side!=="r"?" selected":""}>Left, standing at A looking at B</option>
       <option value="r"${m.side==="r"?" selected":""}>Right, standing at A looking at B</option></select>`;
@@ -8712,13 +8883,13 @@ function sizeRow(sel,sk){
   return `<div class="osgrid sizerow">${dims}
       <label class="fld"><span>Rotation (°)</span><input type="text" id="osrot" inputmode="numeric" value="${sel.r||0}"></label>
       ${fpSel}</div>
-    ${sel.t==="poly"?`<div class="objbar"><button data-oaddvtx="${sel.id}">Add a corner</button>
-      <button data-odelvtx="${sel.id}"${(sel.pts||[]).length>3?"":" disabled"}>Remove last corner</button></div>
+    ${sel.t==="poly"?`<div class="objbar"><button data-oaddvtx="${esc(sel.id)}">Add a corner</button>
+      <button data-odelvtx="${esc(sel.id)}"${(sel.pts||[]).length>3?"":" disabled"}>Remove last corner</button></div>
       <p class="hint" style="margin:6px 0 0">Drag the white corner handles to reshape the area.</p>`:""}
     <div class="objbar">
-      <button data-omeas="${sel.id}"${sel.t==="legend"||sel.t==="dim"?" disabled":""}>${sel.meas?"Re-measure":"Place by measurement"}</button>
-      <button data-ocopy="${sel.id}">Copy style</button>
-      ${STYLECLIP?`<button data-opaste="${sel.id}">Paste style</button>`:""}
+      <button data-omeas="${esc(sel.id)}"${sel.t==="legend"||sel.t==="dim"?" disabled":""}>${sel.meas?"Re-measure":"Place by measurement"}</button>
+      <button data-ocopy="${esc(sel.id)}">Copy style</button>
+      ${STYLECLIP?`<button data-opaste="${esc(sel.id)}">Paste style</button>`:""}
       <button data-ofav="${sel.t}">${favs().includes(sel.t)?"★ Favourite":"☆ Favourite"}</button>
     </div>${meas}`;
 }
@@ -8814,7 +8985,7 @@ function polyFinish(){
 }
 function polyHandles(o){
   return (o.pts||[]).map(([fx,fy],i)=>
-    `<circle data-vtx="${o.id}:${i}" cx="${(fx*o.w).toFixed(1)}" cy="${(fy*o.h).toFixed(1)}" r="${(handleU()*.42).toFixed(1)}" class="k-vtx"/>`).join("");
+    `<circle data-vtx="${esc(o.id)}:${i}" cx="${(fx*o.w).toFixed(1)}" cy="${(fy*o.h).toFixed(1)}" r="${(handleU()*.42).toFixed(1)}" class="k-vtx"/>`).join("");
 }
 function polyNormalize(o){
   if(!o.pts||o.pts.length<3)return;
@@ -9387,13 +9558,16 @@ function objSVG(o,sel){
   catch(err){
     console.error("object failed to draw",o&&o.id,err);
     const w=(+o.w>0?o.w:60), h=(+o.h>0?o.h:40);
-    return `<g data-obj="${o.id}" transform="translate(${+o.x||0},${+o.y||0})"><rect width="${w}" height="${h}" class="k-broken"/>
+    return `<g data-obj="${esc(o.id)}" transform="translate(${+o.x||0},${+o.y||0})"><rect width="${w}" height="${h}" class="k-broken"/>
       <text x="4" y="${h/2+4}" class="k-brokent">Could not draw ${esc(SHAPENAME(o.t||"object"))}</text></g>`;
   }
 }
 const SKETCH_V=4;
 function repairSketch(sk){
   let fixed=0; const num=(v,d)=>(typeof v==="number"&&isFinite(v))?v:d;
+  // ids, references, the backdrop and the scale, for a sketch stored before these were checked
+  // on the way in (core.js). Anything repaired is listed under Recent errors.
+  fixed+=cleanSketchParts(sk,makeNote("a stored sketch"));
   if(!Array.isArray(sk.objs)){sk.objs=[];fixed++}
   const before=sk.objs.length; sk.objs=sk.objs.filter(o=>o&&typeof o==="object"); fixed+=before-sk.objs.length;
   sk.objs.forEach(o=>{
@@ -9838,7 +10012,7 @@ document.addEventListener("click",e=>{
         <button class="btn sec" id="ombck" style="max-width:none"${lk||i<=0?" disabled":""}>Send back</button>
         ${ls.length>1?`<label class="fld" style="margin-top:6px"><span>Move to layer</span>
           <select id="ommove"${lk?" disabled":""}>${ls.map(L=>
-            `<option value="${L.id}"${(o.lay||ls[0].id)===L.id?" selected":""}>${esc(L.name)}</option>`).join("")}
+            `<option value="${esc(L.id)}"${(o.lay||ls[0].id)===L.id?" selected":""}>${esc(L.name)}</option>`).join("")}
           </select></label>`:""}
         <button class="btn sec" id="omdel" style="max-width:none;color:var(--red);border-color:var(--red)"${lk?" disabled":""}>Delete</button>
         <button class="btn sec" id="omx" style="max-width:none">Cancel</button></div>`);

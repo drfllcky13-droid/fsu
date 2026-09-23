@@ -113,7 +113,7 @@ function measSheet(sk,o){
   const u=sk.scale.unit||"ft";
   const m=Object.assign({},o.meas||{},MEASPRE||{}); MEASPRE=null;
   let mode=m.m||"tri";
-  const opt=sel=>refs.map(r=>`<option value="${r.key}"${r.key===sel?" selected":""}>${esc(r.name)}</option>`).join("");
+  const opt=sel=>refs.map(r=>`<option value="${esc(r.key)}"${r.key===sel?" selected":""}>${esc(r.name)}</option>`).join("");
   const sideSel=`<select id="mside">
       <option value="l"${m.side!=="r"?" selected":""}>Left, standing at A looking at B</option>
       <option value="r"${m.side==="r"?" selected":""}>Right, standing at A looking at B</option></select>`;
@@ -337,13 +337,13 @@ function sizeRow(sel,sk){
   return `<div class="osgrid sizerow">${dims}
       <label class="fld"><span>Rotation (°)</span><input type="text" id="osrot" inputmode="numeric" value="${sel.r||0}"></label>
       ${fpSel}</div>
-    ${sel.t==="poly"?`<div class="objbar"><button data-oaddvtx="${sel.id}">Add a corner</button>
-      <button data-odelvtx="${sel.id}"${(sel.pts||[]).length>3?"":" disabled"}>Remove last corner</button></div>
+    ${sel.t==="poly"?`<div class="objbar"><button data-oaddvtx="${esc(sel.id)}">Add a corner</button>
+      <button data-odelvtx="${esc(sel.id)}"${(sel.pts||[]).length>3?"":" disabled"}>Remove last corner</button></div>
       <p class="hint" style="margin:6px 0 0">Drag the white corner handles to reshape the area.</p>`:""}
     <div class="objbar">
-      <button data-omeas="${sel.id}"${sel.t==="legend"||sel.t==="dim"?" disabled":""}>${sel.meas?"Re-measure":"Place by measurement"}</button>
-      <button data-ocopy="${sel.id}">Copy style</button>
-      ${STYLECLIP?`<button data-opaste="${sel.id}">Paste style</button>`:""}
+      <button data-omeas="${esc(sel.id)}"${sel.t==="legend"||sel.t==="dim"?" disabled":""}>${sel.meas?"Re-measure":"Place by measurement"}</button>
+      <button data-ocopy="${esc(sel.id)}">Copy style</button>
+      ${STYLECLIP?`<button data-opaste="${esc(sel.id)}">Paste style</button>`:""}
       <button data-ofav="${sel.t}">${favs().includes(sel.t)?"★ Favourite":"☆ Favourite"}</button>
     </div>${meas}`;
 }
@@ -439,7 +439,7 @@ function polyFinish(){
 }
 function polyHandles(o){
   return (o.pts||[]).map(([fx,fy],i)=>
-    `<circle data-vtx="${o.id}:${i}" cx="${(fx*o.w).toFixed(1)}" cy="${(fy*o.h).toFixed(1)}" r="${(handleU()*.42).toFixed(1)}" class="k-vtx"/>`).join("");
+    `<circle data-vtx="${esc(o.id)}:${i}" cx="${(fx*o.w).toFixed(1)}" cy="${(fy*o.h).toFixed(1)}" r="${(handleU()*.42).toFixed(1)}" class="k-vtx"/>`).join("");
 }
 function polyNormalize(o){
   if(!o.pts||o.pts.length<3)return;
