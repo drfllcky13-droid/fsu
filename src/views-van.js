@@ -1,6 +1,6 @@
 /* ---------- home: priority strip ---------- */
 function renderHome(){
-  $("#title").textContent="Inventory";
+  $("#title").textContent="Home";
   const L=live();
   if(!L.length&&!S.comps.length){
     $("#v-home").innerHTML=`<div class="empty"><strong>Nothing logged yet</strong>
@@ -22,23 +22,24 @@ function renderHome(){
   const sweepTxt=!cs.length?"No compartments yet":unchk===0&&lastMark?"Sweep finished "+lastMark
     :lastMark?"Sweep in progress, "+unchk+" left":"No sweep yet";
   const head=`<div class="hhead"><b>${esc(S.vanName||"Forensic Services Unit")}</b><span>${esc(dateTxt)}</span>
-    <span>${S.who?"Signed in as "+esc(S.who):`<button class="lnkbtn" data-gosec="who">Set your initials</button>`}</span>
-    <span>${esc(sweepTxt)}</span><span>${lastVeh()?"Vehicle checked "+esc(lastVeh().t.slice(0,10)):"No vehicle check yet"}</span>
-    <button class="hgear" id="gear">${ic("gear","gi")}<span>Settings</span></button></div>`;
+    <span>${S.who?"Signed in as "+esc(S.who):`<button class="lnkbtn" data-gosec="who">Set your initials</button>`}</span></div>`;
 
   // how is the van \u2014 a status card per topic, colour doing the talking
   const lvEarly=lastVeh();
   const bays=[...new Set(cs.map(c=>bayOf(c.code)))];
   const bayUnchk=bays.filter(bay=>cs.some(c=>bayOf(c.code)===bay&&compState(c.code).k==="unchecked")).length;
-  const card=(ok,k,v,s,attr)=>`<button class="stile ${ok?"t-calm":"t-amber"}" ${attr}><span class="sk">${k}</span><span class="sv">${v}</span><span class="ss">${s}</span></button>`;
-  const tiles=`<div class="stiles stiles6">
-    ${card(!unchk,"Sweep",cs.length?(unchk?unchk+" left":"Done"):"\u2014",cs.length?checked+" of "+cs.length+" checked":"add compartments",'data-go="sweep"')}
-    ${card(!bad.length,"Stock",bad.length?bad.length+" short":"Fine",bad.length?"low or out":"nothing low or out",'data-list="low"')}
-    ${card(!soon.length,"Expiring",soon.length?String(soon.length):"None",soon.length?"within 90 days or due":"all dates clear",'data-list="expiring"')}
-    ${card(!gp.length,"Gaps",gp.length?String(gp.length):"None",gp.length?"not in the van":"nothing outstanding",'data-list="gaps"')}
-    ${card(!!lvEarly&&!vehDue(),"Vehicle",lvEarly?"Checked":"Unchecked",lvEarly?lvEarly.t.slice(0,10):"no check on record",'data-vehcheck="1"')}
-    ${card(!bayUnchk,"Units",bays.length?(bays.length-bayUnchk)+" of "+bays.length:"\u2014",bayUnchk?"not fully checked":"all fully checked",'data-go="compartments"')}
-  </div>`;
+  // one slim strip: problems as amber chips, everything calm folded into one grey chip
+  const chips=[
+    [!unchk,"Sweep",cs.length?(unchk?unchk+" left":"done"):"no compartments",'data-go="sweep"'],
+    [!bad.length,"Stock",bad.length+" short",'data-list="low"'],
+    [!soon.length,"Expiring",String(soon.length),'data-list="expiring"'],
+    [!gp.length,"Gaps",String(gp.length),'data-list="gaps"'],
+    [!!lvEarly&&!vehDue(),"Vehicle",lvEarly?(vehDue()?"due":"checked "+lvEarly.t.slice(0,10)):"unchecked",'data-vehcheck="1"'],
+    [!bayUnchk,"Units",bays.length?(bays.length-bayUnchk)+" of "+bays.length+" checked":"none",'data-go="compartments"'],
+  ];
+  const hot=chips.filter(c=>!c[0]), calm=chips.filter(c=>c[0]);
+  const tiles=`<div class="sstrip">${hot.map(([,k,v,attr])=>`<button class="schip hot" ${attr}><b>${k}</b><span>${esc(v)}</span></button>`).join("")}
+    ${calm.length?`<span class="schip calm"><b>All clear</b><span>${calm.map(c=>c[1].toLowerCase()).join(", ")}</span></span>`:""}</div>`;
 
   // what needs doing
   const rows=[];
@@ -55,8 +56,10 @@ function renderHome(){
     [L.filter(i=>!placed(i)).length,"item|items|not placed in a compartment",'data-go="sweep"'],
     [L.filter(i=>placed(i)&&!String(i.par||"").trim()).length,"item|items|without a par level",'data-go="tidy"'],
     [L.filter(i=>(i.steps||[]).length&&!i.verified).length,"instruction set|instruction sets|unverified",'data-verifyrun="1"']
-  ].filter(r=>r[0]>0).map(r=>{const [one,many,rest]=r[1].split("|");return ["setup",r[0]+" "+(r[0]===1?one:many)+" "+rest,r[2],""]});
-  rows.push(...setup);
+  ].filter(r=>r[0]>0).map(r=>{const [one,many,rest]=r[1].split("|");return [r[0]+" "+(r[0]===1?one:many)+" "+rest,r[2]]});
+  const setupPanel=setup.length?`<div class="panel setuppanel"><div class="ph2">Finish setting up \u2014 ${setup.length}</div><div class="pb">
+    ${setup.map(([t,attr])=>`<button class="act" ${attr}><span>${esc(t)}</span><span class="chev">&#8250;</span></button>`).join("")}
+    <p class="hint" style="margin:6px 0 0">One-time jobs. This panel goes away once they are done.</p></div></div>`:"";
   if(cs.length&&!unchk)rows.push(["","Count the stock",'data-countrun="1"',""]);
   const needRows=need.slice(0,10).map(i=>{const s=itemStatus(i);
     return `<button class="act" data-item="${i.id}"><span>${esc(i.name)}<span class="lc" style="margin-left:6px">${esc(i.loc||"\u2014")}</span></span><span class="badge b-${s[0]}">${esc(s[1])}</span></button>`});
@@ -69,10 +72,10 @@ function renderHome(){
 
   const pop=L.slice().sort((a,b)=>((b.fav?1e6:0)+(b.uses||[]).length)-((a.fav?1e6:0)+(a.uses||[]).length)).slice(0,3);
   const quick=pop.length?`<div class="panel"><div class="ph2">Quick find</div><div class="pb"><div class="qf">${pop.map(i=>
-      `<button data-item="${i.id}"><span class="nm">${esc(i.name)}</span><span class="lc">${esc(i.loc||"\u2014")}</span></button>`).join("")}</div>
+      `<button data-item="${i.id}"><span class="nm">${esc(i.name)}</span><span class="lc${i.loc?"":" np"}">${esc(i.loc||"Not placed")}</span></button>`).join("")}</div>
       <p class="hint" style="margin:8px 0 0">Star an item and it appears here.</p></div></div>`:"";
 
-  $("#v-home").innerHTML=head+tiles+todo+`<div class="dash2">
+  $("#v-home").innerHTML=head+tiles+todo+setupPanel+`<div class="dash2">
     <div class="col">${handoverPanel()}</div>
     <div class="col">${quick}</div></div>`;
   $$("#v-home [data-gosec]").forEach(b=>b.onclick=()=>openSettings(b.dataset.gosec));

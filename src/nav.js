@@ -65,6 +65,12 @@ function applyQuery(){
 }
 // the search box is a van feature: it looks through items, compartments and the guide, which
 // Scenes has none of, so Scenes' page carries no #q at all
+// phone header: a gear for Settings and a magnifier that opens the search box
+if($("#gear"))$("#gear").innerHTML=ic("gear","gi");
+if($("#qopen"))$("#qopen").onclick=()=>{const on=!document.body.classList.contains("searching");
+  document.body.classList.toggle("searching",on); if(on){const q=$("#q"); if(q)q.focus()}
+  else{const q=$("#q"); if(q&&q.value){q.value="";query="";applyQuery()}} fitHeader()};
+if($("#q"))$("#q").addEventListener("blur",()=>{if(!$("#q").value){document.body.classList.remove("searching");fitHeader()}});
 if($("#q")){
   $("#q").addEventListener("input",e=>{query=e.target.value.trim();applyQuery()});
   $("#qclear").onclick=()=>{$("#q").value="";query="";applyQuery()};

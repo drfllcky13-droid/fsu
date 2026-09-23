@@ -122,8 +122,11 @@ test.describe("sketch flows",()=>{
   test("layer move shifts every object together",async({page})=>{
     await page.evaluate(()=>{["car","tree"].forEach((t,i)=>{addObj(t); const o=objAt(selObj); o.x=300+i*200; o.y=300}); const sk=curSk(); layerMoveStart(sk,layersOf(sk)[0])});
     const before=await page.evaluate(()=>curSk().objs.map(o=>[o.x,o.y]));
-    const c=await page.locator("#skcanvas").boundingBox();
-    await page.mouse.move(c.x+c.width*.5,c.y+c.height*.9); await page.mouse.down(); await page.mouse.move(c.x+c.width*.55,c.y+c.height*.85,{steps:4}); await page.mouse.up();
+    // drag inside the part of the page that is on screen (larger text pushes the canvas lower)
+    await page.locator("#skcanvas").scrollIntoViewIfNeeded();
+    const c=await page.locator("#skcanvas").boundingBox(), vh=page.viewportSize().height;
+    const y0=Math.min(c.y+c.height*.9,vh-40);
+    await page.mouse.move(c.x+c.width*.5,y0); await page.mouse.down(); await page.mouse.move(c.x+c.width*.55,y0-30,{steps:4}); await page.mouse.up();
     const after=await page.evaluate(()=>curSk().objs.map(o=>[o.x,o.y]));
     const d=after.map((p,i)=>[p[0]-before[i][0],p[1]-before[i][1]]);
     expect(d.every(v=>v[0]===d[0][0]&&v[1]===d[0][1])).toBe(true); expect(d[0][0]).toBeGreaterThan(0);
@@ -187,11 +190,15 @@ test.describe("van flows",()=>{
 
   test("one Scenes list with open and closed",async({page})=>{
     await openScenes(page);
-    await expect(page.locator("#v-active .seg [data-scenestab=closed]")).toBeVisible();
-    await page.click("#v-active .seg [data-scenestab=closed]");
+    // the Open and Closed tiles are the filter; there is no separate switch any more
+    await expect(page.locator("#v-active .seg")).toHaveCount(0);
+    await page.click("#v-active .stile[data-scenestab=closed]");
     await expect(page.locator("#v-active .empty strong")).toHaveText("No finished scenes yet");
-    const tabs=await page.evaluate(()=>[...document.querySelectorAll("#side button span.lbl")].map(b=>b.textContent.trim()));
-    expect(tabs).toEqual(["Scenes","Settings"]);   // Scenes is its own app now, with its own short tab list
+    await expect(page.locator("#v-active .stile[data-scenestab=closed]")).toHaveAttribute("aria-pressed","true");
+    // Scenes is one list: no side bar or tab bar, Settings is the gear, New is in the header
+    await expect(page.locator("#side")).toBeHidden();
+    await expect(page.locator("#tabs")).toBeHidden();
+    await expect(page.locator("#gear")).toBeVisible();
   });
 
   test("guided sweep marks and advances",async({page})=>{
@@ -251,7 +258,7 @@ test.describe("van flows",()=>{
   });
 
   test("settings is a menu of sections with a way back",async({page})=>{
-    await page.click("#v-home #gear");
+    await page.click("#side .sset");   // wide screen: Settings is in the side bar (the header gear is for phones)
     await page.waitForFunction(()=>view==="data");
     const rows=await page.locator("#v-data [data-setsec]").count(); expect(rows).toBeGreaterThan(8);
     await page.click('#v-data [data-setsec="reset"]');

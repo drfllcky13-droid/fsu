@@ -1,15 +1,15 @@
 /* ---------- tab headers, in the style of the home dashboard ---------- */
 function tabHead(name,facts){
-  return `<div class="hhead"><b>${esc(name)}</b>${facts.filter(Boolean).map(f=>`<span>${f}</span>`).join("")}</div>`;
+  return `<div class="hhead">${name?`<b>${esc(name)}</b>`:""}${facts.filter(Boolean).map(f=>`<span>${f}</span>`).join("")}</div>`;
 }
 function tabTiles(t){
   return `<div class="stiles">${t.map(([cls,k,v,s,attr])=>`<button class="stile ${cls}" ${attr||""}><span class="sk">${k}</span><span class="sv">${v}</span><span class="ss">${s}</span></button>`).join("")}</div>`;
 }
 function scenesHead(){
   const o=openIncidents().length, c=closedIncidents().length, l=openDocs().length, p=unsent().length;
-  return tabHead("Scenes",[o+" open",c+" closed",p?p+" not exported":""])+tabTiles([
-    ["t-plain","Open",String(o),o?"incident"+(o===1?"":"s")+" in progress":"nothing in progress",'data-scenestab="open"'],
-    ["t-plain","Closed",String(c),c?"finished, kept for the record":"none finished yet",'data-scenestab="closed"'],
+  return tabTiles([
+    ["t-plain"+(scenesTab!=="closed"?" sel":""),"Open",String(o),o?"incident"+(o===1?"":"s")+" in progress":"nothing in progress",'data-scenestab="open" aria-pressed="'+(scenesTab!=="closed")+'"'],
+    ["t-plain"+(scenesTab==="closed"?" sel":""),"Closed",String(c),c?"finished, kept for the record":"none finished yet",'data-scenestab="closed" aria-pressed="'+(scenesTab==="closed")+'"'],
     [l?"t-amber":"t-calm","Not filed",l?String(l):"None",l?"document"+(l===1?"":"s")+" outside an incident":"everything is filed",'data-scenestab="open"'],
     [p?"t-red":"t-calm","Not exported",p?String(p):"None",p?"only on this device so far":"all exported",'data-scenestab="open"']]);
 }

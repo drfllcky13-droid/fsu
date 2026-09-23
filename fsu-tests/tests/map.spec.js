@@ -16,7 +16,7 @@ test("Settings › Map opens the map on the scene page, and says why when it can
   expect(await page.evaluate(()=>document.getElementById("v-map"))).toBeNull();
   await page.route(/lib\/maplibre|williamsport-/,r=>r.abort());
   await open(page,"/scenes.html");
-  await page.click("#side .sset");
+  await page.click("#gear");
   await page.click('#v-data [data-go="map"]');
   expect(await page.evaluate(()=>[view,location.hash])).toEqual(["map","#v=map"]);
   await expect(page.locator("#mapq")).toBeVisible();

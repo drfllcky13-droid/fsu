@@ -435,8 +435,8 @@ document.addEventListener("keydown",e=>{
     const b=$("#sheet").querySelector(".btn:not(.sec)"); if(b){e.preventDefault();b.click()} return}
 
 });
-window.addEventListener("online",()=>{if(ghOn()&&(dirty||syncErr)){syncErr="";renderSyncBar();ghPush(false)}});
-window.addEventListener("offline",()=>renderSyncBar());
+window.addEventListener("online",()=>{renderStatus();if(ghOn()&&(dirty||syncErr)){syncErr="";renderSyncBar();ghPush(false)}});
+window.addEventListener("offline",()=>{renderSyncBar();renderStatus()});
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState!=="visible"||!ghOn())return;
   if(dirty||syncErr){retries=0;ghPush(false)} else ghPull(true);
@@ -507,7 +507,8 @@ function render(depth){
   const asked=view;
   navRecord();
   applySideMin();
-  buildTabs();renderDemoBar();renderSyncBar();
+  buildTabs();renderDemoBar();renderSyncBar();renderStatus();
+  {const nb=document.getElementById("newinc"); if(nb)nb.style.display=view==="active"?"":"none"}
   const main=document.querySelector(".main");
   const master=DETAILS.includes(view)&&prevView&&prevView!==view
     &&!["itemdetail","fill"].includes(prevView)?prevView:null;

@@ -40,7 +40,7 @@ device to the van data. Print it and pin it in the van.
 4. Open each icon once while online. From then on they work without a connection. Then, still
    online, open **Settings › This device › Download for offline use**: that fetches the map, the
    address list and the PDF, Word and QR tools, so every part works at a scene with no signal.
-5. To share the van list with the other devices, open **Settings** (top of Home), then
+5. To share the van list with the other devices, open **Settings** (the gear at the top right on a phone, or the side bar on an iPad), then
    **Automatic saving**. Owner and repository are already filled in (`drfllcky13-droid` /
    `van-data`). Paste the unit's access token and tap **Connect** — that is the whole form.
    The list merges straight away and every change after that saves itself a couple of seconds

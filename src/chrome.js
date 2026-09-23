@@ -105,11 +105,24 @@ function applyMode(){
   applySideMin();
 }
 
-function savedTick(){
+// always-on save status beside the title: one dot and a few words, never a flash
+function savedTick(){ renderStatus() }
+function renderStatus(){
   try{ const el=document.getElementById("savedtick"); if(!el)return;
-    el.textContent="Saved"; el.classList.add("on"); clearTimeout(TICKT); TICKT=setTimeout(()=>el.classList.remove("on"),1400) }catch(_){}
+    const sync=typeof ghOn==="function"&&ghOn();
+    const offline=typeof navigator!=="undefined"&&navigator.onLine===false;
+    let k,t;
+    if(typeof SAVEFAIL!=="undefined"&&SAVEFAIL){k="bad";t="Not saving"}
+    else if(sync&&(tokenBad||badFile||conflict||syncErr)){k="bad";t="Not syncing"}
+    else if(sync&&offline){k="warn";t="Offline, saved here"}
+    else if(sync&&dirty){k="busy";t="Saving\u2026"}
+    else if(sync&&S.gh.last){k="ok";t="Synced "+new Date(S.gh.last).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
+    else if(sync){k="busy";t="Not synced yet"}
+    else {k="local";t="Saved on this device"}
+    const sh={"Saved on this device":"Saved","Offline, saved here":"Offline","Not synced yet":"Not synced"}[t]||t.replace(/^Synced /,"");
+    el.className="savedtick on st-"+k; el.title=t; el.innerHTML=`<i></i><span class="stl">${t}</span><span class="sts">${sh}</span>`;
+  }catch(_){}
 }
-
 
 const isStandalone=()=>!!((window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone);
 

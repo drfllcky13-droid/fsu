@@ -83,7 +83,7 @@ test("each app's Settings is its own screen with its own content",async({page})=
   expect(vanGroups).not.toContain("Scenes");
 
   await open(page,SCENES);
-  await page.click("#side .sset");
+  await page.click("#gear");   // Scenes has no nav: Settings is the gear in its header
   w=await where(page);
   expect([w.file,w.view,w.on.join()]).toEqual(["scenes.html","data","v-data"]);
   const sceneGroups=await page.evaluate(()=>[...document.querySelectorAll("#v-data .navcol .grp")].map(e=>e.textContent));

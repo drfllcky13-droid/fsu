@@ -4,7 +4,7 @@
 var SAVEFAIL=false;   // var, because the first save happens before this block runs
 function saveFailed(on){
   try{
-  if(on===!!SAVEFAIL)return; SAVEFAIL=on;
+  if(on===!!SAVEFAIL)return; SAVEFAIL=on; if(typeof renderStatus==="function")renderStatus();
   let bar=document.getElementById("savefail");
   if(!on){ if(bar)bar.remove(); toast("Saving works again"); return }
   if(!bar){ bar=document.createElement("div"); bar.id="savefail"; document.body.prepend(bar) }

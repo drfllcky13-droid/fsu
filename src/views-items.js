@@ -312,17 +312,17 @@ const docIcon=k=>`<svg class="dg" viewBox="0 0 24 24" fill="none" stroke="curren
 function renderActive(){
   if(!document.getElementById("v-active"))return;   // that view is on the other page
   $("#title").textContent="Scenes";
-  if(scenesTab==="closed"){ renderForms(); $("#v-active").innerHTML=scenesHead()+scenesSeg()+$("#v-forms").innerHTML; $("#title").textContent="Scenes"; return }
+  if(scenesTab==="closed"){ renderForms(); $("#v-active").innerHTML=scenesHead()+$("#v-forms").innerHTML; $("#title").textContent="Scenes"; return }
   const incs=openIncidents(), loose=openDocs();
   if(!incs.length&&!loose.length){
-    $("#v-active").innerHTML=scenesHead()+scenesSeg()+`<div class="empty"><strong>Nothing open</strong>
+    $("#v-active").innerHTML=scenesHead()+`<div class="empty"><strong>Nothing open</strong>
       <p>Start an incident and the app keeps its forms and sketches together,
          then bundles them into one report. Closed ones stay under Closed.</p>
       <button class="btn" data-newinc="1">Start an incident</button></div>`;
     return;
   }
-  $("#v-active").innerHTML=scenesHead()+scenesSeg()
-    +(isIPadLike()?activeSpotlightHTML(incs,loose):activeTableHTML(incs,loose));
+  $("#v-active").innerHTML=scenesHead()
+    +(isIPadLike()?activeSpotlightHTML(incs,loose):!document.body.classList.contains("wide")?activeCardsHTML(incs,loose):activeTableHTML(incs,loose));
 }
 function incProgress(inc){
   const plan=(inc.plan||[]).map(k=>planState(inc,k)).filter(Boolean);
@@ -350,7 +350,18 @@ function activeSpotlightHTML(incs,loose){
     <span class="lc" data-doc="${d.kind}:${d.id}">Open</span></div>`;
   const also=(rest.length||loose.length)?`<div class="card2"><h4>Also open</h4>
     ${rest.map(restRow).join("")}${loose.map(looseRow).join("")}</div>`:"";
-  return hero+`<div class="startln"><button data-newinc="1">Start a new incident</button></div>`+also;
+  return hero+also;
+}
+/* phone: one tappable card per incident, nothing squeezed into columns */
+function activeCardsHTML(incs,loose){
+  const row=(attr,title,sub,prog,dot)=>`<button class="act inccard" ${attr}><span class="ic1"><b>${title}</b><span class="ic2">${sub}</span>
+    <span class="ic3"><span class="dot ${dot}"></span>${prog}</span></span><span class="chev">&#8250;</span></button>`;
+  return `<div class="panel"><div class="pb">`+incs.map(inc=>{const x=incProgress(inc);
+      return row(`data-inc="${inc.id}"`,esc(inc.caseNo||"No case number")+" &middot; "+esc(inc.offence||"No offence recorded"),
+        esc(inc.addr||"No address"),x.done+" of "+x.plan.length+" done"+(x.open?", "+x.open+" in progress":""),
+        x.open?"a":(x.done===x.plan.length&&x.plan.length?"g":"n"))}).join("")
+    +loose.map(d=>row(`data-doc="${d.kind}:${d.id}"`,esc(d.caseNo||"No case number")+" &middot; "+esc(d.type),
+        "Not filed to an incident","Not exported","a")).join("")+`</div></div>`;
 }
 /* desktop: everything as one dense table, built for the back office */
 function activeTableHTML(incs,loose){
@@ -363,8 +374,7 @@ function activeTableHTML(incs,loose){
     <td>Not filed to an incident</td>
     <td><span class="dot a"></span>Not exported</td>
     <td class="lc" data-doc="${d.kind}:${d.id}">Open &rsaquo;</td></tr>`;
-  return `<div class="editbar"><button data-newinc="1" class="on">Start an incident</button></div>
-    <div class="panel"><div class="ph2">Incidents and documents</div><div class="pb flush">
+  return `<div class="panel"><div class="ph2">Incidents and documents</div><div class="pb flush">
       <table class="datatable"><thead><tr><th>Case</th><th>Type</th><th>Detail</th><th>Progress</th><th></th></tr></thead>
       <tbody>${withP.map(incRow).join("")}${loose.map(looseRow).join("")}</tbody></table>
     </div></div>`;
@@ -386,7 +396,7 @@ function renderIncident(){
     </button>`;
   };
   $("#v-incident").innerHTML=`
-    <button class="back" data-navback="active">&#8249; Active</button>
+    <button class="back" data-navback="active">&#8249; Scenes</button>
     <div class="acttile" style="text-align:left">
       <div class="ai"><h2>${esc(inc.caseNo||"No case number")}</h2>
         <div class="sub">${esc(inc.offence||"No offence recorded")}</div>
@@ -635,7 +645,7 @@ function renderData(){
   $("#title").textContent="Settings";
   if(conflict||tokenBad||badFile)SET_SEC="sync";
   if(SET_SEC&&!SET_TITLES[SET_SEC])SET_SEC=null;
-  $("#v-data").innerHTML=PAGE==="scenes"?settingsSplit():(SET_SEC?settingsSection(SET_SEC):settingsMenu());
+  $("#v-data").innerHTML=PAGE==="scenes"?`<button class="back" data-navback="active">&#8249; Scenes</button>`+settingsSplit():(SET_SEC?settingsSection(SET_SEC):settingsMenu());
   renderSyncPill();
   $$("#v-data [data-setsec]").forEach(b=>b.onclick=()=>{SET_SEC=b.dataset.setsec;if(PAGE!=="scenes")window.scrollTo&&window.scrollTo(0,0);renderData()});
   const bk=$("#v-data [data-setback]"); if(bk)bk.onclick=()=>{SET_SEC=null;renderData()};
@@ -812,7 +822,7 @@ function renderSearch(){
     +" "+((S.comps.find(c=>c.code===i.loc)||{}).desc||"")).toLowerCase();
   const all=pool.filter(i=>hay(i).includes(q));
   const placedAll=all.filter(i=>(i.loc||"").trim());
-  const fhitsAll=S.forms.filter(f=>((f.name||"")+" "+(f.desc||"")+" "+(f.cat||"")+" "+(f.rev||"")).toLowerCase().includes(q));
+  const fhitsAll=PAGE!=="van"&&S.forms.filter(f=>((f.name||"")+" "+(f.desc||"")+" "+(f.cat||"")+" "+(f.rev||"")).toLowerCase().includes(q))||[];
   if(searchScope==="compartment"&&!placedAll.length&&(all.length||fhitsAll.length))searchScope="all";
   if(searchScope==="forms"&&!fhitsAll.length&&all.length)searchScope="all";
   const scoped=searchScope==="compartment"?placedAll:all;
@@ -822,7 +832,7 @@ function renderSearch(){
   const rail=`<div class="filters searchrail">
     ${filt("all","All results",all.length+fhitsAll.length)}
     ${filt("compartment","By compartment",placedAll.length)}
-    ${filt("forms","Forms",fhitsAll.length)}
+    ${PAGE!=="van"?filt("forms","Forms",fhitsAll.length):""}
   </div>`;
   let body=(searchScope!=="forms"&&hits.length)
     ? `<div class="sect">${scoped.length>hits.length?"Showing "+hits.length+" of "+scoped.length:hits.length+" result"+(hits.length===1?"":"s")}</div><div class="rows">`

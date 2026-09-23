@@ -1,5 +1,29 @@
 # FSU change log
 
+## 2026.09.23.1
+A design pass on both apps, to make them quicker to read in the van and at a scene.
+
+FSU: Home is called Home. The six status tiles are now one slim strip. Anything that needs
+attention is an amber chip you can tap, and everything that is fine is folded into one grey
+"All clear" chip. The urgent list stays the main thing on the screen. One-time setup jobs
+(naming compartments, placing items, verifying instructions) have their own "Finish setting up"
+panel below it, which goes away once they are done. On a phone the title comes first, and the
+header has a search icon (tap to open the search box) and a gear for Settings. The Settings
+link in the middle of Home is gone. Search no longer offers a Forms filter, since forms live in
+Scenes. Quick find says "Not placed" for items with no compartment instead of showing a dash.
+
+Both: the save status next to the title stays on screen instead of flashing. A grey dot means
+saved on this device, green means synced (with the time), blue means saving, amber means
+offline and saved here, and red means not saving or not syncing. Small text is one step larger
+everywhere, for reading with gloves or at arm's length.
+
+Scenes: it has its own violet accent, so it never looks like FSU. There is no side bar or tab
+bar any more, because it had only one entry. Settings is the gear in the header, and "+ New"
+starts an incident from the header. The Open and Closed tiles are the filter, so the separate
+Open/Closed switch is gone. The name "Scenes" is no longer repeated under the header. On a
+phone the incident list is one card per incident instead of a squeezed table. Settings and the
+incident page both go back with "‹ Scenes".
+
 ## 2026.09.22.2
 Fixed: two records created in the same instant could, rarely, be given the same id. The van list
 is set up dozens of items at a time on a new device, so about one setup in several hundred had a

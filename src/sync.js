@@ -273,6 +273,7 @@ function renderSyncBar(){
   fitHeader();
 }
 function renderSyncPill(){
+  if(typeof renderStatus==="function")renderStatus();
   const el=$("#syncpill"); if(!el)return;
   el.textContent=tokenBad?"Token expired":badFile?"Can't read":conflict?"Busy":
     dirty?"Saving…":S.gh.last?"Synced "+S.gh.last.slice(11,16):"Not synced";
