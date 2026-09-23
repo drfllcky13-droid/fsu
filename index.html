@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-selsk59cGqw+6SEgtUte1UsAdMeF9TxhaqfcEARfjRo='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-2jCA40O3TxY3hcut7zqFedoyQYYYl8/H5GDA914SpAU='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FSU</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -6242,8 +6242,9 @@ function appExtraClick9(e){
 /* ---------- reports and upkeep, round ten ----------
    report wording, auto-fill, photograph log, Word export, vector PDF, version stamp,
    vehicle check, part numbers, shift handover, service and calibration, help and change log. */
-const APP_VERSION="2026.09.27.1";
+const APP_VERSION="2026.09.28.1";
 const CHANGELOG=[
+  ["2026-09-28","Deletions are remembered for a year; a device away longer rejoins as new and holds back what only it has, under Settings › Automatic saving. A case package names any photograph it could not read, and Settings › This device checks photographs. A saved record that cannot be read is kept, not replaced, and can be downloaded."],
   ["2026-09-27","On a weak signal the app opens from the copy on the device after about three seconds and fetches the newer one behind; when a new version arrives that way, a note offers a Reload. With no connection, Scenes always opens as Scenes."],
   ["2026-09-26","Fixed: with FSU and Scenes both open, a save in one could stop the other with an error if the saved record was missing a part. The other app now tidies what it receives as it does when it opens."],
   ["2026-09-26","In Safari, when the app is not on the Home Screen and the browser has not agreed to keep its storage, a bar warns that Safari deletes everything after 7 days unopened and shows how to add it to the Home Screen (Apple devices only; other browsers are covered under Settings › This device). Settings › This device shows how full storage is, Home and Scenes warn at 70%, and closed cases already safe in an unchanged case package can be removed after a confirm that lists exactly what goes."],

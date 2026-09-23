@@ -98,6 +98,15 @@ Contains `items`, `comps`, `forms`, `fills`, `sketches`, `incidents`, `walls`, p
   where `h` is `caseFingerprint`, taken after the share sheet. Removal re-checks at the moment of
   removing. Keep those three conditions; a looser rule deletes case material that exists nowhere
   else.
+- A saved record that will not read is kept, not written over (since 2026.09.28.1): `keepBad`
+  in `core.js` stores its text as `van3.bad-<time>` (moving it if there is no room for a copy;
+  if even that fails, nothing is saved over it until it is downloaded), `#badbar` says so, and
+  Settings › This device lists kept copies with Download and Delete. The old `vaninv2`/`vaninv`
+  keys are removed once `van3` has read.
+- Settings › This device › Check photographs (`photoAudit` in `case-package.js`) lists
+  photographs no record uses and records whose photograph is missing; only the unused ones can be
+  deleted, and one an undo step refers to counts as in use. A case package records any photograph
+  it could not read in `missingPhotos` and names it when it is saved.
 - Safari, and every browser on an iPad or iPhone, deletes a site's storage after seven days
   without a visit unless it runs from the Home Screen. `claimStorage` asks for persistence on
   every start, and on Apple devices (`onApple()`), while the answer is no and the app is not
