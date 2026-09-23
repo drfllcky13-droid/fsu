@@ -296,6 +296,11 @@ document.addEventListener("click",e=>{
     let parsed=null;
     try{ parsed=JSON.parse(t) }catch(err){ return toast("That doesn't look like a backup file") }
     if(!parsed||!parsed.items)return toast("No items in that file");
+    if(ghOn()){const miss=missingFrom(parsed);
+      return askConfirm("Restore what is missing",
+        "Sync is on, so nothing on this device or any other is replaced or deleted. "+missingText(miss)+
+        " in that file are not on this device and will be added. Everything else in the file is already here and is left as it is.",
+        "Add them",false,()=>ingest(t,true))}
     const n=(parsed.comps||[]).length, m=(parsed.items||[]).length;
     return askConfirm("Replace everything",
       "Everything currently in the app is discarded and replaced by the "+m+" item"+(m===1?"":"s")+

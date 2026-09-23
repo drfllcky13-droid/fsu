@@ -600,6 +600,43 @@ test("a tombstone is dropped once it is far older than any device could be offli
   expect(state.data.items.map(i=>i.id).sort()).toEqual(["b","fresh"]);
 });
 
+/* ---------------- restoring a backup on a connected device ---------------- */
+
+test("restoring a backup while connected only adds what is missing and deletes nothing anywhere",async({page})=>{
+  const state={sha:"sha1",data:file([it("a","Gloves",3,"devB",{qty:1}),it("b","Swabs",3,"devB")])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  // since the backup was taken: one item edited, one added, on this and other devices
+  await page.evaluate(async()=>{
+    S.items.find(i=>i.id==="a").qty=7;
+    S.items.push({id:"new",name:"Added after the backup",qty:1,cat:"A",cls:"Consumable",loc:""});
+    save(); await ghPush(false)});
+  const backup=JSON.stringify({items:[
+      {id:"a",name:"Gloves",qty:1,cat:"A",cls:"Consumable",loc:"",_v:1,_d:"old"},
+      {id:"gone",name:"Only in the backup",qty:2,cat:"A",cls:"Consumable",loc:""}],
+    comps:[{code:"Z9",desc:"From the backup",side:"",x:null,y:null,w:6,h:4}],forms:[],walls:{}});
+  const out=await page.evaluate(async t=>{
+    SET_SEC="restore"; view="data"; renderData();
+    const hint=document.querySelector("#v-data").textContent;
+    document.querySelector("#imp").value=t;
+    document.querySelector("#imprep").click();
+    const ask=document.querySelector("#sheetbody").textContent;
+    document.querySelector("#cfyes").click();
+    await ghPush(false);
+    return {hint,ask,ids:S.items.map(i=>i.id).sort(),qty:S.items.find(i=>i.id==="a").qty,
+      comps:S.comps.map(c=>c.code)};
+  },backup);
+  expect(out.hint,"the screen does not say what restore will do while sync is on").toContain("only adds");
+  expect(out.ask).toContain("1 item");
+  expect(out.ids,"the restore deleted or failed to add").toEqual(["a","b","gone","new"]);
+  expect(out.qty,"the restore put an old value over a newer edit").toBe(7);
+  expect(out.comps).toContain("Z9");
+  const up=state.data.items.filter(i=>!i._x).map(i=>i.id).sort();
+  expect(up,"the restore deleted something on every other device").toEqual(["a","b","gone","new"]);
+  expect(state.data.items.find(i=>i.id==="a").qty).toBe(7);
+  expect(state.data.items.filter(i=>i._x).length,"the restore sent tombstones").toBe(0);
+});
+
 /* ---------------- storage that refuses to keep anything ---------------- */
 
 test("sync still works when the device refuses to write to storage",async({page})=>{
