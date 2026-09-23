@@ -41,7 +41,7 @@ const save=()=>{store.set(S);if(typeof queuePush==='function')queuePush()};
 const saveLocal=()=>store.set(S);
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const n=v=>+v||0;
 const catName=c=>(CATS.find(x=>x[0]===c)||["","Uncategorised"])[1];
 ICONS.gear="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z";
@@ -121,3 +121,163 @@ window.addEventListener("storage",ev=>{
 const today=()=>localISO(new Date());
 
 const compassOf=r=>["N","NE","E","SE","S","SW","W","NW"][Math.round((((+r||0)%360)+360)%360/45)%8];
+
+/* ---------- data from outside the device ----------
+   A synced file, a restored backup and a case package are written somewhere else, and what is
+   in them ends up in this page's markup: ids in attributes, geometry in style, images in src,
+   links in href. Every record is checked on the way in. One that cannot be made safe is left
+   out, one that can is repaired, and either way it is listed under Settings › Recent errors.
+   One bad record never stops the rest from arriving. */
+const okId=v=>(typeof v==="string"||typeof v==="number")&&/^[\w-]{1,64}$/.test(String(v));
+const okImg=v=>typeof v==="string"&&/^data:image\/(png|jpe?g|gif|webp|bmp);base64,[A-Za-z0-9+/=\s]*$/i.test(v);
+const okUrl=v=>typeof v==="string"&&/^https?:\/\/[^\s"'<>`]+$/i.test(v.trim());
+// a number, or a string that is one; anything else is null
+const toNum=v=>(typeof v==="number"&&isFinite(v))?v:(typeof v==="string"&&v.trim()!==""&&isFinite(+v))?+v:null;
+const shortVal=v=>String(typeof v==="string"?v:JSON.stringify(v)).slice(0,40);
+// listed once: a synced file is read again at every sync and would otherwise fill the list
+function noteBad(m){
+  try{ m=String(m).slice(0,300); S.errors=Array.isArray(S.errors)?S.errors:[];
+    if(S.errors.some(e=>e&&e.m===m))return false;
+    S.errors=S.errors.slice(-19);
+    S.errors.push({t:new Date().toISOString(),m,v:typeof view==="string"?view:""});
+    return true }catch(_){return false}
+}
+function makeNote(src){
+  const N={n:0,fresh:0,note(m){N.n++; if(noteBad("From "+src+": "+m))N.fresh++}};
+  return N;
+}
+const tellBad=N=>N.n?" "+N.n+" unsafe value"+(N.n===1?" was":"s were")+" left out or repaired; Settings › Recent errors lists "+(N.n===1?"it":"them")+".":"";
+function cleanList(a,fn,N){
+  return (Array.isArray(a)?a:[]).map(r=>{
+    if(!r||typeof r!=="object")return null;
+    try{return fn(r,N)}catch(e){N.note("a record that could not be read was left out");return null}
+  }).filter(Boolean);
+}
+function cleanLinks(r,N,what){
+  if(r.links==null)return;
+  const keep=Array.isArray(r.links)?r.links.filter(l=>l&&okUrl(l.url)):[];
+  if(!Array.isArray(r.links)||keep.length!==r.links.length)
+    N.note("a link on "+what+" that was not a web address was removed");
+  r.links=keep;
+}
+function cleanItem(r,N){
+  if(!okId(r.id)){N.note("an item with an unsafe id "+shortVal(r.id)+" was left out");return null}
+  if(r._x)return r;                                   // a tombstone draws nothing
+  cleanLinks(r,N,"item "+shortVal(r.name||r.id));
+  if(r.cert!=null&&r.cert!==""&&!okUrl(r.cert)){
+    N.note("the certificate link on item "+shortVal(r.name||r.id)+" was not a web address and was removed");delete r.cert}
+  if(Array.isArray(r.rel))r.rel=r.rel.filter(okId); else if(r.rel!=null)r.rel=[];
+  return r;
+}
+function cleanComp(r,N){
+  if(!okId(r.code)){N.note("a compartment with an unsafe code "+shortVal(r.code)+" was left out");return null}
+  if(r._x)return r;
+  let fixed=0;
+  ["x","y"].forEach(k=>{ if(r[k]==null)return; const v=toNum(r[k]); if(v===null)fixed++; r[k]=v });
+  if(r.x==null||r.y==null){r.x=null;r.y=null}
+  ["w","h"].forEach(k=>{ const v=toNum(r[k]); if(v===null||v<=0){ if(r[k]!=null)fixed++; r[k]=k==="w"?6:4 } else r[k]=v });
+  if(fixed)N.note("compartment "+r.code+": a size or position that was not a number was reset");
+  return r;
+}
+function cleanForm(r,N){
+  if(!okId(r.id)){N.note("a form with an unsafe id "+shortVal(r.id)+" was left out");return null}
+  if(r._x)return r;
+  if(r.fields!=null&&!Array.isArray(r.fields))r.fields=[];
+  if((r.fields||[]).some(f=>!f||!okId(f.id))){
+    N.note("form "+shortVal(r.name||r.id)+" has a field with an unsafe id and was left out");return null}
+  (r.fields||[]).forEach(f=>{
+    if(typeof FTYPES!=="undefined"&&!FTYPES.includes(f.type))f.type="text";
+    if(f.cols!=null)f.cols=Array.isArray(f.cols)?f.cols.map(String):null});
+  cleanLinks(r,N,"form "+shortVal(r.name||r.id));
+  return r;
+}
+function cleanWalls(w,N){
+  if(!w||typeof w!=="object"||Array.isArray(w)){N.note("the wall layout could not be read and was not used");return null}
+  const out={};
+  for(const side of Object.keys(w)){
+    const v=w[side]||{}, c=toNum(v.cols), r=toNum(v.rows);
+    if(!(c>0&&c<=1000&&r>0&&r<=1000)){N.note("the wall layout has a size that is not a number and was not used");return null}
+    out[side]=Object.assign({},v,{cols:Math.round(c),rows:Math.round(r)});
+  }
+  return out;
+}
+// items, compartments, forms and walls: the synced file and a backup
+function cleanVan(o,src){
+  const N=makeNote(src);
+  o.items=cleanList(o.items,cleanItem,N);
+  o.comps=cleanList(o.comps,cleanComp,N);
+  o.forms=cleanList(o.forms,cleanForm,N);
+  if(o.walls!=null){const w=cleanWalls(o.walls,N); if(w)o.walls=w; else delete o.walls}
+  return N;
+}
+// a sketch's own parts: object and layer ids, references, geometry, the backdrop, the scale.
+// Also run on stored sketches before they are drawn (repairSketch), so it must be harmless twice.
+function cleanSketchParts(sk,N){
+  let fixed=0;
+  if(sk.incidentId!=null&&!okId(sk.incidentId)){delete sk.incidentId;fixed++}
+  const ren={};
+  if(Array.isArray(sk.layers))
+    sk.layers=sk.layers.filter(L=>L&&typeof L==="object").map(L=>{
+      if(!okId(L.id)){const id=newId(); ren[String(L.id)]=id; L.id=id; fixed++} return L});
+  else if(sk.layers!=null){sk.layers=[];fixed++}
+  (Array.isArray(sk.objs)?sk.objs:[]).forEach(o=>{
+    if(!o||typeof o!=="object")return;
+    if(!okId(o.id)){o.id=newId();fixed++}
+    if(o.lay!=null&&!okId(o.lay)){ if(ren[String(o.lay)])o.lay=ren[String(o.lay)]; else delete o.lay; fixed++ }
+    if(o.photoId!=null&&!okId(o.photoId)){delete o.photoId;fixed++}
+    // a measurement names its fixed points as "<object id>:<point>", e.g. "k3x9:c" or "k3x9:tl"
+    const okRef=v=>typeof v==="string"&&/^[\w-]{1,64}:[\w-]{1,8}$/.test(v);
+    if(o.meas&&typeof o.meas==="object"&&((o.meas.a!=null&&!okRef(o.meas.a))||(o.meas.b!=null&&!okRef(o.meas.b)))){delete o.meas;fixed++}
+    ["x","y","w","h","r"].forEach(k=>{ if(o[k]==null)return; const v=toNum(o[k]); if(v===null){delete o[k];fixed++} else o[k]=v });
+    if(Array.isArray(o.pts)){
+      if(!o.pts.every(p=>Array.isArray(p)&&toNum(p[0])!==null&&toNum(p[1])!==null)){delete o.pts;fixed++}
+      else if(o.pts.some(p=>typeof p[0]!=="number"||typeof p[1]!=="number"))
+        o.pts=o.pts.map(p=>[toNum(p[0]),toNum(p[1])].concat(p.slice(2)));
+    }
+  });
+  const b=sk.bg;
+  if(b!=null){
+    if(typeof b!=="object"){delete sk.bg;fixed++}
+    else {
+      if(b.data!=null&&!okImg(b.data)){delete b.data;fixed++}
+      if(b.imgId!=null&&!okId(b.imgId)){delete b.imgId;fixed++}
+      ["x","y","w","h","op","br","sa"].forEach(k=>{ if(b[k]==null)return; const v=toNum(b[k]); if(v===null){delete b[k];fixed++} else b[k]=v });
+      if(!b.data&&!b.imgId)delete sk.bg;
+    }
+  }
+  if(sk.scale!=null&&(typeof sk.scale!=="object"||!(toNum(sk.scale.px)>0)||!(toNum(sk.scale.real)>0))){delete sk.scale;fixed++}
+  else if(sk.scale){sk.scale.px=toNum(sk.scale.px);sk.scale.real=toNum(sk.scale.real)}
+  if(fixed)N.note("sketch "+shortVal(sk.caseNo||sk.id)+": "+fixed+" unsafe value"+(fixed===1?"":"s")+" repaired");
+  return fixed;
+}
+function cleanSketch(sk,N){
+  if(!okId(sk.id)){N.note("a sketch with an unsafe id "+shortVal(sk.id)+" was left out");return null}
+  cleanSketchParts(sk,N);
+  return sk;
+}
+// incidents, filled forms, sketches, forms and photographs: a case package
+function cleanCase(pkg,src){
+  const N=makeNote(src);
+  pkg.incidents=cleanList(pkg.incidents,(r,N)=>{
+    if(!okId(r.id)){N.note("an incident with an unsafe id "+shortVal(r.id)+" was left out");return null}
+    if(r.plan!=null&&!Array.isArray(r.plan))r.plan=[];
+    return r},N);
+  pkg.fills=cleanList(pkg.fills,(r,N)=>{
+    if(!okId(r.id)||(r.formId!=null&&!okId(r.formId))||(r.incidentId!=null&&!okId(r.incidentId))){
+      N.note("a filled form with an unsafe id "+shortVal(r.id)+" was left out");return null}
+    if(!r.values||typeof r.values!=="object")r.values={};
+    return r},N);
+  pkg.sketches=cleanList(pkg.sketches,cleanSketch,N);
+  pkg.forms=cleanList(pkg.forms,cleanForm,N);
+  const src2=pkg.photos&&typeof pkg.photos==="object"?pkg.photos:{}, ph={};
+  Object.keys(src2).forEach(id=>{
+    const d=src2[id];
+    if(!okId(id)){N.note("a photograph with an unsafe id "+shortVal(id)+" was left out");return}
+    if(!d||!okImg(d.data)){N.note("photograph "+id+" was not an image and was left out");return}
+    const w=toNum(d.w), hh=toNum(d.hh);
+    if(w===null||hh===null)N.note("photograph "+id+": a size that was not a number was reset");
+    ph[id]=Object.assign({},d,{w:w===null?0:w,hh:hh===null?0:hh});
+  });
+  pkg.photos=ph;
+  return N;
+}

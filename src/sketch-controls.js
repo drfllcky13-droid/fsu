@@ -98,7 +98,7 @@ document.addEventListener("click",e=>{
         <button class="btn sec" id="ombck" style="max-width:none"${lk||i<=0?" disabled":""}>Send back</button>
         ${ls.length>1?`<label class="fld" style="margin-top:6px"><span>Move to layer</span>
           <select id="ommove"${lk?" disabled":""}>${ls.map(L=>
-            `<option value="${L.id}"${(o.lay||ls[0].id)===L.id?" selected":""}>${esc(L.name)}</option>`).join("")}
+            `<option value="${esc(L.id)}"${(o.lay||ls[0].id)===L.id?" selected":""}>${esc(L.name)}</option>`).join("")}
           </select></label>`:""}
         <button class="btn sec" id="omdel" style="max-width:none;color:var(--red);border-color:var(--red)"${lk?" disabled":""}>Delete</button>
         <button class="btn sec" id="omx" style="max-width:none">Cancel</button></div>`);

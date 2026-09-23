@@ -203,15 +203,15 @@ function objSVGRaw(o,sel){
   // a locked layer is part of the picture: nothing to grab, nothing drawn round it
   const locked=skNow?layerLocked(skNow,o):false;
   const live=sel&&!locked;
-  return `<g data-obj="${o.id}" style="--kc:${inkHex(o.ink)}"
+  return `<g data-obj="${esc(o.id)}" style="--kc:${inkHex(o.ink)}"
     ${locked?'pointer-events="none"':""}
     transform="translate(${o.x},${o.y}) rotate(${o.r||0} ${o.w/2} ${o.h/2})">
     ${locked?"":`<rect width="${o.w}" height="${o.h}" fill="transparent"/>`}
     ${inner}${num}${tag}
     ${live?`<rect width="${o.w}" height="${o.h}" class="k-sel"/>
       ${o.lockR?"":`<line x1="${o.w/2}" y1="0" x2="${o.w/2}" y2="${-hs*.9}" class="k-rotstem"/>`}
-      ${o.lockR?"":`<circle data-rot="${o.id}" cx="${o.w/2}" cy="${-hs}" r="${hs/2}" class="k-rot"/>`}
-      <rect data-handle="${o.id}" x="${o.w-hs/2}" y="${o.h-hs/2}" width="${hs}" height="${hs}" class="k-handle"/>`:""}
+      ${o.lockR?"":`<circle data-rot="${esc(o.id)}" cx="${o.w/2}" cy="${-hs}" r="${hs/2}" class="k-rot"/>`}
+      <rect data-handle="${esc(o.id)}" x="${o.w-hs/2}" y="${o.h-hs/2}" width="${hs}" height="${hs}" class="k-handle"/>`:""}
     ${live&&o.t==="poly"?polyHandles(o):""}
   </g>`;
 }
@@ -264,6 +264,8 @@ function bgSVG(sk){
   if(!b)return "";
   const src=b.data||(b.imgId?BGMEM[b.imgId]:null);
   if(!src){ if(b.imgId)bgLoad(b.imgId); return "" }
+  if(!okImg(src))return "";                        // only an image, and only as an attribute value
+  const num=(v,d)=>{const x=toNum(v); return x===null?d:x};
   const br=(b.br==null?1:+b.br), sa=(b.sa==null?1:+b.sa);
   const needs=Math.abs(br-1)>0.01||Math.abs(sa-1)>0.01;
   const fid="bgf_"+(sk.id||"x").replace(/[^a-z0-9]/gi,"");
@@ -273,9 +275,9 @@ function bgSVG(sk){
         <feFuncG type="linear" slope="${br.toFixed(2)}"/>
         <feFuncB type="linear" slope="${br.toFixed(2)}"/></feComponentTransfer>
     </filter>`:"";
-  return `${filt}<image href="${src}" x="${b.x||0}" y="${b.y||0}"
-    width="${b.w||pageW(sk)}" height="${b.h||pageH(sk)}"
-    opacity="${b.op==null?0.55:b.op}" preserveAspectRatio="none"
+  return `${filt}<image href="${esc(src)}" x="${num(b.x,0)}" y="${num(b.y,0)}"
+    width="${num(b.w,0)||pageW(sk)}" height="${num(b.h,0)||pageH(sk)}"
+    opacity="${num(b.op,0.55)}" preserveAspectRatio="none"
     ${needs?`filter="url(#${fid})"`:""}/>`;
 }
 // a printed scale bar, so the reader can measure off the page
@@ -740,12 +742,12 @@ function objsetFloat(sk,sel){
           <button class="osclose" id="osx" aria-label="Close">&#215;</button></div>
         ${layersOf(sk).length>1?`<label class="fld"><span>Layer</span>
           <select id="olay">${layersOf(sk).map(L=>
-            `<option value="${L.id}"${(sel.lay||layersOf(sk)[0].id)===L.id?" selected":""}>${esc(L.name)}</option>`).join("")}
+            `<option value="${esc(L.id)}"${(sel.lay||layersOf(sk)[0].id)===L.id?" selected":""}>${esc(L.name)}</option>`).join("")}
           </select></label>`:""}
         <div class="osgrid">
           ${(sel.t==="marker"||sel.t==="photopoint")?`<label class="fld osnum"><span>Number</span>
             <input type="text" id="onum" inputmode="numeric" value="${esc(sel.n||"")}"></label>
-            <button class="numnext" data-onext="${sel.id}">${sel.n?"Renumber":"Next number"}</button>`:""}
+            <button class="numnext" data-onext="${esc(sel.id)}">${sel.n?"Renumber":"Next number"}</button>`:""}
           <label class="fld osname"><span>${sel.t==="marker"?"Name it — prints on the sketch and in the legend"
             :sel.t==="legend"?"Name it (not shown on the sketch)":"Name it — prints on the sketch"}</span>
             <input type="text" id="oname" value="${esc(sel.label||"")}"
@@ -757,16 +759,16 @@ function objsetFloat(sk,sel){
             style="background:${hex}"></button>`).join("")}</div>
         ${sizeRow(sel,sk)}
         ${sel.t==="photopoint"?`<div class="objbar" style="margin-top:10px">
-          <button data-ophoto="${sel.id}">${sel.photoId?"Change photograph":"Attach photograph"}</button>
-          ${sel.photoId?`<button data-ophotox="${sel.id}">Remove</button>`:""}</div>
+          <button data-ophoto="${esc(sel.id)}">${sel.photoId?"Change photograph":"Attach photograph"}</button>
+          ${sel.photoId?`<button data-ophotox="${esc(sel.id)}">Remove</button>`:""}</div>
           <div id="photoprev"></div>`:""}
         <div class="objbar">
-          <button data-orotlock="${sel.id}"${sel.lockR?' class="on"':""}>${sel.lockR?"Rotation locked":"Lock rotation"}</button>
-          ${sel.lockR?"":`<button data-orot="${sel.id}">Rotate 15&#176;</button>
-          <button data-orot0="${sel.id}">Straighten</button>`}
-          <button data-odup="${sel.id}">Duplicate</button>
-          <button data-ofwd="${sel.id}">Front</button>
-          <button data-odel="${sel.id}" class="danger">Delete</button>
+          <button data-orotlock="${esc(sel.id)}"${sel.lockR?' class="on"':""}>${sel.lockR?"Rotation locked":"Lock rotation"}</button>
+          ${sel.lockR?"":`<button data-orot="${esc(sel.id)}">Rotate 15&#176;</button>
+          <button data-orot0="${esc(sel.id)}">Straighten</button>`}
+          <button data-odup="${esc(sel.id)}">Duplicate</button>
+          <button data-ofwd="${esc(sel.id)}">Front</button>
+          <button data-odel="${esc(sel.id)}" class="danger">Delete</button>
         </div>
         <p class="hint" style="margin:8px 0 0">Drag to move, corner to ${LOCKED.has(sel.t)?"scale":"resize"}, ${sel.lockR?"rotation is locked so it cannot turn by accident.":"the circle above it to rotate. Hold shift while rotating to snap to 15&#176;. Lock rotation keeps a placed object square."}</p>
       </div>`
@@ -837,11 +839,11 @@ function renderSketch(){
           .filter(x=>(x.o.lay||ls[0].id)===L.id).reverse();
         return `<div class="laygrp${curLayer===L.id?" cur":""}">
           <div class="layhead">
-            <button class="laypick" data-laysel="${L.id}">
+            <button class="laypick" data-laysel="${esc(L.id)}">
               <span class="ln2">${esc(L.name)}</span>
               <span class="laycount">${mine.length} object${mine.length===1?"":"s"}${
                 curLayer===L.id?" \u00b7 drawing here":""}</span></button>
-            <button class="laybig${L.locked?" lockon":""}" data-laylock="${L.id}"
+            <button class="laybig${L.locked?" lockon":""}" data-laylock="${esc(L.id)}"
               aria-label="${L.locked?"Unlock layer":"Lock layer"}">
               <svg viewBox="0 0 24 24" class="lki" fill="none" stroke="currentColor"
                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -849,21 +851,21 @@ function renderSketch(){
                 ${L.locked?`<path d="M8 11V7a4 4 0 0 1 8 0v4"/>`
                           :`<path d="M8 11V7a4 4 0 0 1 7.5-2"/>`}
               </svg></button>
-            <button class="laybig" data-laymore="${L.id}" aria-label="Layer options">&#8943;</button>
+            <button class="laybig" data-laymore="${esc(L.id)}" aria-label="Layer options">&#8943;</button>
           </div>
           ${mine.length?mine.map(({o,i})=>
             `<div class="lay${o.id===selObj?" on":""}${L.locked?" locked":""}">
-              <button class="laypick" data-osel="${o.id}">
+              <button class="laypick" data-osel="${esc(o.id)}">
                 <span class="lp" style="--kc:${inkUI(o.ink)}">${palPreview(o.t)}</span>
                 <span class="ln2">${esc(o.label||SHAPENAME(o.t))}${(o.t==="marker"||o.t==="photopoint")&&o.n?" "+esc(o.n):""}</span>
               </button>
-              <button class="laybig" data-omore="${o.id}" aria-label="Object options">&#8943;</button>
+              <button class="laybig" data-omore="${esc(o.id)}" aria-label="Object options">&#8943;</button>
             </div>`).join("")
             :`<p class="hint" style="margin:6px 0 10px 12px">Empty. Tap the name, then add objects.</p>`}
         </div>`}).join("")+`</div>
         <p class="hint">Tap a layer name to draw into it. Top of each list is the front.</p>`})()}
     ${legend.length?`<div class="sect">Legend</div><div class="rows">`+legend.map(o=>
-      `<button class="row" data-osel="${o.id}">
+      `<button class="row" data-osel="${esc(o.id)}">
         <span><span class="code">${o.t==="marker"&&o.n?esc(o.n)+" · ":""}${esc(o.label)}</span>
         <span class="desc">${esc(SHAPENAME(o.t))}</span></span>
         <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`
@@ -1046,9 +1048,9 @@ function scaleSheet(sk){
       gets its measurements from that.</p>
     <div class="two">
       <label class="fld"><span>Drawn length</span>
-        <input type="text" id="scpx" inputmode="decimal" value="${s.px}"></label>
+        <input type="text" id="scpx" inputmode="decimal" value="${esc(s.px)}"></label>
       <label class="fld"><span>Real length</span>
-        <input type="text" id="screal" inputmode="decimal" value="${s.real}"></label></div>
+        <input type="text" id="screal" inputmode="decimal" value="${esc(s.real)}"></label></div>
     <label class="fld"><span>Units</span><select id="scunit">
       ${["ft","m","in","cm"].map(u=>`<option${u===(s.unit||"ft")?" selected":""}>${u}</option>`).join("")}
     </select></label>
@@ -1139,8 +1141,8 @@ function photoSheet(o){
     <button class="btn sec" id="phx" style="max-width:none">Cancel</button>`);
   const show=id=>{ if(!id)return;
     photoGet(id).then(d=>{const el=$("#phprev");
-      if(el&&d)el.innerHTML=`<img src="${d.data}" style="width:100%;border-radius:10px">
-        <p class="hint" style="margin:6px 0 0">${d.w}&times;${d.hh} reference copy</p>`}).catch(()=>{})};
+      if(el&&d&&okImg(d.data))el.innerHTML=`<img src="${esc(d.data)}" style="width:100%;border-radius:10px">
+        <p class="hint" style="margin:6px 0 0">${+d.w||0}&times;${+d.hh||0} reference copy</p>`}).catch(()=>{})};
   show(o.photoId);
   $("#phx").onclick=closeSheet;
   const del=$("#phdel");

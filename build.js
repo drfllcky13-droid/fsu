@@ -20,7 +20,20 @@ const TARGETS={
     "init-scenes.js","tail.html"],
 };
 
-const build=name=>TARGETS[name].map(f=>fs.readFileSync(path.join(__dirname,"src",f),"utf8")).join("");
+// The Content-Security-Policy in the head allows exactly one inline script: this page's own,
+// named by its SHA-256. Anything else that gets into the markup (an injected <script>, an
+// onerror= attribute) is refused by the browser. The hash is of the text between <script> and
+// </script> exactly as served, so it is taken after the parts are joined.
+const crypto=require("crypto");
+function withHash(html){
+  const a=html.indexOf("<script>"), b=html.indexOf("</script>",a);
+  if(a<0||b<0||html.indexOf("<script",a+1)!==-1&&html.indexOf("<script",a+1)<b)throw new Error("expected one inline <script>");
+  if(html.indexOf("<script",b)!==-1)throw new Error("expected one inline <script>");
+  const h=crypto.createHash("sha256").update(html.slice(a+8,b),"utf8").digest("base64");
+  if(html.split("__FSU_SCRIPT_HASH__").length!==2)throw new Error("expected one CSP hash placeholder");
+  return html.replace("__FSU_SCRIPT_HASH__",h);
+}
+const build=name=>withHash(TARGETS[name].map(f=>fs.readFileSync(path.join(__dirname,"src",f),"utf8")).join(""));
 
 if(process.argv.includes("--check")){
   let bad=0;

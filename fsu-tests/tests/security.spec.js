@@ -196,3 +196,124 @@ test("the token is not on the settings screen, in text or in an attribute",async
   expect(hits).toEqual([]);
   expect(thrown).toEqual([]);
 });
+
+/* ---- data from outside the device ----
+   A synced file, a restored backup and a case package are written somewhere else. What is in
+   them lands in markup: ids in attributes, geometry in style, images in src, links in href.
+   Each carries a script in an id, a URL and a geometry field; nothing may run, the good records
+   must still arrive, and what was turned away or repaired is listed under Recent errors. */
+const RUN="window.__ran=(window.__ran||0)+1";
+const XID='x"><img src=x onerror="'+RUN+'">';
+const XURL="javascript:"+RUN;
+const XGEO='2"><img src=x onerror="'+RUN+'"><b x="';
+const hostileVan=()=>({v:2,lam:5,
+  items:[{id:"good1",name:"Gloves",qty:1,cat:"A",cls:"Consumable",loc:"1Z1",uses:[],rel:[],links:[]},
+    {id:XID,name:"Bad id",qty:1,cat:"A",cls:"Consumable",loc:"1Z1",uses:[],rel:[],links:[]},
+    {id:"linky",name:"Manual",qty:1,cat:"A",cls:"Durable",loc:"1Z2",uses:[],rel:[],
+      links:[{label:"Manual",url:XURL},{label:"Real",url:"https://example.com/m.pdf"}],cert:XURL}],
+  comps:[{code:"1Z1",desc:"Good",side:"Driver side",x:0,y:0,w:2,h:2},
+    {code:"1Z2",desc:"Bad size",side:"Driver side",x:2,y:0,w:XGEO,h:2}],
+  forms:[],walls:{"Driver side":{cols:24,rows:12},"Passenger side":{cols:24,rows:12},"Rear doors":{cols:24,rows:12}}});
+// draw every van view with the hostile records as the current ones, then let handlers fire
+async function drawVan(page){
+  await page.evaluate(()=>{
+    curItem="linky"; curComp="1Z2"; curBay="1";
+    for(const v of VIEWS.van){ try{ view=v; render() }catch(e){} }
+  });
+  await page.waitForTimeout(80);
+}
+const outcome=page=>page.evaluate(()=>({ran:window.__ran||0,
+  injected:document.querySelectorAll('img[src="x"]').length,
+  errors:(S.errors||[]).map(e=>e.m).join(" | ")}));
+
+test("a synced file carrying scripts runs nothing, and its good records still arrive",async({page})=>{
+  const thrown=watch(page);
+  const file=hostileVan();
+  await page.route(/api\.github\.com\/repos\//,r=>r.request().method()==="GET"
+    ?r.fulfill({status:200,contentType:"application/json",
+        body:JSON.stringify({sha:"s1",content:Buffer.from(JSON.stringify(file)).toString("base64"),encoding:"base64"})})
+    :r.fulfill({status:200,contentType:"application/json",body:JSON.stringify({content:{sha:"s2"}})}));
+  await open(page);
+  await page.evaluate(async()=>{
+    S.gh={owner:"unit",repo:"van-data",path:"data.json",token:"t",sha:"",last:""};
+    S.items=[]; S.comps=[]; saveLocal(); await ghPull(true)});
+  await drawVan(page);
+  const out=await outcome(page), got=await page.evaluate(()=>{const l=S.items.find(i=>i.id==="linky");
+    return {ids:S.items.map(i=>i.id).sort(),links:(l.links||[]).map(x=>x.url),cert:l.cert||"",
+      w:(S.comps.find(c=>c.code==="1Z2")||{}).w,
+      hrefs:[...document.querySelectorAll("a[href]")].map(a=>a.getAttribute("href")).filter(h=>/^javascript:/i.test(h))}});
+  expect(out.ran,"a script from the synced file ran").toBe(0);
+  expect(out.injected,"markup from the synced file got into the page").toBe(0);
+  expect(got.ids,"the good records did not all arrive, or the bad id got in").toEqual(["good1","linky"]);
+  expect(got.links).toEqual(["https://example.com/m.pdf"]);
+  expect(got.cert).toBe("");
+  expect(typeof got.w).toBe("number");
+  expect(got.hrefs).toEqual([]);
+  expect(out.errors,"nothing was noted under Recent errors").toMatch(/repo/i);
+  expect(thrown).toEqual([]);
+});
+
+test("a restored backup carrying scripts runs nothing, and its good records still arrive",async({page})=>{
+  const thrown=watch(page);
+  await open(page);
+  await page.evaluate(t=>{
+    SET_SEC="restore"; view="data"; renderData();
+    document.querySelector("#imp").value=t;
+    document.querySelector("#imprep").click();
+    document.querySelector("#cfyes").click();
+  },JSON.stringify(hostileVan()));
+  await drawVan(page);
+  const out=await outcome(page), got=await page.evaluate(()=>{const l=S.items.find(i=>i.id==="linky")||{};
+    return {ids:S.items.map(i=>i.id).sort(),links:(l.links||[]).map(x=>x.url),cert:l.cert||"",
+      w:(S.comps.find(c=>c.code==="1Z2")||{}).w}});
+  expect(out.ran,"a script from the backup ran").toBe(0);
+  expect(out.injected,"markup from the backup got into the page").toBe(0);
+  expect(got.ids).toEqual(["good1","linky"]);
+  expect(got.links).toEqual(["https://example.com/m.pdf"]);
+  expect(got.cert).toBe("");
+  expect(typeof got.w).toBe("number");
+  expect(out.errors,"nothing was noted under Recent errors").toMatch(/backup/i);
+  expect(thrown).toEqual([]);
+});
+
+test("an imported case package carrying scripts runs nothing, and its good records still arrive",async({page})=>{
+  const thrown=watch(page);
+  await open(page,"scenes");
+  const pkg={fsuCase:1,version:"x",exported:"2026-09-24T10:00:00Z",
+    incidents:[{id:"inc1",caseNo:"26-0001",offence:"Burglary",plan:[]},{id:XID,caseNo:"26-0002",plan:[]}],
+    fills:[{id:XID,incidentId:"inc1",formId:"any",values:{}}],
+    sketches:[{id:"sk1",incidentId:"inc1",caseNo:"26-0001",v:4,layers:[{id:"L1",name:"Layer 1"}],
+      bg:{data:XURL,x:XGEO,y:0,w:100,h:100,op:XGEO},
+      objs:[{id:XID,t:"chair",x:10,y:10,w:20,h:20,r:0},
+            {id:"o2",t:"chair",x:XGEO,y:10,w:20,h:20,r:0},
+            {id:"o3",t:"photopt",x:40,y:40,w:20,h:20,r:0,photoId:"p1"}]}],
+    photos:{p1:{data:'x" onerror="'+RUN+'" y="',w:XGEO,hh:1},
+            p2:{data:"data:image/png;base64,iVBORw0KGgo=",w:1,hh:1}},
+    forms:[]};
+  await page.evaluate(async t=>{ await importCasePackage(t) },JSON.stringify(pkg));
+  await page.evaluate(async()=>{
+    curInc="inc1"; view="incident"; render();
+    curSketch="sk1"; view="sketch"; render();
+    const sk=S.sketches.find(s=>s.id==="sk1"), o=sk&&sk.objs.find(o=>o.photoId==="p1");
+    if(o)photoSheet(o);
+  });
+  await page.waitForTimeout(150);
+  const out=await outcome(page), got=await page.evaluate(async()=>{
+    const sk=S.sketches.find(s=>s.id==="sk1")||{objs:[]};
+    return {incs:S.incidents.map(i=>i.id).sort(),fills:S.fills.length,sketch:!!sk.id,
+      objIds:sk.objs.map(o=>o.id).filter(id=>!/^[\w-]{1,64}$/.test(id)),
+      xs:sk.objs.map(o=>typeof o.x),bg:JSON.stringify(sk.bg||null),
+      p1:!!(await photoGet("p1").catch(()=>null)),p2:!!(await photoGet("p2").catch(()=>null))}});
+  expect(out.ran,"a script from the case package ran").toBe(0);
+  expect(out.injected,"markup from the case package got into the page").toBe(0);
+  expect(got.incs,"the good incident did not arrive, or the bad id got in").toEqual(["inc1"]);
+  expect(got.fills).toBe(0);
+  expect(got.sketch).toBe(true);
+  expect(got.objIds,"an object kept an unsafe id").toEqual([]);
+  expect(got.xs).toEqual(["number","number","number"]);
+  expect(got.bg).not.toContain("javascript");
+  expect(got.p1,"a photograph that is not an image was stored").toBe(false);
+  expect(got.p2,"a good photograph was turned away").toBe(true);
+  expect(out.errors,"nothing was noted under Recent errors").toMatch(/case package/i);
+  expect(thrown).toEqual([]);
+});

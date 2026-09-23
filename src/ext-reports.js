@@ -1,8 +1,9 @@
 /* ---------- reports and upkeep, round ten ----------
    report wording, auto-fill, photograph log, Word export, vector PDF, version stamp,
    vehicle check, part numbers, shift handover, service and calibration, help and change log. */
-const APP_VERSION="2026.09.24.1";
+const APP_VERSION="2026.09.25.1";
 const CHANGELOG=[
+  ["2026-09-25","Anything that comes in from outside (automatic saving, a restored backup, a case package) is checked first: an entry that is not safe is left out or repaired, listed under Settings › Recent errors, and the rest still comes in. Both apps refuse to run anything that is not part of the app. Opening a case package over records that are already here and different now asks: Keep mine, Use the package's, or Keep both."],
   ["2026-09-24","Automatic saving: a change made while the previous one was still sending, or made offline, is no longer undone, and a delete in that moment no longer comes back. A device updating from the previous version keeps the changes it had not sent yet. Nothing is sent when nothing in the van changed, and a GitHub slow-down waits and carries on instead of saying the token expired. Backups hold the van only. Restoring while automatic saving is on only adds what is missing. Deleting an incident removes its sketches' undo history too."],
   ["2026-09-23","Design pass. FSU Home: a status strip instead of six tiles, the urgent list first, and one-time setup in its own panel. On a phone the header has a search icon and a gear for Settings. The save status stays beside the title (grey saved here, green synced, blue saving, amber offline, red not saving). Small text is a step larger. Scenes has its own violet colour and a new icon (an evidence marker), no side bar or tab bar, '+ New' and a gear in the header, and the Open and Closed tiles are the filter."],
   ["2026-09-05","Tapping a bin on the bay wall opens its items in a panel beside the wall on a wide screen, without moving the page. Full screen fills the screen again on an iPad."],
@@ -40,7 +41,7 @@ function snippetSheet(fieldId){
   const list=snippets();
   openSheet(`<h3>Insert wording</h3>
     <p class="hint" style="margin:0 0 12px">Tap a line to insert it at the cursor. Square brackets mark what to fill in. The library is under Settings › Report wording.</p>
-    <div class="rows">${list.map(s=>`<button class="row" data-snipins="${s.id}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
+    <div class="rows">${list.map(s=>`<button class="row" data-snipins="${esc(s.id)}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
     <button class="btn sec" id="snx" style="max-width:none;margin:12px 0 0">Cancel</button>`);
   $("#snx").onclick=closeSheet;
   $$("[data-snipins]").forEach(b=>b.onclick=()=>{
@@ -69,7 +70,7 @@ function snippetManage(){
   };
   openSheet(`<h3>Report wording</h3>
     <p class="hint" style="margin:0 0 12px">Standard sentences for the narrative report. Keep them in the unit's approved wording.</p>
-    <div class="rows">${list.map(s=>`<button class="row" data-snipedit="${s.id}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
+    <div class="rows">${list.map(s=>`<button class="row" data-snipedit="${esc(s.id)}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
     <button class="btn" id="snnew" style="max-width:none;margin:12px 0 0">Add wording</button>
     <button class="btn sec" id="snx2" style="max-width:none">Close</button>`);
   $("#snx2").onclick=closeSheet; $("#snnew").onclick=()=>edit(null);

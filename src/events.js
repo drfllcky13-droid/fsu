@@ -406,14 +406,14 @@ function paintJust(){
     +rows.map(i=>`<div class="justrow${i.dupOf?" dup":""}">
       <span class="jn">${esc(i.name)}${i.dupOf?`<span class="jdup">also in ${esc(i.dupOf)}</span>`:""}</span>
       <span class="jq">${esc(i.qty)}</span>
-      <button class="jx" data-item="${i.id}">Details</button>
-      <button class="jx" data-undo="${i.id}">Undo</button></div>`).join(""):"";
+      <button class="jx" data-item="${esc(i.id)}">Details</button>
+      <button class="jx" data-undo="${esc(i.id)}">Undo</button></div>`).join(""):"";
 }
 function refreshSweepList(){
   const here=live().filter(i=>i.loc===S.curLoc);
   const host=$("#sweeplist"); if(!host)return;
   host.innerHTML=here.length?`<div class="sect">In ${esc(S.curLoc)} — ${here.length}</div><div class="rows">`
-    +here.slice().reverse().map(i=>`<button class="row" data-item="${i.id}">
+    +here.slice().reverse().map(i=>`<button class="row" data-item="${esc(i.id)}">
       <span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span>
       <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:"";
 }

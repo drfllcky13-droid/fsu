@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-g7Yh+lCKpMnExlKSaNgOnHhJC7qF6Gp3qoMXzzGaP3M='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FSU</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1706,7 +1707,7 @@ const save=()=>{store.set(S);if(typeof queuePush==='function')queuePush()};
 const saveLocal=()=>store.set(S);
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const n=v=>+v||0;
 const catName=c=>(CATS.find(x=>x[0]===c)||["","Uncategorised"])[1];
 ICONS.gear="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z";
@@ -1786,6 +1787,166 @@ window.addEventListener("storage",ev=>{
 const today=()=>localISO(new Date());
 
 const compassOf=r=>["N","NE","E","SE","S","SW","W","NW"][Math.round((((+r||0)%360)+360)%360/45)%8];
+
+/* ---------- data from outside the device ----------
+   A synced file, a restored backup and a case package are written somewhere else, and what is
+   in them ends up in this page's markup: ids in attributes, geometry in style, images in src,
+   links in href. Every record is checked on the way in. One that cannot be made safe is left
+   out, one that can is repaired, and either way it is listed under Settings › Recent errors.
+   One bad record never stops the rest from arriving. */
+const okId=v=>(typeof v==="string"||typeof v==="number")&&/^[\w-]{1,64}$/.test(String(v));
+const okImg=v=>typeof v==="string"&&/^data:image\/(png|jpe?g|gif|webp|bmp);base64,[A-Za-z0-9+/=\s]*$/i.test(v);
+const okUrl=v=>typeof v==="string"&&/^https?:\/\/[^\s"'<>`]+$/i.test(v.trim());
+// a number, or a string that is one; anything else is null
+const toNum=v=>(typeof v==="number"&&isFinite(v))?v:(typeof v==="string"&&v.trim()!==""&&isFinite(+v))?+v:null;
+const shortVal=v=>String(typeof v==="string"?v:JSON.stringify(v)).slice(0,40);
+// listed once: a synced file is read again at every sync and would otherwise fill the list
+function noteBad(m){
+  try{ m=String(m).slice(0,300); S.errors=Array.isArray(S.errors)?S.errors:[];
+    if(S.errors.some(e=>e&&e.m===m))return false;
+    S.errors=S.errors.slice(-19);
+    S.errors.push({t:new Date().toISOString(),m,v:typeof view==="string"?view:""});
+    return true }catch(_){return false}
+}
+function makeNote(src){
+  const N={n:0,fresh:0,note(m){N.n++; if(noteBad("From "+src+": "+m))N.fresh++}};
+  return N;
+}
+const tellBad=N=>N.n?" "+N.n+" unsafe value"+(N.n===1?" was":"s were")+" left out or repaired; Settings › Recent errors lists "+(N.n===1?"it":"them")+".":"";
+function cleanList(a,fn,N){
+  return (Array.isArray(a)?a:[]).map(r=>{
+    if(!r||typeof r!=="object")return null;
+    try{return fn(r,N)}catch(e){N.note("a record that could not be read was left out");return null}
+  }).filter(Boolean);
+}
+function cleanLinks(r,N,what){
+  if(r.links==null)return;
+  const keep=Array.isArray(r.links)?r.links.filter(l=>l&&okUrl(l.url)):[];
+  if(!Array.isArray(r.links)||keep.length!==r.links.length)
+    N.note("a link on "+what+" that was not a web address was removed");
+  r.links=keep;
+}
+function cleanItem(r,N){
+  if(!okId(r.id)){N.note("an item with an unsafe id "+shortVal(r.id)+" was left out");return null}
+  if(r._x)return r;                                   // a tombstone draws nothing
+  cleanLinks(r,N,"item "+shortVal(r.name||r.id));
+  if(r.cert!=null&&r.cert!==""&&!okUrl(r.cert)){
+    N.note("the certificate link on item "+shortVal(r.name||r.id)+" was not a web address and was removed");delete r.cert}
+  if(Array.isArray(r.rel))r.rel=r.rel.filter(okId); else if(r.rel!=null)r.rel=[];
+  return r;
+}
+function cleanComp(r,N){
+  if(!okId(r.code)){N.note("a compartment with an unsafe code "+shortVal(r.code)+" was left out");return null}
+  if(r._x)return r;
+  let fixed=0;
+  ["x","y"].forEach(k=>{ if(r[k]==null)return; const v=toNum(r[k]); if(v===null)fixed++; r[k]=v });
+  if(r.x==null||r.y==null){r.x=null;r.y=null}
+  ["w","h"].forEach(k=>{ const v=toNum(r[k]); if(v===null||v<=0){ if(r[k]!=null)fixed++; r[k]=k==="w"?6:4 } else r[k]=v });
+  if(fixed)N.note("compartment "+r.code+": a size or position that was not a number was reset");
+  return r;
+}
+function cleanForm(r,N){
+  if(!okId(r.id)){N.note("a form with an unsafe id "+shortVal(r.id)+" was left out");return null}
+  if(r._x)return r;
+  if(r.fields!=null&&!Array.isArray(r.fields))r.fields=[];
+  if((r.fields||[]).some(f=>!f||!okId(f.id))){
+    N.note("form "+shortVal(r.name||r.id)+" has a field with an unsafe id and was left out");return null}
+  (r.fields||[]).forEach(f=>{
+    if(typeof FTYPES!=="undefined"&&!FTYPES.includes(f.type))f.type="text";
+    if(f.cols!=null)f.cols=Array.isArray(f.cols)?f.cols.map(String):null});
+  cleanLinks(r,N,"form "+shortVal(r.name||r.id));
+  return r;
+}
+function cleanWalls(w,N){
+  if(!w||typeof w!=="object"||Array.isArray(w)){N.note("the wall layout could not be read and was not used");return null}
+  const out={};
+  for(const side of Object.keys(w)){
+    const v=w[side]||{}, c=toNum(v.cols), r=toNum(v.rows);
+    if(!(c>0&&c<=1000&&r>0&&r<=1000)){N.note("the wall layout has a size that is not a number and was not used");return null}
+    out[side]=Object.assign({},v,{cols:Math.round(c),rows:Math.round(r)});
+  }
+  return out;
+}
+// items, compartments, forms and walls: the synced file and a backup
+function cleanVan(o,src){
+  const N=makeNote(src);
+  o.items=cleanList(o.items,cleanItem,N);
+  o.comps=cleanList(o.comps,cleanComp,N);
+  o.forms=cleanList(o.forms,cleanForm,N);
+  if(o.walls!=null){const w=cleanWalls(o.walls,N); if(w)o.walls=w; else delete o.walls}
+  return N;
+}
+// a sketch's own parts: object and layer ids, references, geometry, the backdrop, the scale.
+// Also run on stored sketches before they are drawn (repairSketch), so it must be harmless twice.
+function cleanSketchParts(sk,N){
+  let fixed=0;
+  if(sk.incidentId!=null&&!okId(sk.incidentId)){delete sk.incidentId;fixed++}
+  const ren={};
+  if(Array.isArray(sk.layers))
+    sk.layers=sk.layers.filter(L=>L&&typeof L==="object").map(L=>{
+      if(!okId(L.id)){const id=newId(); ren[String(L.id)]=id; L.id=id; fixed++} return L});
+  else if(sk.layers!=null){sk.layers=[];fixed++}
+  (Array.isArray(sk.objs)?sk.objs:[]).forEach(o=>{
+    if(!o||typeof o!=="object")return;
+    if(!okId(o.id)){o.id=newId();fixed++}
+    if(o.lay!=null&&!okId(o.lay)){ if(ren[String(o.lay)])o.lay=ren[String(o.lay)]; else delete o.lay; fixed++ }
+    if(o.photoId!=null&&!okId(o.photoId)){delete o.photoId;fixed++}
+    // a measurement names its fixed points as "<object id>:<point>", e.g. "k3x9:c" or "k3x9:tl"
+    const okRef=v=>typeof v==="string"&&/^[\w-]{1,64}:[\w-]{1,8}$/.test(v);
+    if(o.meas&&typeof o.meas==="object"&&((o.meas.a!=null&&!okRef(o.meas.a))||(o.meas.b!=null&&!okRef(o.meas.b)))){delete o.meas;fixed++}
+    ["x","y","w","h","r"].forEach(k=>{ if(o[k]==null)return; const v=toNum(o[k]); if(v===null){delete o[k];fixed++} else o[k]=v });
+    if(Array.isArray(o.pts)){
+      if(!o.pts.every(p=>Array.isArray(p)&&toNum(p[0])!==null&&toNum(p[1])!==null)){delete o.pts;fixed++}
+      else if(o.pts.some(p=>typeof p[0]!=="number"||typeof p[1]!=="number"))
+        o.pts=o.pts.map(p=>[toNum(p[0]),toNum(p[1])].concat(p.slice(2)));
+    }
+  });
+  const b=sk.bg;
+  if(b!=null){
+    if(typeof b!=="object"){delete sk.bg;fixed++}
+    else {
+      if(b.data!=null&&!okImg(b.data)){delete b.data;fixed++}
+      if(b.imgId!=null&&!okId(b.imgId)){delete b.imgId;fixed++}
+      ["x","y","w","h","op","br","sa"].forEach(k=>{ if(b[k]==null)return; const v=toNum(b[k]); if(v===null){delete b[k];fixed++} else b[k]=v });
+      if(!b.data&&!b.imgId)delete sk.bg;
+    }
+  }
+  if(sk.scale!=null&&(typeof sk.scale!=="object"||!(toNum(sk.scale.px)>0)||!(toNum(sk.scale.real)>0))){delete sk.scale;fixed++}
+  else if(sk.scale){sk.scale.px=toNum(sk.scale.px);sk.scale.real=toNum(sk.scale.real)}
+  if(fixed)N.note("sketch "+shortVal(sk.caseNo||sk.id)+": "+fixed+" unsafe value"+(fixed===1?"":"s")+" repaired");
+  return fixed;
+}
+function cleanSketch(sk,N){
+  if(!okId(sk.id)){N.note("a sketch with an unsafe id "+shortVal(sk.id)+" was left out");return null}
+  cleanSketchParts(sk,N);
+  return sk;
+}
+// incidents, filled forms, sketches, forms and photographs: a case package
+function cleanCase(pkg,src){
+  const N=makeNote(src);
+  pkg.incidents=cleanList(pkg.incidents,(r,N)=>{
+    if(!okId(r.id)){N.note("an incident with an unsafe id "+shortVal(r.id)+" was left out");return null}
+    if(r.plan!=null&&!Array.isArray(r.plan))r.plan=[];
+    return r},N);
+  pkg.fills=cleanList(pkg.fills,(r,N)=>{
+    if(!okId(r.id)||(r.formId!=null&&!okId(r.formId))||(r.incidentId!=null&&!okId(r.incidentId))){
+      N.note("a filled form with an unsafe id "+shortVal(r.id)+" was left out");return null}
+    if(!r.values||typeof r.values!=="object")r.values={};
+    return r},N);
+  pkg.sketches=cleanList(pkg.sketches,cleanSketch,N);
+  pkg.forms=cleanList(pkg.forms,cleanForm,N);
+  const src2=pkg.photos&&typeof pkg.photos==="object"?pkg.photos:{}, ph={};
+  Object.keys(src2).forEach(id=>{
+    const d=src2[id];
+    if(!okId(id)){N.note("a photograph with an unsafe id "+shortVal(id)+" was left out");return}
+    if(!d||!okImg(d.data)){N.note("photograph "+id+" was not an image and was left out");return}
+    const w=toNum(d.w), hh=toNum(d.hh);
+    if(w===null||hh===null)N.note("photograph "+id+": a size that was not a number was reset");
+    ph[id]=Object.assign({},d,{w:w===null?0:w,hh:hh===null?0:hh});
+  });
+  pkg.photos=ph;
+  return N;
+}
 /* ---------- the furniture both apps share ----------
    the sheet and the confirm dialog, the photo store, handing the browser a file, theme and
    display mode, the rotation gate, and the claim on persistent storage ---------- */
@@ -2182,14 +2343,72 @@ async function exportCasePackage(scope,label){
 async function importCasePackage(text){
   let pkg; try{pkg=JSON.parse(text)}catch(e){return toast("That isn't a case package")}
   if(!pkg||pkg.fsuCase!==1)return toast("That isn't a case package");
+  const N=cleanCase(pkg,"a case package");
+  // A record or photograph already here with the same id is not replaced without asking: a
+  // package made yesterday would otherwise overwrite today's work without a word. New ones go
+  // straight in, identical ones are skipped, and ones that differ wait for a choice.
+  const same=(a,b)=>canon(a)===canon(b), clash=[];
   let n=0;
-  const merge=key=>{ S[key]=S[key]||[]; (pkg[key]||[]).forEach(r=>{ if(!r||!r.id)return;
-    const i=S[key].findIndex(x=>x.id===r.id); if(i>-1)S[key][i]=r; else S[key].push(r); n++ }) };
-  merge("incidents"); merge("fills"); merge("sketches");
+  ["incidents","fills","sketches"].forEach(key=>{ S[key]=S[key]||[];
+    (pkg[key]||[]).forEach(r=>{ const i=S[key].findIndex(x=>x.id===r.id);
+      if(i<0){S[key].push(r);n++} else if(!same(S[key][i],r))clash.push({key,r}) }) });
   S.forms=S.forms||[]; (pkg.forms||[]).forEach(f=>{ if(f&&f.id&&!S.forms.some(x=>x.id===f.id))S.forms.push(f) });
-  let np=0; for(const id in (pkg.photos||{})){ try{ await photoPut(id,pkg.photos[id]); np++ }catch(e){} }
+  const photos=pkg.photos||{}, pclash=[]; let np=0;
+  for(const id in photos){
+    let have=null; try{have=await photoGet(id)}catch(e){}
+    if(!have){ try{ await photoPut(id,photos[id]); np++ }catch(e){} }
+    else if(have.data!==photos[id].data)pclash.push(id);
+  }
   saveLocal(); render();
-  toast("Restored "+n+" record"+(n===1?"":"s")+" and "+np+" photograph"+(np===1?"":"s"));
+  const got="Restored "+n+" record"+(n===1?"":"s")+" and "+np+" photograph"+(np===1?"":"s")+".";
+  if(!clash.length&&!pclash.length)return toast(got+tellBad(N));
+  caseClashSheet(clash,pclash,photos,got+tellBad(N));
+}
+const clashLabel=c=>c.key==="incidents"?"Incident "+(c.r.caseNo||c.r.id)
+  :c.key==="sketches"?"Sketch for "+(c.r.caseNo||c.r.id)+(c.r.depicts?", "+c.r.depicts:"")
+  :"Filled form "+(c.r.formName||"")+(c.r.caseNo?" for "+c.r.caseNo:"");
+function caseClashSheet(clash,pclash,photos,got){
+  const rows=clash.map(clashLabel).concat(pclash.map(id=>"Photograph "+id)), k=rows.length;
+  openSheet(`<h3>Already on this device</h3>
+    <p style="margin:0 0 10px;color:var(--ink2);font-size:14.5px;line-height:1.5">${k===1?"One record":k+" records"} in the
+      package ${k===1?"is":"are"} already here with different contents. ${esc(got)} Nothing here has been changed.</p>
+    <ul style="margin:0 0 14px;padding-left:20px;font-size:14.5px;line-height:1.5">${rows.slice(0,12).map(t=>`<li>${esc(t)}</li>`).join("")}${k>12?`<li>and ${k-12} more</li>`:""}</ul>
+    <button class="btn" id="cpmine" style="max-width:none;margin:0">Keep mine</button>
+    <button class="btn sec" id="cptheirs" style="max-width:none">Use the package's</button>
+    <button class="btn sec" id="cpboth" style="max-width:none">Keep both</button>
+    <p class="hint" style="margin:10px 0 0">Keep both adds the package's version as a copy beside yours. Closing this keeps yours.</p>`);
+  const pick=async how=>{ closeSheet(); await settleClash(how,clash,pclash,photos);
+    toast(how==="mine"?"Kept the versions on this device"
+      :how==="theirs"?"Replaced "+k+" with the package's version"+(k===1?"":"s")
+      :"Kept both: the package's version"+(k===1?" was":"s were")+" added beside yours") };
+  $("#cpmine").onclick=()=>pick("mine");
+  $("#cptheirs").onclick=()=>pick("theirs");
+  $("#cpboth").onclick=()=>pick("both");
+}
+async function settleClash(how,clash,pclash,photos){
+  if(how==="theirs"){
+    clash.forEach(({key,r})=>{ const i=S[key].findIndex(x=>x.id===r.id); if(i>-1)S[key][i]=r;
+      // the undo history here belongs to the version being replaced
+      if(key==="sketches")try{localStorage.removeItem("fsu-undo-"+r.id)}catch(_){} });
+    for(const id of pclash){ try{ await photoPut(id,photos[id]) }catch(e){} }
+  } else if(how==="both"){
+    // copies get new ids; a copied fill or sketch follows its copied incident, and a copied
+    // sketch gets its own copy of a photograph that differs. A differing photograph that no
+    // copy uses stays as it is here, rather than becoming a copy nothing points at.
+    const ids={}, pids={};
+    pclash.forEach(id=>pids[id]=newId());
+    const used=new Set();
+    ["incidents","fills","sketches"].forEach(key=>clash.filter(c=>c.key===key).forEach(({r})=>{
+      const c=JSON.parse(JSON.stringify(r)); ids[r.id]=c.id=newId(); c.copyOf=r.id;
+      if(c.incidentId&&ids[c.incidentId])c.incidentId=ids[c.incidentId];
+      if(key==="sketches"){
+        (c.objs||[]).forEach(o=>{ if(o.photoId&&pids[o.photoId]){used.add(o.photoId);o.photoId=pids[o.photoId]} });
+        if(c.bg&&c.bg.imgId&&pids[c.bg.imgId]){used.add(c.bg.imgId);c.bg.imgId=pids[c.bg.imgId]}
+      }
+      S[key].push(c) }));
+    for(const id of pclash){ if(used.has(id))try{ await photoPut(pids[id],photos[id]) }catch(e){} }
+  }
+  saveLocal(); render();
 }
 /* ---------- sample van ---------- */
 const DEMO_COMPS=[
@@ -2403,7 +2622,7 @@ function baseOf(src){
   KINDS.forEach(k=>{const b=out[k]={};
     (Array.isArray(src[k])?src[k]:[]).forEach(r=>{
       if(!r||typeof r!=="object"||r._x)return;
-      const key=kKey(k,r); if(key!=null&&key!=="")b[key]=rhash(r)})});
+      const key=kKey(k,r); if(okId(key))b[key]=rhash(r)})});   // an unsafe key is never taken in
   if(src.walls)out.walls=rhash(src.walls);
   return out;
 }
@@ -2570,7 +2789,11 @@ async function ghGet(){
   // a file we cannot read is not a file we may write over: if the remote is intact and our
   // parse is what broke, overwriting it would take out every other device
   if(!o||typeof o!=="object"||!Array.isArray(o.items))return {sha:j.sha,bad:true};
-  return {sha:j.sha,data:o};
+  // the base is what the repo holds, taken before anything is repaired here: a repaired
+  // record then differs from it, is stamped, and the repair goes up to the file
+  const base=baseOf(o), N=cleanVan(o,"the repo");
+  if(N.fresh)toast("Something in the synced file was not safe to use and was left out or repaired. Settings › Recent errors lists it.");
+  return {sha:j.sha,data:o,base};
 }
 // A device that synced with the build before merging has no stamps, no base and no synced
 // flag, so it looked like a brand-new device and deferred to the repo: every edit it had not
@@ -2636,7 +2859,7 @@ async function ghPullNow(silent){
     const ahead=mergeRemote(g.data);
     S.gh.sha=g.sha; S.gh.last=new Date().toISOString();
     tokenBad=false; conflict=false; syncErr=""; retries=0;
-    S.base=baseOf(g.data); dirty=!!ahead; store.set(S);
+    S.base=g.base; dirty=!!ahead; store.set(S);
     renderSyncBar(); renderSyncPill(); render();
     if(ahead)queuePush(); else clearTimeout(pushT);
     if(!silent)toast("Synced — "+live().length+" items");
@@ -2666,7 +2889,7 @@ async function ghPushNow(force){
         // nothing here the repo lacks, and nothing new came down: a PUT would be an empty
         // commit. Every save used to make one, and enough of them trip GitHub's limits.
         if(!mergeRemote.ahead&&!mergeTook){
-          S.gh.sha=g.sha; S.gh.last=new Date().toISOString(); S.base=baseOf(g.data);
+          S.gh.sha=g.sha; S.gh.last=new Date().toISOString(); S.base=g.base;
           dirty=false; conflict=false; tokenBad=false; syncErr=""; retries=0; store.set(S);
           renderSyncBar(); renderSyncPill(); if(view==="data")renderData();
           return "ok";
@@ -2877,7 +3100,7 @@ function renderHome(){
     <p class="hint" style="margin:6px 0 0">One-time jobs. This panel goes away once they are done.</p></div></div>`:"";
   if(cs.length&&!unchk)rows.push(["","Count the stock",'data-countrun="1"',""]);
   const needRows=need.slice(0,10).map(i=>{const s=itemStatus(i);
-    return `<button class="act" data-item="${i.id}"><span>${esc(i.name)}<span class="lc" style="margin-left:6px">${esc(i.loc||"\u2014")}</span></span><span class="badge b-${s[0]}">${esc(s[1])}</span></button>`});
+    return `<button class="act" data-item="${esc(i.id)}"><span>${esc(i.name)}<span class="lc" style="margin-left:6px">${esc(i.loc||"\u2014")}</span></span><span class="badge b-${s[0]}">${esc(s[1])}</span></button>`});
   const feedCount=rows.length+needRows.length;
   const todo=`<div class="panel todo"><div class="ph2">Everything, most urgent first${feedCount?" \u2014 "+feedCount:""}</div><div class="pb">
     ${feedCount?rows.map(([k,t,attr,lc])=>`<button class="act${k?" "+k:""}" ${attr}>${k==="setup"?`<span class="tag">Setup</span>`:""}<span>${esc(t)}</span>${lc?`<span class="lc">${lc}</span>`:`<span class="chev">&#8250;</span>`}</button>`).join("")+needRows.join("")
@@ -2887,7 +3110,7 @@ function renderHome(){
 
   const pop=L.slice().sort((a,b)=>((b.fav?1e6:0)+(b.uses||[]).length)-((a.fav?1e6:0)+(a.uses||[]).length)).slice(0,3);
   const quick=pop.length?`<div class="panel"><div class="ph2">Quick find</div><div class="pb"><div class="qf">${pop.map(i=>
-      `<button data-item="${i.id}"><span class="nm">${esc(i.name)}</span><span class="lc${i.loc?"":" np"}">${esc(i.loc||"Not placed")}</span></button>`).join("")}</div>
+      `<button data-item="${esc(i.id)}"><span class="nm">${esc(i.name)}</span><span class="lc${i.loc?"":" np"}">${esc(i.loc||"Not placed")}</span></button>`).join("")}</div>
       <p class="hint" style="margin:8px 0 0">Star an item and it appears here.</p></div></div>`:"";
 
   $("#v-home").innerHTML=head+tiles+todo+setupPanel+`<div class="dash2">
@@ -3002,7 +3225,7 @@ function renderBay(){
       <div class="bayplan" id="bayplan" style="--cols:${W};--rows:${H};--k:${bayZoomK}">
       ${cs.map(c=>{const s=compState(c.code), n=s.items.length;
         return `<button class="bcell s-${s.k}${c.desc?"":" un"}${bayPick===c.code?" sel":""}" data-comp="${esc(c.code)}"
-          style="grid-column:${c.x-minX+1}/span ${c.w};grid-row:${c.y-minY+1}/span ${c.h}">
+          style="grid-column:${(+c.x||0)-(+minX||0)+1}/span ${Math.max(1,(+c.w||0))};grid-row:${(+c.y||0)-(+minY||0)+1}/span ${Math.max(1,(+c.h||0))}">
           <span class="bc">${esc(c.code)}${n?`<span class="bk">${n}</span>`:""}</span>
           ${c.desc?`<span class="bn">${esc(c.desc)}</span>`:`<span class="bn un">Not named yet</span>`}
           ${n?"":`<span class="bn em">${c.checked?"Empty":"Nothing logged"}</span>`}
@@ -3140,7 +3363,7 @@ function renderCompDetail(){
     </div>
     <div class="cdright">
       ${sorted.length?`<div class="rows">`+sorted.map(i=>{const f=flag(i);
-        return `<button class="row" data-item="${i.id}">
+        return `<button class="row" data-item="${esc(i.id)}">
           <span><span class="code">${esc(i.name)}</span>
           <span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}${
             i.cls?" · "+esc(i.cls):""}${i.date?" · "+esc(i.date):""}<br>${esc(catName(i.cat))}</span></span>
@@ -3173,9 +3396,9 @@ function miniWall(code){
   const mine=comps().filter(o=>o.side===c.side&&o.x!=null);
   return `<div class="mini">
     <div class="minihead"><b>${esc(c.code)}</b> &middot; ${esc(c.side)}</div>
-    <div class="minigrid" style="grid-template-columns:repeat(${W.cols},minmax(0,1fr));grid-template-rows:repeat(${W.rows},minmax(0,1fr));gap:${W.cols>60?1:2}px">
+    <div class="minigrid" style="grid-template-columns:repeat(${Math.max(1,(+W.cols||0))},minmax(0,1fr));grid-template-rows:repeat(${Math.max(1,(+W.rows||0))},minmax(0,1fr));gap:${(+W.cols||0)>60?1:2}px">
       ${mine.map(o=>`<div class="mslot${o.code===c.code?" hit":""}"
-        style="grid-column:${o.x+1}/span ${o.w};grid-row:${o.y+1}/span ${o.h}"
+        style="grid-column:${(+o.x||0)+1}/span ${Math.max(1,(+o.w||0))};grid-row:${(+o.y||0)+1}/span ${Math.max(1,(+o.h||0))}"
         ></div>`).join("")}
     </div>
     <div class="miniorient"><span>${capLeft(c.side)}</span><span>${capRight(c.side)}</span></div>
@@ -3199,7 +3422,7 @@ function renderItemDetail(){
         <h2 class="idtitle">${esc(i.name)}</h2>
         <div class="idsub">${esc(i.cls)}${i.par?" · par level "+esc(i.par):""}</div>
       </div>
-      <button class="star ${i.fav?"on":""}" data-fav="${i.id}" aria-label="Favourite">${i.fav?"&#9733;":"&#9734;"}</button>
+      <button class="star ${i.fav?"on":""}" data-fav="${esc(i.id)}" aria-label="Favourite">${i.fav?"&#9733;":"&#9734;"}</button>
     </div>
 
     ${isRequest(i)?`
@@ -3211,7 +3434,7 @@ function renderItemDetail(){
         ${i.lead?`<div><dt>Typical lead time</dt><dd>${esc(i.lead)}</dd></div>`:""}
       </div>
       ${!i.contact&&!i.phone?`<p class="hint">No contact recorded yet. Add one so this is useful at a scene.</p>`:""}
-      <button class="btn sec" data-editreq="${i.id}" style="margin:10px 0 0;max-width:none">Edit request details</button>`
+      <button class="btn sec" data-editreq="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Edit request details</button>`
     :`<div class="locline">
        <span class="lc2">${esc(i.loc||"Not placed")}</span>
        <span class="ld2">${esc(c?(c.desc||c.side||"No description"):"No compartment set")}</span>
@@ -3229,30 +3452,30 @@ function renderItemDetail(){
         :isStale(i)?`<div class="unver bad">Last checked ${esc(i.verified)}, over a year ago. Confirm against the current sheet.</div>`:""}`
     :`<div class="empty" style="padding:20px 16px"><strong>No instructions yet</strong>
        <p>Paste the steps from the manufacturer sheet or your SOP, and record where they came from.</p>
-       <button class="btn sec" data-editsteps="${i.id}" style="margin-top:12px">Add instructions</button></div>`}
-    ${steps.length?`<button class="btn sec" data-editsteps="${i.id}" style="margin:10px 0 0;max-width:none">Edit instructions</button>`:""}
+       <button class="btn sec" data-editsteps="${esc(i.id)}" style="margin-top:12px">Add instructions</button></div>`}
+    ${steps.length?`<button class="btn sec" data-editsteps="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Edit instructions</button>`:""}
 
     <div class="idsect">Guides and documents</div>
     ${(i.links||[]).length?`<div class="links">`+(i.links||[]).map(l=>
-      `<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">
+      !okUrl(l.url)?"":`<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">
         <span class="ln">${esc(l.label)}</span>
         <span class="lu">${esc(l.url.replace(/^https?:\/\//,"").split("/")[0])}</span></a>`).join("")+`</div>
-      <button class="btn sec" data-editlinks="${i.id}" style="margin:9px 0 0;max-width:none">Edit links</button>`
+      <button class="btn sec" data-editlinks="${esc(i.id)}" style="margin:9px 0 0;max-width:none">Edit links</button>`
     :`<div class="empty" style="padding:18px 16px"><strong>No documents linked</strong>
        <p>Link the manufacturer manual, a training video, or the SOP on your shared drive.</p>
-       <button class="btn sec" data-editlinks="${i.id}" style="margin-top:12px">Add a link</button></div>`}
+       <button class="btn sec" data-editlinks="${esc(i.id)}" style="margin-top:12px">Add a link</button></div>`}
 
     <div class="idsect">Works with</div>
     ${(()=>{const r=(i.rel||[]).map(id=>S.items.find(x=>x.id===id)).filter(Boolean);
       return r.length?`<div class="rel">`+r.map(o=>{const rs=itemStatus(o);
-        return `<button class="reltile" data-item="${o.id}">
+        return `<button class="reltile" data-item="${esc(o.id)}">
           <span class="rn">${esc(o.name)}</span>
           <span class="rl">${esc(o.loc||"—")}</span>
           <span class="rq b-${rs[0]}">${esc(o.qty)} in stock</span></button>`}).join("")+`</div>
-        <button class="btn sec" data-editrel="${i.id}" style="margin:10px 0 0;max-width:none">Edit what it works with</button>`
+        <button class="btn sec" data-editrel="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Edit what it works with</button>`
       :`<div class="empty" style="padding:18px 16px"><strong>Nothing linked</strong>
          <p>Link the gear you need alongside this — applicator, lifters, a scale — so it's one tap away at a scene.</p>
-         <button class="btn sec" data-editrel="${i.id}" style="margin-top:12px">Link items</button></div>`})()}
+         <button class="btn sec" data-editrel="${esc(i.id)}" style="margin-top:12px">Link items</button></div>`})()}
 
     <div class="idsect">Details</div>
     <div class="kv">
@@ -3268,11 +3491,11 @@ function renderItemDetail(){
       ${i.verifyNote?`<div><dt>Instructions</dt><dd>${esc(i.verifyNote)}</dd></div>`:""}
       ${i.vendor||i.part||i.pack?`<div><dt>Ordering</dt><dd>${esc([i.vendor,i.part,i.pack].filter(Boolean).join(" \u00b7 "))}</dd></div>`:""}
       ${i.cls==="Durable"?`<div><dt>Last serviced</dt><dd>${esc(i.lastService||"\u2014")}</dd></div>
-      <div><dt>Certificate</dt><dd>${i.cert?`<a href="${esc(i.cert)}" target="_blank" rel="noopener">Open</a>`:"\u2014"}</dd></div>`:""}
+      <div><dt>Certificate</dt><dd>${okUrl(i.cert)?`<a href="${esc(i.cert)}" target="_blank" rel="noopener">Open</a>`:"\u2014"}</dd></div>`:""}
     </div>
-    ${i.cls==="Durable"?`<button class="btn sec" data-editsvc="${i.id}" style="margin:10px 0 0;max-width:none">Service and calibration</button>`:""}
-    ${i.cls==="Reagent"?`<button class="btn sec" data-editlot="${i.id}" style="margin:10px 0 0;max-width:none">Lot, received and opened dates</button>`:""}
-    ${i.cls==="Regulated"?`<button class="btn sec" data-countnow="${i.id}" style="margin:10px 0 0;max-width:none">Count it now</button>`:""}
+    ${i.cls==="Durable"?`<button class="btn sec" data-editsvc="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Service and calibration</button>`:""}
+    ${i.cls==="Reagent"?`<button class="btn sec" data-editlot="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Lot, received and opened dates</button>`:""}
+    ${i.cls==="Regulated"?`<button class="btn sec" data-countnow="${esc(i.id)}" style="margin:10px 0 0;max-width:none">Count it now</button>`:""}
     ${i.note?`<div class="idsect">Notes</div><div class="kv"><div style="display:block">${esc(i.note).replace(/\n/g,"<br>")}</div></div>`:""}
     ${(()=>{const all=i.uses||[]; if(!all.length)return "";
       const cut=Date.now()-90*86400000;
@@ -3298,10 +3521,10 @@ function renderItemDetail(){
           `<div><dt>${esc(u.d)}</dt><dd>used ${esc(u.n)}</dd></div>`).join("")}</div>`:""}`})()}
 
     <div class="actbar"${isRequest(i)?' style="grid-template-columns:1fr 1fr"':""}>
-      ${isRequest(i)?"":`<button class="primary" data-loguse="${i.id}">Log use</button>
-      <button data-adjust="${i.id}">Adjust qty</button>`}
-      ${isRequest(i)?`<button class="primary" data-editreq="${i.id}">Request details</button>`:""}
-      <button data-edititem="${i.id}">Edit</button>
+      ${isRequest(i)?"":`<button class="primary" data-loguse="${esc(i.id)}">Log use</button>
+      <button data-adjust="${esc(i.id)}">Adjust qty</button>`}
+      ${isRequest(i)?`<button class="primary" data-editreq="${esc(i.id)}">Request details</button>`:""}
+      <button data-edititem="${esc(i.id)}">Edit</button>
     </div>
     </div></div>`;
 }
@@ -3435,7 +3658,7 @@ function relSheet(it){
       .sort((a,b)=>{const s=(it.rel||[]).includes(b.id)-(it.rel||[]).includes(a.id);
         return s||a.name.localeCompare(b.name)}).slice(0,60);
     $("#rellist").innerHTML=list.map(o=>{const on=(it.rel||[]).includes(o.id);
-      return `<button class="relrow${on?" on":""}" data-pick="${o.id}">
+      return `<button class="relrow${on?" on":""}" data-pick="${esc(o.id)}">
         <span class="tick">${on?"&#10003;":""}</span>
         <span><span class="rn">${esc(o.name)}</span><span class="rl">${esc(o.loc||"—")} · ${esc(catName(o.cat))}</span></span>
       </button>`}).join("")||`<p class="hint">Nothing matches that.</p>`;
@@ -3479,7 +3702,7 @@ function renderPrint(){
         grid-template-rows:repeat(${H},minmax(0,1fr));aspect-ratio:${(W/H).toFixed(3)};
         gap:${W>40?1:4}px">
         ${mine.map(c=>`<div class="pslot"
-          style="grid-column:${c.x-minX+1}/span ${c.w};grid-row:${c.y-minY+1}/span ${c.h}">
+          style="grid-column:${(+c.x||0)-(+minX||0)+1}/span ${Math.max(1,(+c.w||0))};grid-row:${(+c.y||0)-(+minY||0)+1}/span ${Math.max(1,(+c.h||0))}">
           <b>${esc(c.code)}</b>${c.desc?`<i>${esc(c.desc)}</i>`:""}</div>`).join("")}
       </div>
       <div class="porient"><span>${capLeft(side)}</span><span>${capRight(side)}</span></div>
@@ -3572,7 +3795,7 @@ function renderForms(){
       `<div class="sect">${esc(y)}</div><div class="rows">`+g[y].map(inc=>{
         const docs=docsFor(inc.id);
         const sk=docs.filter(d=>d.kind==="sketch").length;
-        return `<button class="row" data-inc="${inc.id}">
+        return `<button class="row" data-inc="${esc(inc.id)}">
           <span><span class="code">${esc(inc.caseNo||"No case number")}</span>
           <span class="desc">${esc(inc.offence||"No offence recorded")}${
             inc.addr?" \u00b7 "+esc(inc.addr):""}<br>${docs.length} document${docs.length===1?"":"s"}${
@@ -3593,7 +3816,7 @@ function renderTemplates(){
     ${(stale||unver)?`<div class="unver">${stale?stale+(stale===1?" form hasn't":" forms haven't")+" been checked in over a year. ":""}${unver?unver+(unver===1?" has":" have")+" no checked date. ":""}Forms get revised — confirm you're carrying the current one.</div>`:""}
     `+FORMCATS.filter(k=>g[k]).concat(Object.keys(g).filter(k=>!FORMCATS.includes(k))).map(k=>
       `<div class="sect">${esc(k)}</div><div class="rows">`+g[k].map(f=>
-        `<button class="row" data-form="${f.id}">
+        `<button class="row" data-form="${esc(f.id)}">
           <span><span class="code">${esc(f.name)}${f.stock?"":" \u00b7 yours"}</span>
           <span class="desc">${esc(f.desc||"No description")}${f.rev?" \u00b7 Rev "+esc(f.rev):""}</span></span>
           <span class="rt">${badge(f)}<span class="chev">&#8250;</span></span></button>`).join("")+`</div>`).join("");
@@ -3607,7 +3830,7 @@ function formSheet(f){
       ${f.desc?`<div style="display:block"><dt style="margin-bottom:3px">When to use it</dt><dd style="text-align:left">${esc(f.desc)}</dd></div>`:""}
     </div>
     ${(f.links||[]).length?`<div class="links" style="margin-bottom:12px">`+(f.links||[]).map(l=>
-      `<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">
+      !okUrl(l.url)?"":`<a class="lnk" href="${esc(l.url)}" target="_blank" rel="noopener">
         <span class="ln">${esc(l.label)}</span>
         <span class="lu">${esc(l.url.replace(/^https?:\/\//,"").split("/")[0])}</span></a>`).join("")+`</div>`
       :`<p class="hint" style="margin:0 0 12px">No link to the blank form yet.</p>`}`}
@@ -3684,7 +3907,7 @@ function docTabs(kind,id){
   if(docs.length<2)return "";
   return `<div class="doctabs">${docs.map(d=>{
     const on=d.kind===kind&&d.id===id;
-    return `<button class="doctab${on?" on":""}" data-doc="${d.kind}:${d.id}">
+    return `<button class="doctab${on?" on":""}" data-doc="${d.kind}:${esc(d.id)}">
       <span class="dgw">${docIcon(docKind(d.kind,d.type))}</span>
       <span class="dtx"><span class="dc">${esc(d.caseNo||"No case number")}</span>
       <span class="dt">${esc(d.type)}</span></span></button>`}).join("")}</div>`;
@@ -3696,20 +3919,20 @@ function renderFill(){
   $("#title").textContent=r.formName;
   const ctl=x=>{
     const v=r.values[x.id];
-    if(x.type==="textarea")return `<textarea rows="3" data-fv="${x.id}">${esc(v||"")}</textarea><button type="button" class="lnkbtn snipbtn" data-snip="${x.id}">Insert wording</button>`;
-    if(x.type==="check")return `<button class="chk${v?" on":""}" data-fchk="${x.id}"><i>${v?"&#10003;":""}</i>${esc(x.label)}</button>`;
+    if(x.type==="textarea")return `<textarea rows="3" data-fv="${esc(x.id)}">${esc(v||"")}</textarea><button type="button" class="lnkbtn snipbtn" data-snip="${esc(x.id)}">Insert wording</button>`;
+    if(x.type==="check")return `<button class="chk${v?" on":""}" data-fchk="${esc(x.id)}"><i>${v?"&#10003;":""}</i>${esc(x.label)}</button>`;
     if(x.type==="table"){
       const rows=Array.isArray(v)?v:[{}];
       return `<div class="ftab">${rows.map((row,ri)=>`<div class="frow">
           <span class="fnum">${ri+1}</span>
-          ${(x.cols||[]).map(c=>`<label class="fcell"><span>${esc(c)}</span><input type="text" placeholder="${esc(c)}" data-ftab="${x.id}" data-tr="${ri}" data-tc="${esc(c)}" value="${esc(row[c]||"")}"></label>`).join("")}
-          ${rows.length>1?`<button class="frem" data-frem="${x.id}" data-tr="${ri}" aria-label="Remove row">&#215;</button>`:""}
+          ${(x.cols||[]).map(c=>`<label class="fcell"><span>${esc(c)}</span><input type="text" placeholder="${esc(c)}" data-ftab="${esc(x.id)}" data-tr="${ri}" data-tc="${esc(c)}" value="${esc(row[c]||"")}"></label>`).join("")}
+          ${rows.length>1?`<button class="frem" data-frem="${esc(x.id)}" data-tr="${ri}" aria-label="Remove row">&#215;</button>`:""}
         </div>`).join("")}
-        <button class="btn sec" data-fadd="${x.id}" style="margin:8px 0 0;max-width:none">Add a row</button></div>`;
+        <button class="btn sec" data-fadd="${esc(x.id)}" style="margin:8px 0 0;max-width:none">Add a row</button></div>`;
     }
     const t=x.type==="date"?"date":x.type==="time"?"time":"text";
     const im=x.type==="number"?' inputmode="numeric"':"";
-    return `<input type="${t}"${im} data-fv="${x.id}" value="${esc(v||"")}">`;
+    return `<input type="${t}"${im} data-fv="${esc(x.id)}" value="${esc(v||"")}">`;
   };
   $("#v-fill").innerHTML=`
     <button class="back" data-navback="${r.incidentId&&incidentOf(r.incidentId)?"incident":"active"}">&#8249; ${
@@ -3744,12 +3967,12 @@ function renderFill(){
       :`<div class="empty"><strong>This form has no fields yet</strong>
         <p>Open it from the Forms tab and add fields before filling it in.</p></div>`}
     ${r.incidentId&&incidentOf(r.incidentId)?`<div class="actbar" style="grid-template-columns:1fr">
-      <button class="primary" data-fdone="${r.id}">${r.completed
+      <button class="primary" data-fdone="${esc(r.id)}">${r.completed
         ? "Completed \u2014 reopen" : "Mark complete and go back"}</button></div>`:""}
     <div class="actbar" style="grid-template-columns:1fr 1fr 1fr">
-      <button class="${r.incidentId?"":"primary"}" data-export="${r.id}">Export PDF</button>
-      <button data-exportdocx="${r.id}">Export Word</button>
-      <button data-discard="${r.id}" class="danger">Delete form</button>
+      <button class="${r.incidentId?"":"primary"}" data-export="${esc(r.id)}">Export PDF</button>
+      <button data-exportdocx="${esc(r.id)}">Export Word</button>
+      <button data-discard="${esc(r.id)}" class="danger">Delete form</button>
     </div>
     <p class="hint">This stays in the app until you export it. It is not synced and not in any
       backup, so a lost phone loses it. Export the PDF to Drive or the case file, then clear it.</p>`;
@@ -3790,7 +4013,7 @@ function renderInventory(){
         <th>Item</th><th>Compartment</th><th>Category</th><th>Class</th>
         <th class="num">Par</th><th class="num">In stock</th><th>Status</th></tr></thead><tbody>
       ${rows.map(i=>{const s=itemStatus(i);
-        return `<tr data-item="${i.id}"${i.id===curItem?' class="on"':""}>
+        return `<tr data-item="${esc(i.id)}"${i.id===curItem?' class="on"':""}>
           <td class="nm">${esc(i.name)}</td>
           <td class="mono">${esc(i.loc||"—")}</td>
           <td>${esc(catName(i.cat))}</td>
@@ -3802,7 +4025,7 @@ function renderInventory(){
     return;
   }
   const kcard=i=>{const s=itemStatus(i);
-    return `<button class="kcard" data-item="${i.id}"><b>${esc(i.name)}</b>
+    return `<button class="kcard" data-item="${esc(i.id)}"><b>${esc(i.name)}</b>
       <span>${esc(i.loc||"—")} &middot; ${esc(i.qty)} in stock</span></button>`};
   const body=invGroup==="az"
     ? `<div class="rows">`+L.slice().sort((a,b)=>a.name.localeCompare(b.name))
@@ -3833,7 +4056,7 @@ function renderGuide(){
   const L=live(), withS=L.concat(requests()).filter(i=>(i.steps||[]).length), without=L.filter(i=>!(i.steps||[]).length);
   const reqs=requests().sort((a,b)=>a.name.localeCompare(b.name));
   const reqBlock=`<div class="sect">Available on request — ${reqs.length}</div>`
-    +(reqs.length?`<div class="rows">`+reqs.map(i=>`<button class="row" data-item="${i.id}">
+    +(reqs.length?`<div class="rows">`+reqs.map(i=>`<button class="row" data-item="${esc(i.id)}">
         <span><span class="code">${esc(i.name)}</span>
         <span class="desc">${esc(i.contact||"No contact recorded")}${i.lead?" · "+esc(i.lead):""}</span></span>
         <span class="rt"><span class="badge b-req">On request</span><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`
@@ -3845,7 +4068,7 @@ function renderGuide(){
     return nv?`<button data-verifyrun="1">Verify ${nv} set${nv===1?"":"s"}</button>`:""})()}</div>`;
   const missingList=without.length?`<div class="sect">No instructions yet — ${without.length}</div><div class="rows">`
       +without.slice().sort((a,b)=>a.name.localeCompare(b.name)).slice(0,40).map(i=>
-        `<button class="row" data-item="${i.id}">
+        `<button class="row" data-item="${esc(i.id)}">
           <span><span class="code">${esc(i.name)}</span>
           <span class="desc">${esc(i.loc||"—")} · ${esc(catName(i.cat))}</span></span>
           <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")
@@ -3864,7 +4087,7 @@ function renderGuide(){
     +(Object.keys(g).length||guideFilter==="none"?"":`<p class="hint">Nothing matches that filter.</p>`)
     +Object.keys(g).sort().map(k=>
     `<div class="sect">${esc(k)}</div><div class="rows">`+g[k].sort((a,b)=>a.name.localeCompare(b.name)).map(i=>
-      `<button class="row" data-item="${i.id}">
+      `<button class="row" data-item="${esc(i.id)}">
         <span><span class="code">${esc(i.name)}</span>
         <span class="desc">${[(i.steps||[]).length+" steps", i.loc?esc(i.loc):"", i.source?esc(i.source):""].filter(Boolean).join(" · ")}</span></span>
         <span class="rt">${badge(i)}<span class="chev">&#8250;</span></span></button>`).join("")+`</div>`).join("")
@@ -4002,17 +4225,18 @@ function ingest(text,replace){
   text=(text||"").trim(); if(!text)return toast("Nothing pasted");
   if(text[0]==="{"){let o;try{o=JSON.parse(text)}catch(e){return toast("That backup didn't parse")}
     if(!o.items)return toast("No items in that file");
+    const N=cleanVan(o,"the backup");
     if(ghOn()){
       const m=missingFrom(o);
       S.items=S.items.concat(m.items); S.comps=S.comps.concat(m.comps); S.forms=S.forms.concat(m.forms);
       nameComps(); save(); renderData();
-      return toast("Added "+missingText(m)+" that were missing. Nothing was replaced, because sync is on")}
+      return toast("Added "+missingText(m)+" that were missing. Nothing was replaced, because sync is on."+tellBad(N))}
     if(replace){S.items=o.items;S.comps=o.comps||[];S.forms=o.forms||[];if(o.walls)S.walls=o.walls;S.demo=!!o.demo}
     else o.items.forEach(x=>{x.id=newId();S.items.push(x)});
     nameComps();
-    save();renderData();return toast(o.items.length+" items "+(replace?"restored":"added"))}
+    save();renderData();return toast(o.items.length+" items "+(replace?"restored":"added")+"."+tellBad(N))}
   const rows=parseCSV(text); if(rows.length<2)return toast("Nothing to import");
-  const add=[];
+  const add=[], N=makeNote("the CSV");
   rows.slice(1).forEach(r=>{if(!r[0]||!r[0].trim())return;
     const o={id:newId(),uses:[],fav:false};
     COLS.forEach((c,j)=>o[c]=(r[j]??"").trim());
@@ -4020,11 +4244,13 @@ function ingest(text,replace){
     if(!STATUSES.includes(o.status))o.status="Stocked";
     if(!CATS.some(c=>c[0]===o.cat))o.cat="A";
     if(!CLASSES.includes(o.cls))o.cls="Consumable";
+    // a compartment code becomes an attribute and a synced key, so it has to be a safe one
+    if(o.loc&&!okId(o.loc)){N.note("row "+shortVal(o.name)+" named compartment "+shortVal(o.loc)+", which is not a usable code, so it was left unplaced");o.loc=""}
     add.push(o)});
   if(replace)S.items=add; else S.items=S.items.concat(add);
   add.forEach(o=>{if(o.loc&&!S.comps.some(c=>c.code===o.loc))
     S.comps.push({code:o.loc,desc:"",side:"",x:null,y:null,w:6,h:4})});
-  save();renderData();toast(add.length+" rows "+(replace?"loaded":"added"));
+  save();renderData();toast(add.length+" rows "+(replace?"loaded":"added")+"."+tellBad(N));
 }
 // the share sheet puts the file straight into Drive or Mail; download is the fallback
 async function backupOut(){
@@ -4120,12 +4346,12 @@ function activeSpotlightHTML(incs,loose){
       <span class="s">${esc(top.inc.addr||"No address")}</span>
       <div class="bar"><i style="width:${pct}%"></i></div>
       <span class="barlab">${top.done} of ${top.plan.length} done${top.open?", "+top.open+" in progress":""}</span>
-      <button class="herocta" data-inc="${top.inc.id}">Continue &rarr;</button>
+      <button class="herocta" data-inc="${esc(top.inc.id)}">Continue &rarr;</button>
     </div>`:"";
   const restRow=x=>`<div class="urow"><span>${esc(x.inc.caseNo||"No case number")} &middot; ${esc(x.inc.offence||"No offence recorded")}</span>
-    <span class="lc" data-inc="${x.inc.id}">${x.done===x.plan.length&&x.plan.length?"Done":x.done+" of "+x.plan.length}</span></div>`;
+    <span class="lc" data-inc="${esc(x.inc.id)}">${x.done===x.plan.length&&x.plan.length?"Done":x.done+" of "+x.plan.length}</span></div>`;
   const looseRow=d=>`<div class="urow"><span>${esc(d.caseNo||"No case number")} &middot; ${esc(d.type)}</span>
-    <span class="lc" data-doc="${d.kind}:${d.id}">Open</span></div>`;
+    <span class="lc" data-doc="${d.kind}:${esc(d.id)}">Open</span></div>`;
   const also=(rest.length||loose.length)?`<div class="card2"><h4>Also open</h4>
     ${rest.map(restRow).join("")}${loose.map(looseRow).join("")}</div>`:"";
   return hero+also;
@@ -4135,10 +4361,10 @@ function activeCardsHTML(incs,loose){
   const row=(attr,title,sub,prog,dot)=>`<button class="act inccard" ${attr}><span class="ic1"><b>${title}</b><span class="ic2">${sub}</span>
     <span class="ic3"><span class="dot ${dot}"></span>${prog}</span></span><span class="chev">&#8250;</span></button>`;
   return `<div class="panel"><div class="pb">`+incs.map(inc=>{const x=incProgress(inc);
-      return row(`data-inc="${inc.id}"`,esc(inc.caseNo||"No case number")+" &middot; "+esc(inc.offence||"No offence recorded"),
+      return row(`data-inc="${esc(inc.id)}"`,esc(inc.caseNo||"No case number")+" &middot; "+esc(inc.offence||"No offence recorded"),
         esc(inc.addr||"No address"),x.done+" of "+x.plan.length+" done"+(x.open?", "+x.open+" in progress":""),
         x.open?"a":(x.done===x.plan.length&&x.plan.length?"g":"n"))}).join("")
-    +loose.map(d=>row(`data-doc="${d.kind}:${d.id}"`,esc(d.caseNo||"No case number")+" &middot; "+esc(d.type),
+    +loose.map(d=>row(`data-doc="${d.kind}:${esc(d.id)}"`,esc(d.caseNo||"No case number")+" &middot; "+esc(d.type),
         "Not filed to an incident","Not exported","a")).join("")+`</div></div>`;
 }
 /* desktop: everything as one dense table, built for the back office */
@@ -4147,11 +4373,11 @@ function activeTableHTML(incs,loose){
   const incRow=x=>`<tr><td>${esc(x.inc.caseNo||"No case number")}</td><td>${esc(x.inc.offence||"No offence recorded")}</td>
     <td>${esc(x.inc.addr||"No address")}</td>
     <td><span class="dot ${x.open?"a":(x.done===x.plan.length&&x.plan.length?"g":"n")}"></span>${x.done} of ${x.plan.length} done${x.open?", "+x.open+" in progress":""}</td>
-    <td class="lc" data-inc="${x.inc.id}">Open &rsaquo;</td></tr>`;
+    <td class="lc" data-inc="${esc(x.inc.id)}">Open &rsaquo;</td></tr>`;
   const looseRow=d=>`<tr><td>${esc(d.caseNo||"No case number")}</td><td>${esc(d.type)}</td>
     <td>Not filed to an incident</td>
     <td><span class="dot a"></span>Not exported</td>
-    <td class="lc" data-doc="${d.kind}:${d.id}">Open &rsaquo;</td></tr>`;
+    <td class="lc" data-doc="${d.kind}:${esc(d.id)}">Open &rsaquo;</td></tr>`;
   return `<div class="panel"><div class="ph2">Incidents and documents</div><div class="pb flush">
       <table class="datatable"><thead><tr><th>Case</th><th>Type</th><th>Detail</th><th>Progress</th><th></th></tr></thead>
       <tbody>${withP.map(incRow).join("")}${loose.map(looseRow).join("")}</tbody></table>
@@ -4189,7 +4415,7 @@ function renderIncident(){
     <div class="sect">Documents</div>
     <div class="rows">${plan.map(row).join("")}</div>
     ${extras.length?`<div class="sect">Also attached</div><div class="rows">`
-      +extras.map(x=>`<button class="row" data-doc="${x.kind}:${x.id}">
+      +extras.map(x=>`<button class="row" data-doc="${x.kind}:${esc(x.id)}">
         <span><span class="code">${esc(x.type)}</span>
         <span class="desc">${x.exported?"Exported":"In progress"}</span></span>
         <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:""}`;
@@ -4542,14 +4768,14 @@ function renderReorder(){
   $("#title").textContent="Reorder";
   const all=reorderRows(), rows=all.filter(r=>!r.i.ordered), onOrder=all.filter(r=>r.i.ordered);
   const byCat={}; rows.forEach(r=>{const c=catName(r.i.cat);(byCat[c]=byCat[c]||[]).push(r)});
-  const card=r=>`<div class="icard"><button class="row" data-item="${r.i.id}">
+  const card=r=>`<div class="icard"><button class="row" data-item="${esc(r.i.id)}">
       <span><span class="code">${r.need?r.need+" &times; ":""}${esc(r.i.name)}</span>
       <span class="desc">${esc(r.i.loc||"not placed")} &middot; ${esc(r.i.qty)} in stock${
         r.i.par!==""&&r.i.par!=null?" &middot; par "+esc(r.i.par):""}${r.i.ordered?" &middot; ordered "+esc(r.i.ordered):""}${r.i.vendor||r.i.part?"<br>"+esc([r.i.vendor,r.i.part,r.i.pack].filter(Boolean).join(" &middot; ")):""}</span></span>
       <span class="rt"><span class="badge b-${r.why==="Below par"?"attn":"action"}">${esc(r.why)}</span><span class="chev">&#8250;</span></span></button>
     <div class="iq">${r.i.ordered
-      ?`<button data-received="${r.i.id}">Received</button><button data-unordered="${r.i.id}">Not ordered after all</button>`
-      :`<button data-ordered="${r.i.id}">Ordered</button>`}</div></div>`;
+      ?`<button data-received="${esc(r.i.id)}">Received</button><button data-unordered="${esc(r.i.id)}">Not ordered after all</button>`
+      :`<button data-ordered="${esc(r.i.id)}">Ordered</button>`}</div></div>`;
   const total=all.length, done=onOrder.length, pct=total?Math.round(100*done/total):0;
   const progress=total?`<div class="ropct">
       <div class="ropctlab"><span>${done} of ${total} ordered</span><span>${rows.length?"Copy list &middot; Send":"All in hand"}</span></div>
@@ -4581,7 +4807,7 @@ function renderList(key){
     +(arr.length?`<div class="rows">`+arr.map(i=>{
       const s=isOut(i)?["action","Out"]:isExpired(i)?["action","Expired"]:isLow(i)?["attn","Below par"]
         :isService(i)?["attn","Service due"]:isExpiring(i)?["attn",daysOut(i.date)+" days"]:["good","OK"];
-      return `<button class="row" data-item="${i.id}">
+      return `<button class="row" data-item="${esc(i.id)}">
         <span><span class="code">${esc(i.name)}</span>
         <span class="desc">${esc(i.loc||"—")} · ${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}${
       i.cls?" · "+esc(i.cls):""}<br>${esc(catName(i.cat))}</span></span>
@@ -4617,7 +4843,7 @@ function renderSearch(){
   let body=(searchScope!=="forms"&&hits.length)
     ? `<div class="sect">${scoped.length>hits.length?"Showing "+hits.length+" of "+scoped.length:hits.length+" result"+(hits.length===1?"":"s")}</div><div class="rows">`
       +hits.map(i=>{const cp=S.comps.find(c=>c.code===i.loc);
-        return `<button class="row" data-item="${i.id}">
+        return `<button class="row" data-item="${esc(i.id)}">
           <span><span class="code">${esc(i.name)}</span>
           <span class="desc">${isRequest(i)?esc(i.contact||"Not in the van")
             :i.status==="Not carried"?"Not in the van"+(i.note?" · "+esc(i.note):"")
@@ -4627,7 +4853,7 @@ function renderSearch(){
             :""}<span class="chev">&#8250;</span></span></button>`}).join("")+`</div>`
     : (searchScope==="forms"?"":`<div class="empty"><strong>Nothing found</strong><p>No item, compartment, or category matches that.</p></div>`);
   if(fhits.length)body+=`<div class="sect">Forms — ${fhits.length}</div><div class="rows">`+fhits.map(f=>
-      `<button class="row" data-form="${f.id}">
+      `<button class="row" data-form="${esc(f.id)}">
         <span><span class="code">${esc(f.name)}</span>
         <span class="desc">${esc(f.rev?"Rev "+f.rev+" · ":"")}${esc(f.cat||"")}</span></span>
         <span class="rt"><span class="badge b-req">Form</span><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`;
@@ -4682,7 +4908,7 @@ function renderSweep(){
         <label class="fld"><span>Expiry or service date</span><input type="date" id="f-date"></label>
         <button class="btn" id="add" style="margin:4px 0 0;max-width:none">Add to ${esc(cur)}</button>`}
       <div id="sweeplist">${here.length?`<div class="sect">In ${esc(cur)} — ${here.length}</div><div class="rows">`
-        +here.slice().reverse().map(i=>`<button class="row" data-item="${i.id}">
+        +here.slice().reverse().map(i=>`<button class="row" data-item="${esc(i.id)}">
           <span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span>
           <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:""}</div>
       <button class="btn" data-sweepdone="${esc(cur)}" style="max-width:none;margin-top:12px">Swept, next &rarr;</button>
@@ -5102,14 +5328,14 @@ function paintJust(){
     +rows.map(i=>`<div class="justrow${i.dupOf?" dup":""}">
       <span class="jn">${esc(i.name)}${i.dupOf?`<span class="jdup">also in ${esc(i.dupOf)}</span>`:""}</span>
       <span class="jq">${esc(i.qty)}</span>
-      <button class="jx" data-item="${i.id}">Details</button>
-      <button class="jx" data-undo="${i.id}">Undo</button></div>`).join(""):"";
+      <button class="jx" data-item="${esc(i.id)}">Details</button>
+      <button class="jx" data-undo="${esc(i.id)}">Undo</button></div>`).join(""):"";
 }
 function refreshSweepList(){
   const here=live().filter(i=>i.loc===S.curLoc);
   const host=$("#sweeplist"); if(!host)return;
   host.innerHTML=here.length?`<div class="sect">In ${esc(S.curLoc)} — ${here.length}</div><div class="rows">`
-    +here.slice().reverse().map(i=>`<button class="row" data-item="${i.id}">
+    +here.slice().reverse().map(i=>`<button class="row" data-item="${esc(i.id)}">
       <span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span>
       <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:"";
 }
@@ -5317,13 +5543,13 @@ function markSweptNext(code){
 
 /* item cards on a phone, with counts you can tap */
 function itemCard(i,flagHtml){
-  return `<div class="icard"><button class="row" data-item="${i.id}">
+  return `<div class="icard"><button class="row" data-item="${esc(i.id)}">
       <span><span class="code">${esc(i.name)}</span>
       <span class="desc">${esc(i.loc||"—")}${i.par?" · par "+esc(i.par):""}${i.cls?" · "+esc(i.cls):""}<br>${esc(catName(i.cat))}</span></span>
       <span class="rt">${flagHtml}<span class="chev">&#8250;</span></span></button>
-    <div class="iq"><button data-qty="${i.id}:-1" aria-label="One fewer">&minus;</button><span class="qn">${esc(i.qty)}</span>
-      <button data-qty="${i.id}:1" aria-label="One more">+</button>
-      <button data-qout="${i.id}"${isOut(i)?' class="on"':''}>${isOut(i)?"Out":"Mark out"}</button></div></div>`;
+    <div class="iq"><button data-qty="${esc(i.id)}:-1" aria-label="One fewer">&minus;</button><span class="qn">${esc(i.qty)}</span>
+      <button data-qty="${esc(i.id)}:1" aria-label="One more">+</button>
+      <button data-qout="${esc(i.id)}"${isOut(i)?' class="on"':''}>${isOut(i)?"Out":"Mark out"}</button></div></div>`;
 }
 function setQty(i,q){
   i.qty=String(Math.max(0,q));
@@ -5361,7 +5587,7 @@ function verifyRun(){
 /* counts: every compartment in turn, or the regulated items in one */
 function countRows(items){
   return items.map(i=>`<div class="countrow"><span>${esc(i.name)}${i.par?` <span class="hint" style="display:inline">· par ${esc(i.par)}</span>`:""}</span>
-    <input type="text" inputmode="numeric" data-cnt="${i.id}" value="${esc(i.qty)}" aria-label="Count of ${esc(i.name)}"></div>`).join("");
+    <input type="text" inputmode="numeric" data-cnt="${esc(i.id)}" value="${esc(i.qty)}" aria-label="Count of ${esc(i.name)}"></div>`).join("");
 }
 function applyCounts(who){
   let changed=0;
@@ -5382,7 +5608,7 @@ function countRun(){
       save();
       openSheet(`<h3>Count finished</h3>
         <p class="hint" style="margin:0 0 12px">${cs.length} compartments counted, ${changed} quantit${changed===1?"y":"ies"} changed.</p>
-        ${short.length?`<div class="sect" style="margin-top:0">Below par or out — ${short.length}</div><div class="rows">${short.map(i=>`<button class="row" data-item="${i.id}"><span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.loc||"")} · ${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
+        ${short.length?`<div class="sect" style="margin-top:0">Below par or out — ${short.length}</div><div class="rows">${short.map(i=>`<button class="row" data-item="${esc(i.id)}"><span><span class="code">${esc(i.name)}</span><span class="desc">${esc(i.loc||"")} · ${esc(i.qty)} in stock${i.par?" · par "+esc(i.par):""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
           <button class="btn" data-go="reorder" style="max-width:none;margin:12px 0 0">Open the reorder list</button>`
           :`<div class="okbox">Nothing is short.</div>`}
         <button class="btn sec" id="ctx" style="max-width:none">Close</button>`);
@@ -5474,7 +5700,7 @@ function renderLabels(){
     <div class="editbar"><button data-labelkind="comps"${kind==="comps"?' class="on"':''}>Compartments</button>
       <button data-labelkind="items"${kind==="items"?' class="on"':''}>Items</button>
       <button data-doprint="1">Print</button></div>
-    <div class="filters">${["all"].concat(bays).map(b=>`<button data-labelbay="${b}" class="${sel===b?"sel":""}">${b==="all"?"All":esc(BAYNAME[b]||"Bay "+b)}</button>`).join("")}</div>
+    <div class="filters">${["all"].concat(bays).map(b=>`<button data-labelbay="${esc(b)}" class="${sel===b?"sel":""}">${b==="all"?"All":esc(BAYNAME[b]||"Bay "+b)}</button>`).join("")}</div>
     <p class="hint" style="margin:0 0 12px">${appUrl()
       ?"Scan one with the camera app, or with Scan a label inside this app, and it opens at that "+(kind==="comps"?"compartment":"item")+". Print on plain paper or label stock; three across."
       :"No web address is set under Settings › Labels, so these codes only work with the in-app scanner."}</p></div>
@@ -5680,8 +5906,9 @@ function appExtraClick9(e){
 /* ---------- reports and upkeep, round ten ----------
    report wording, auto-fill, photograph log, Word export, vector PDF, version stamp,
    vehicle check, part numbers, shift handover, service and calibration, help and change log. */
-const APP_VERSION="2026.09.24.1";
+const APP_VERSION="2026.09.25.1";
 const CHANGELOG=[
+  ["2026-09-25","Anything that comes in from outside (automatic saving, a restored backup, a case package) is checked first: an entry that is not safe is left out or repaired, listed under Settings › Recent errors, and the rest still comes in. Both apps refuse to run anything that is not part of the app. Opening a case package over records that are already here and different now asks: Keep mine, Use the package's, or Keep both."],
   ["2026-09-24","Automatic saving: a change made while the previous one was still sending, or made offline, is no longer undone, and a delete in that moment no longer comes back. A device updating from the previous version keeps the changes it had not sent yet. Nothing is sent when nothing in the van changed, and a GitHub slow-down waits and carries on instead of saying the token expired. Backups hold the van only. Restoring while automatic saving is on only adds what is missing. Deleting an incident removes its sketches' undo history too."],
   ["2026-09-23","Design pass. FSU Home: a status strip instead of six tiles, the urgent list first, and one-time setup in its own panel. On a phone the header has a search icon and a gear for Settings. The save status stays beside the title (grey saved here, green synced, blue saving, amber offline, red not saving). Small text is a step larger. Scenes has its own violet colour and a new icon (an evidence marker), no side bar or tab bar, '+ New' and a gear in the header, and the Open and Closed tiles are the filter."],
   ["2026-09-05","Tapping a bin on the bay wall opens its items in a panel beside the wall on a wide screen, without moving the page. Full screen fills the screen again on an iPad."],
@@ -5719,7 +5946,7 @@ function snippetSheet(fieldId){
   const list=snippets();
   openSheet(`<h3>Insert wording</h3>
     <p class="hint" style="margin:0 0 12px">Tap a line to insert it at the cursor. Square brackets mark what to fill in. The library is under Settings › Report wording.</p>
-    <div class="rows">${list.map(s=>`<button class="row" data-snipins="${s.id}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
+    <div class="rows">${list.map(s=>`<button class="row" data-snipins="${esc(s.id)}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
     <button class="btn sec" id="snx" style="max-width:none;margin:12px 0 0">Cancel</button>`);
   $("#snx").onclick=closeSheet;
   $$("[data-snipins]").forEach(b=>b.onclick=()=>{
@@ -5748,7 +5975,7 @@ function snippetManage(){
   };
   openSheet(`<h3>Report wording</h3>
     <p class="hint" style="margin:0 0 12px">Standard sentences for the narrative report. Keep them in the unit's approved wording.</p>
-    <div class="rows">${list.map(s=>`<button class="row" data-snipedit="${s.id}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
+    <div class="rows">${list.map(s=>`<button class="row" data-snipedit="${esc(s.id)}"><span><span class="code">${esc(s.name)}</span><span class="desc">${esc(s.text.slice(0,96))}${s.text.length>96?"…":""}</span></span><span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")}</div>
     <button class="btn" id="snnew" style="max-width:none;margin:12px 0 0">Add wording</button>
     <button class="btn sec" id="snx2" style="max-width:none">Close</button>`);
   $("#snx2").onclick=closeSheet; $("#snnew").onclick=()=>edit(null);

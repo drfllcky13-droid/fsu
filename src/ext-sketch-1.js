@@ -113,7 +113,7 @@ function measSheet(sk,o){
   const u=sk.scale.unit||"ft";
   const m=Object.assign({},o.meas||{},MEASPRE||{}); MEASPRE=null;
   let mode=m.m||"tri";
-  const opt=sel=>refs.map(r=>`<option value="${r.key}"${r.key===sel?" selected":""}>${esc(r.name)}</option>`).join("");
+  const opt=sel=>refs.map(r=>`<option value="${esc(r.key)}"${r.key===sel?" selected":""}>${esc(r.name)}</option>`).join("");
   const sideSel=`<select id="mside">
       <option value="l"${m.side!=="r"?" selected":""}>Left, standing at A looking at B</option>
       <option value="r"${m.side==="r"?" selected":""}>Right, standing at A looking at B</option></select>`;
@@ -337,13 +337,13 @@ function sizeRow(sel,sk){
   return `<div class="osgrid sizerow">${dims}
       <label class="fld"><span>Rotation (°)</span><input type="text" id="osrot" inputmode="numeric" value="${sel.r||0}"></label>
       ${fpSel}</div>
-    ${sel.t==="poly"?`<div class="objbar"><button data-oaddvtx="${sel.id}">Add a corner</button>
-      <button data-odelvtx="${sel.id}"${(sel.pts||[]).length>3?"":" disabled"}>Remove last corner</button></div>
+    ${sel.t==="poly"?`<div class="objbar"><button data-oaddvtx="${esc(sel.id)}">Add a corner</button>
+      <button data-odelvtx="${esc(sel.id)}"${(sel.pts||[]).length>3?"":" disabled"}>Remove last corner</button></div>
       <p class="hint" style="margin:6px 0 0">Drag the white corner handles to reshape the area.</p>`:""}
     <div class="objbar">
-      <button data-omeas="${sel.id}"${sel.t==="legend"||sel.t==="dim"?" disabled":""}>${sel.meas?"Re-measure":"Place by measurement"}</button>
-      <button data-ocopy="${sel.id}">Copy style</button>
-      ${STYLECLIP?`<button data-opaste="${sel.id}">Paste style</button>`:""}
+      <button data-omeas="${esc(sel.id)}"${sel.t==="legend"||sel.t==="dim"?" disabled":""}>${sel.meas?"Re-measure":"Place by measurement"}</button>
+      <button data-ocopy="${esc(sel.id)}">Copy style</button>
+      ${STYLECLIP?`<button data-opaste="${esc(sel.id)}">Paste style</button>`:""}
       <button data-ofav="${sel.t}">${favs().includes(sel.t)?"★ Favourite":"☆ Favourite"}</button>
     </div>${meas}`;
 }
@@ -439,7 +439,7 @@ function polyFinish(){
 }
 function polyHandles(o){
   return (o.pts||[]).map(([fx,fy],i)=>
-    `<circle data-vtx="${o.id}:${i}" cx="${(fx*o.w).toFixed(1)}" cy="${(fy*o.h).toFixed(1)}" r="${(handleU()*.42).toFixed(1)}" class="k-vtx"/>`).join("");
+    `<circle data-vtx="${esc(o.id)}:${i}" cx="${(fx*o.w).toFixed(1)}" cy="${(fy*o.h).toFixed(1)}" r="${(handleU()*.42).toFixed(1)}" class="k-vtx"/>`).join("");
 }
 function polyNormalize(o){
   if(!o.pts||o.pts.length<3)return;
@@ -618,7 +618,7 @@ function tplSheet(sk){
     ${mine.length?`<div class="rows">${mine.map(t=>row(t.id,t.name,(t.objs||[]).length+" objects"+(t.scale?", to scale":""),true)).join("")}</div>`
       :`<p class="hint">None saved yet. Lay out a scene you draw often, then save it here.</p>`}
     <button class="btn sec" id="tplsave" style="max-width:none;margin:12px 0 0"${(sk.objs||[]).length?"":" disabled"}>Save this sketch as a template</button>
-    <p class="hint" style="margin:8px 0 0">Templates travel with the van data, so save layouts, not real scenes. Photographs and measurements are left out.</p>
+    <p class="hint" style="margin:8px 0 0">Templates stay on this device: they are not synced to other devices or kept in backups. Save layouts, not real scenes, because a template stays here after the case is closed. Photographs and measurements are left out.</p>
     <button class="btn sec" id="tplx" style="max-width:none">Cancel</button>`);
   $("#tplx").onclick=closeSheet;
   $$("[data-tpl]").forEach(b=>b.onclick=()=>{
