@@ -114,7 +114,8 @@ same-record clash is kept in `S.conflicts` and offered back in Settings › Auto
 request returns. One pull or push runs at a time across both pages (`navigator.locks`
 "fsu-sync"), every GitHub request gives up after 20 s, a push with nothing to send makes no
 commit, and a rate limit (429, or 403 with retry-after or x-ratelimit-remaining: 0) is waited out
-rather than treated as a dead token.
+rather than treated as a dead token. A device upgrading from the build before stamps judges its
+first merge against the file it last synced (fetched by its stored blob sha), not as a new device.
 **SYNC_DESIGN.txt at the repo root is the full reasoning and every failure case.**
 `fsu-tests/tests/sync.spec.js` drives all of it against a stubbed GitHub.
 

@@ -10,6 +10,10 @@ The first device to connect to a new repository kept losing its own next change;
 too. FSU and Scenes now take turns saving to GitHub instead of both at once, and if GitHub does
 not answer within 20 seconds the app stops waiting and tries again later.
 
+A device updating from the previous version kept losing any change it had not yet sent: the
+first time the new version saved, the copy on GitHub won. It now compares against the copy it
+last sent, so both its changes and other devices' changes are kept.
+
 Saving no longer sends anything to GitHub when nothing in the van has changed. Before, every tap
 that saved made a new copy in the repository, and on a busy day that could hit GitHub's limit.
 If GitHub does ask the app to slow down, the bar now says "GitHub asked this device to slow down"

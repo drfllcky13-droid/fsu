@@ -21,6 +21,11 @@ function remote(state){
   state.gets=0;
   return async route=>{
     const req=route.request();
+    // a file as it stood at an earlier sha, the way GitHub's blobs API serves it
+    const bl=req.url().match(/\/git\/blobs\/([^/?]+)/);
+    if(bl){state.blobGets=(state.blobGets||0)+1; const d=(state.blobs||{})[bl[1]];
+      return d?route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({sha:bl[1],content:b64(d),encoding:"base64"})})
+              :route.fulfill({status:404,contentType:"application/json",body:JSON.stringify({message:"Not Found"})})}
     if(req.method()==="GET"){
       state.gets++;
       if(state.beforeGet)state.beforeGet(state);
@@ -543,6 +548,58 @@ test("a missing file is a first sync, not an error",async({page})=>{
 });
 
 /* ---------------- yesterday's build, still in a van ---------------- */
+
+// an old device holds the real van as the old build left it: no stamps, no base, no synced
+// flag, but the sha of the file it last synced, and one edit it never got to push
+function oldDevice(o,dev,edit){
+  const r=JSON.parse(JSON.stringify(o)); edit(r);
+  // the one-time migrations an installed device has long since run
+  return JSON.stringify({seeded:true,guideSeeded:1,stockMarked:1,srcTidy:1,formsSeeded:"STOCKV",curLoc:"",locs:[],dev,items:r.items,comps:r.comps,forms:r.forms,
+    walls:r.walls,gh:{owner:"unit",repo:"van-data",path:"data.json",token:"t",sha:"old1",last:"2026-09-04T19:14:00.000Z"}});
+}
+test("two devices upgrading from the old build keep their unpushed edits, and nothing is deleted",async({browser})=>{
+  // shaped as the old build wrote them: it filled in the load-time defaults before pushing
+  const rec=(id,name,qty,loc)=>({id,name,qty,cat:"A",cls:"Consumable",loc,uses:[],rel:[],links:[]});
+  const old={items:[rec("a","Gloves",0,"A1"),rec("b","Swabs",3,"A1"),rec("c","Tape",2,"A2")],
+    comps:[{code:"A1",desc:"",side:"",x:null,y:null,w:6,h:4},{code:"A2",desc:"",side:"",x:null,y:null,w:6,h:4}],
+    forms:[],walls:{"Driver side":{cols:3,rows:2}},demo:false,lastCat:"A",lastCls:"Consumable",savedAt:"2026-09-04T19:14:00.000Z"};
+  const state={sha:"old1",data:JSON.parse(JSON.stringify(old)),blobs:{old1:old}};
+  const devs=[];
+  for(const [dev,edit] of [["devA",o=>{o.items[0].qty=77}],["devB",o=>{o.items[1].name="Swabs, sterile"}]]){
+    const ctx=await browser.newContext({serviceWorkers:"block"}); await ctx.route(FILE,remote(state));
+    const page=await ctx.newPage();
+    await page.goto("/index.html"); await page.evaluate(r=>{localStorage.clear();localStorage.setItem("van3",r.replace('"STOCKV"',STOCKV))},oldDevice(old,dev,edit));
+    await page.goto("/index.html"); await page.waitForFunction(()=>typeof render==="function");
+    await page.evaluate(async()=>{await ghPull(true); await ghPush(false)});
+    devs.push(page);
+  }
+  await devs[0].evaluate(()=>ghPull(true));
+  expect(state.blobGets,"the old file was never fetched to judge against").toBeGreaterThan(0);
+  const alive=state.data.items.filter(i=>!i._x);
+  expect(alive.map(i=>i.id).sort(),"something was deleted").toEqual(["a","b","c"]);
+  expect(alive.find(i=>i.id==="a").qty,"device A's edit was lost").toBe(77);
+  expect(alive.find(i=>i.id==="b").name,"device B's edit was lost").toBe("Swabs, sterile");
+  expect(state.data.comps.filter(c=>!c._x).map(c=>c.code).sort()).toEqual(["A1","A2"]);
+  expect(state.data.walls).toEqual(old.walls);
+  for(const page of devs){
+    const d=await page.evaluate(()=>({a:S.items.find(i=>i.id==="a").qty,b:S.items.find(i=>i.id==="b").name,
+      n:S.items.length,walls:S.walls,conflicts:S.conflicts.length}));
+    expect(d).toEqual({a:77,b:"Swabs, sterile",n:3,walls:old.walls,conflicts:0});
+  }
+});
+
+test("an old device whose last file cannot be fetched keeps its differing records to put back",async({page})=>{
+  const old={items:[{id:"a",name:"Gloves",qty:0,cat:"A",cls:"Consumable",loc:""}],comps:[],forms:[],walls:{}};
+  const state={sha:"new9",data:file([it("a","Gloves",9,"devB",{qty:5})]),blobs:{}};
+  await page.route(FILE,remote(state));
+  await page.goto("/index.html"); await page.evaluate(r=>{localStorage.clear();localStorage.setItem("van3",r.replace('"STOCKV"',STOCKV))},
+    oldDevice(old,"devA",o=>{o.items[0].qty=77}));
+  await page.goto("/index.html"); await page.waitForFunction(()=>typeof render==="function");
+  const out=await page.evaluate(async()=>{await ghPull(true);
+    return {qty:S.items[0].qty,stash:S.conflicts.map(c=>c.rec.qty)}});
+  expect(out.qty).toBe(5);
+  expect(out.stash,"the old device's edit was dropped without a copy").toEqual([77]);
+});
 
 test("an old build's whole-file push cannot delete anything, because absence is not deletion",async({page})=>{
   const state={sha:"sha1",data:file([it("a","Gloves",3,"devB"),it("b","Swabs",3,"devB")])};

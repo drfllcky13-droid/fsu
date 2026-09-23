@@ -116,6 +116,9 @@ function mergeRemote(o){
   // stamps it just gave its own seeded defaults would otherwise beat the repo's real van.
   // Local-only records still survive: the merge is a union either way.
   const virgin=!S.synced;
+  // an old-build device whose last file could not be fetched still defers, but its copies are
+  // real work rather than seeded defaults, so the ones that lose are kept to put back
+  const oldBuild=virgin&&!!S.gh.sha;
   KINDS.forEach(k=>{
     const ra={}, rt={};
     splitWire(k,o[k],ra,rt);
@@ -129,7 +132,8 @@ function mergeRemote(o){
       if(!rv){ahead=true;return}                      // never reached them: keep ours
       const rH=ra[key]?rhash(ra[key]):-1, lH=mine[key]?rhash(mine[key]):-1;
       if(!lv){applyRec(k,key,rv,ra[key]);mergeTook++;return}
-      if(virgin){if(rH!==lH)mergeTook++;applyRec(k,key,rv,ra[key]);return}
+      if(virgin){if(rH!==lH){mergeTook++;if(oldBuild&&mine[key])stashLoser(k,key,mine[key])}
+        applyRec(k,key,rv,ra[key]);return}
       if(rH===lH)return;                              // the same record: nothing to settle
       // who moved is decided on content, not on the stamps, so an edit made by a build that
       // does not know about stamps still propagates
@@ -225,6 +229,31 @@ async function ghGet(){
   if(!o||typeof o!=="object"||!Array.isArray(o.items))return {sha:j.sha,bad:true};
   return {sha:j.sha,data:o};
 }
+// A device that synced with the build before merging has no stamps, no base and no synced
+// flag, so it looked like a brand-new device and deferred to the repo: every edit it had not
+// pushed yet was overwritten. It does hold the sha of the file it last synced, and that file
+// is the common ancestor. Fetch it (GitHub keeps every version) and judge against it.
+async function adoptOldBase(){
+  if(S.synced||!S.gh.sha||Object.keys(S.base.items||{}).length)return;
+  try{
+    const {r,text}=await ghFetch(`https://api.github.com/repos/${S.gh.owner}/${S.gh.repo}/git/blobs/${S.gh.sha}`,
+      {headers:ghHead(),cache:"no-store"});
+    if(!r.ok)return;
+    const o=JSON.parse(b64dec(JSON.parse(text).content));
+    if(!o||typeof o!=="object"||!Array.isArray(o.items))return;
+    // the same defaults core.js fills in when a record is loaded, or every record would look
+    // edited on this device and on the repo alike. Keep the two in step.
+    (o.items||[]).forEach(i=>{if(!i||typeof i!=="object")return;
+      if(i.date&&/^\d{4}-\d{2}$/.test(i.date))i.date=i.date+"-01";
+      if(!i.uses)i.uses=[]; if(!i.rel)i.rel=[]; if(!i.links)i.links=[]});
+    (o.comps||[]).forEach(c=>{if(!c||typeof c!=="object")return;
+      if(c.code==null)c.code="";
+      if(c.zone&&!c.side)c.side=(c.zone==="Rear")?"Rear doors":(c.zone==="Interior")?"":c.zone;
+      if(c.w==null){c.w=6;c.h=4}
+      if(c.x==null||c.y==null){c.x=null;c.y=null}});
+    S.base=baseOf(o); S.synced=true;
+  }catch(e){}
+}
 function syncFail(e,silent){
   if(e&&e.wait){
     // not the token: wait as long as GitHub asked, then carry on
@@ -253,6 +282,7 @@ function ghPull(silent){
 async function ghPullNow(silent){
   if(!ghOn())return;
   try{
+    await adoptOldBase();
     const g=await ghGet();
     if(g.missing){S.gh.sha="";store.set(S);
       if(!silent)toast("No data file yet — sync to create it");return"empty"}
@@ -281,6 +311,7 @@ async function ghPushNow(force){
   if(!ghOn())return;
   clearTimeout(pushT);
   try{
+    await adoptOldBase();
     for(let attempt=0;attempt<4;attempt++){
       const g=await ghGet();
       if(g.bad&&!force){badFile=true;syncErr="The file in the repo can't be read";

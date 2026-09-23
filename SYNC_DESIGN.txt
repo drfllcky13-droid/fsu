@@ -415,6 +415,17 @@ So the token dance stays, and the things around it get shorter:
   creates the file (a 404 on its first sync) counts as synced once its PUT
   succeeds; until 24 Sep 2026 it did not, and its next push deferred to its own
   upload and reverted the edits made in between.
+* A device upgrading from the build before merging was the same case: no
+  stamps, no base, no synced flag, so its unpushed edits deferred to the repo
+  and were overwritten without a copy. Since 24 Sep 2026 such a device fetches
+  the file it last synced (the blob at its stored S.gh.sha, through GitHub's
+  git/blobs API) and uses it as the base, so the merge is a real three-way
+  one. That file gets the same load-time defaults core.js fills in before it
+  is hashed. If it cannot be fetched the device still defers, but every
+  record of its own that loses is stashed in S.conflicts to put back.
+  Checked against a copy of the real data.json with two upgrading devices,
+  each holding one unpushed edit: both edits survived on both devices, no
+  record was deleted, and walls came through unchanged.
 * GitHub's token-expiry response header is read when it is exposed to the page.
   If a future GitHub stops exposing it the countdown falls back to the date
   typed in by hand, which is still offered under Settings. Nothing else depends
