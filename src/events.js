@@ -249,6 +249,10 @@ document.addEventListener("click",e=>{
   if(e.target.closest("#gear")){openSettings(null);return}
   if(e.target.closest("#dlj")){ backupOut(); return }
   if(e.target.closest("#storefree")){ removeCasesSheet(); return }
+  if(e.target.closest("#heldsend")){ KINDS.forEach(k=>S.held[k]={}); save(); renderData(); return toast("They go up with the next sync") }
+  if(e.target.closest("#helddrop"))
+    return askConfirm("Remove from this device","The records held back are deleted from this device. They were never sent, so no other device is affected.","Remove",true,()=>{
+      KINDS.forEach(k=>{ S[k]=S[k].filter(r=>!isHeld(k,r)); S.held[k]={} }); save(); renderData(); toast("Removed")});
   const gs=e.target.closest(".storewarn[data-gosec]"); if(gs){ openSettings(gs.dataset.gosec); return }
   if(e.target.closest("#dlc")){
     return toast(download(toCSV(),"van-inventory-"+today()+".csv","text/csv")

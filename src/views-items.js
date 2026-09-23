@@ -301,6 +301,16 @@ function tokenDays(){
 }
 // an edit of yours that another device's edit replaced. It is kept rather than dropped, so
 // the only thing lost is the time it takes somebody to say which of the two is true.
+// what a device back after more than a year held back from sync, for someone to decide on
+function heldHTML(){
+  const rows=[]; KINDS.forEach(k=>(S[k]||[]).forEach(r=>{ if(isHeld(k,r))rows.push((k==="comps"?"Compartment ":k==="forms"?"Form ":"")+(r.name||r.code||r.id)) }));
+  if(!rows.length)return "";
+  return `<div class="unver bad">This device had not synced for over a year, so it took the repo's copy. ${rows.length===1?"One record was":rows.length+" records were"}
+      only on this device and ${rows.length===1?"has":"have"} not been sent, in case ${rows.length===1?"it was":"they were"} deleted elsewhere in the meantime.</div>
+    <ul class="heldlist" style="margin:0 0 10px;padding-left:20px">${rows.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>
+    <div class="stackb" style="margin:0 0 12px"><button class="btn sec" id="heldsend" style="max-width:none;margin:0">Send ${rows.length===1?"it":"them"} to the other devices</button>
+      <button class="btn sec" id="helddrop" style="max-width:none">Remove ${rows.length===1?"it":"them"} from this device</button></div>`;
+}
 function conflictsHTML(){
   const c=S.conflicts||[]; if(!c.length)return "";
   return `<div class="unver bad">${c.length===1
@@ -578,7 +588,7 @@ function settingsSectionBody(k){
         <button class="btn sec" id="ghforce" style="max-width:none;margin:0 0 12px;color:var(--red);border-color:var(--red)">Replace the file with this device's copy</button>`:""}
       ${conflict?`<div class="unver bad">Another device
         kept writing while this one was trying to. Nothing is lost — press Sync now again.</div>`:""}
-      ${conflictsHTML()}
+      ${heldHTML()}${conflictsHTML()}
       <div class="stackb">
         <button class="btn" id="ghpush" style="max-width:none;margin:0">Sync now</button>
         <button class="btn sec" id="ghoff" style="max-width:none">Disconnect this device</button></div>
