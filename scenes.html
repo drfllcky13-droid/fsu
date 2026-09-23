@@ -4756,8 +4756,9 @@ document.addEventListener("click",e=>{
       "Delete everything",true,()=>{
         (S.sketches||[]).forEach(s=>{ if(s.incidentId===inc.id&&s.bg&&s.bg.imgId)
           photoDel(s.bg.imgId).catch(()=>{});
-          if(s.incidentId===inc.id)(s.objs||[]).forEach(o=>{
-            if(o.photoId)photoDel(o.photoId).catch(()=>{})}) });
+          if(s.incidentId===inc.id){(s.objs||[]).forEach(o=>{
+            if(o.photoId)photoDel(o.photoId).catch(()=>{})});
+            try{localStorage.removeItem("fsu-undo-"+s.id)}catch(_){} } });   // its undo history is case material too
         S.fills=(S.fills||[]).filter(x=>x.incidentId!==inc.id);
         S.sketches=(S.sketches||[]).filter(x=>x.incidentId!==inc.id);
         S.incidents=(S.incidents||[]).filter(x=>x.id!==inc.id);
@@ -9593,6 +9594,15 @@ function loadUndo(sk){
   try{ const s=localStorage.getItem("fsu-undo-"+sk.id);
     if(s){const st=JSON.parse(s); if(Array.isArray(st)&&st.length)UNDO[sk.id]=st} }catch(_){}
 }
+// undo history whose sketch is gone: left by deletes made before these keys were cleared with
+// them. It is case material, and it takes room the main record needs.
+function pruneUndo(){
+  try{ const live=new Set((S.sketches||[]).map(s=>"fsu-undo-"+s.id)), gone=[];
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);
+      if(k&&k.indexOf("fsu-undo-")===0&&!live.has(k))gone.push(k)}
+    gone.forEach(k=>localStorage.removeItem(k)) }catch(_){}
+}
+pruneUndo();
 
 /* 13. the first sketch, five steps */
 function guideSheet(){

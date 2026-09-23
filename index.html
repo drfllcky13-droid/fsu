@@ -4766,8 +4766,9 @@ document.addEventListener("click",e=>{
       "Delete everything",true,()=>{
         (S.sketches||[]).forEach(s=>{ if(s.incidentId===inc.id&&s.bg&&s.bg.imgId)
           photoDel(s.bg.imgId).catch(()=>{});
-          if(s.incidentId===inc.id)(s.objs||[]).forEach(o=>{
-            if(o.photoId)photoDel(o.photoId).catch(()=>{})}) });
+          if(s.incidentId===inc.id){(s.objs||[]).forEach(o=>{
+            if(o.photoId)photoDel(o.photoId).catch(()=>{})});
+            try{localStorage.removeItem("fsu-undo-"+s.id)}catch(_){} } });   // its undo history is case material too
         S.fills=(S.fills||[]).filter(x=>x.incidentId!==inc.id);
         S.sketches=(S.sketches||[]).filter(x=>x.incidentId!==inc.id);
         S.incidents=(S.incidents||[]).filter(x=>x.id!==inc.id);
