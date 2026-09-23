@@ -88,6 +88,19 @@ Contains `items`, `comps`, `forms`, `fills`, `sketches`, `incidents`, `walls`, p
 - `IndexedDB` (`vanphotos` store) — photographs and sketch backdrops, which are megabytes each.
   Referenced from state by id only. Quota is 60% of disk.
 - Getting this wrong breaks saving *everything*, not just images. Do not move images back.
+- Since 2026.09.26.1, Settings › This device shows a meter (`storageMeterHTML` in `chrome.js`:
+  every localStorage key against `LS_CEIL`, 5 MB, plus `navigator.storage.estimate()` for the
+  rest), and at `LS_WARN` (70%) Home and Scenes say so. The way to make room is **Remove closed
+  cases that already have a case package** (`removableCases`, `removeCasesSheet` and `removeCases`
+  in `case-package.js`). A case goes only if it is closed, a saved package held every form, sketch
+  and photograph it has, and it is unchanged since: `exportCasePackage` stores `inc.pkg={at,h}`,
+  where `h` is `caseFingerprint`, taken after the share sheet. Removal re-checks at the moment of
+  removing. Keep those three conditions; a looser rule deletes case material that exists nowhere
+  else.
+- Safari, and every browser on an iPad or iPhone, deletes a site's storage after seven days
+  without a visit unless it runs from the Home Screen. `claimStorage` asks for persistence on
+  every start, and while the answer is no and the app is not standalone, `#keepbar` (above the
+  sync bar on both pages, `renderKeepBar` in `chrome.js`) says so and stays.
 
 **Rendering.** `render()` calls a `renderX()` per view, each rebuilding `innerHTML` from state.
 No framework, no virtual DOM, no reactivity. Re-render is the only update mechanism. The sketch
