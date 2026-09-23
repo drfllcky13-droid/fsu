@@ -375,6 +375,11 @@ both pages. Pointing the sweep at both is the obvious next thing to do to the su
    Pages source is switched to GitHub Actions in the repository settings, or every push goes red.
 4. **Then** touch behaviour.
 
+**Decided against (2026-09-23), so they are not re-proposed:**
+- *Linux visual baselines in CI*: the layout audit in `ui.spec.js`, the contrast and print checks already catch what has broken, and baselines would need refreshing on every intended visual change.
+- *Splitting `app.css` per page*: a few KB gzipped on a page the service worker caches, against a real risk of one page losing a style it needs.
+- *Folding the `ext-*` layers into their base parts*: no user-visible gain for a diff across most of the app; fold a layer only when a change already rewrites that area.
+
 ---
 
 ## 7. Feature backlog
