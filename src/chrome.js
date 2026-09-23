@@ -32,13 +32,14 @@ function dlBlob(blob,name){
 }
 
 
-let storageState={asked:false,persisted:false,used:0,quota:0};
+let storageState={asked:false,persisted:false,known:false,used:0,quota:0};
 async function claimStorage(){
   try{
     if(navigator.storage&&navigator.storage.persisted){
       storageState.persisted=await navigator.storage.persisted();
       if(!storageState.persisted&&navigator.storage.persist)
         storageState.persisted=await navigator.storage.persist();
+      storageState.known=true;
     }
     if(navigator.storage&&navigator.storage.estimate){
       const e=await navigator.storage.estimate();
@@ -46,7 +47,55 @@ async function claimStorage(){
     }
   }catch(e){}
   storageState.asked=true;
+  renderKeepBar();
   if(view==="data"&&typeof renderData==="function")renderData();
+}
+// The app's record and everything else in localStorage share a ceiling of about 5 MB, measured,
+// not assumed (HANDOFF.md). Photographs live in IndexedDB, whose much larger quota comes from
+// navigator.storage.estimate(). At LS_WARN of the ceiling Home and Scenes say so, before a save
+// is refused and work stops being kept.
+const LS_CEIL=5*1024*1024, LS_WARN=0.7;
+function lsBytes(){
+  let n=0;
+  try{ for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i)||""; n+=k.length+(localStorage.getItem(k)||"").length} }catch(_){}
+  return n;
+}
+const lsShare=()=>lsBytes()/LS_CEIL;
+const fmtBytes=n=>n>=1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB";
+function storageMeterHTML(){
+  const used=lsBytes(), pct=Math.min(100,Math.round(used/LS_CEIL*100)), warn=used/LS_CEIL>=LS_WARN;
+  return `<div class="kv" style="margin-bottom:6px">
+      <div><dt>The app's record</dt><dd>${fmtBytes(used)} of about 5 MB <span class="${warn?"warnpill":"okpill"}">${pct}%</span></dd></div></div>
+    <div class="meter${warn?" warn":""}" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="The app's record"><i style="width:${pct}%"></i></div>
+    ${storageState.quota?`<div class="kv" style="margin:10px 0 6px"><div><dt>Photographs and everything else</dt><dd>${fmtBytes(storageState.used)} of ${fmtBytes(storageState.quota)}</dd></div></div>`:""}
+    <p class="hint" style="margin:6px 0 10px">${warn
+      ?"The app's record is nearly full. When it is full, changes stop being saved. Remove closed cases that already have a case package to make room."
+      :"Incidents, forms and sketches are kept in the app's record, which holds about 5 MB. Photographs are kept separately and have much more room."}</p>
+    <button class="btn sec" id="storefree" style="max-width:none;margin:0">Remove closed cases that already have a case package</button>`;
+}
+// one line for Home and Scenes when the record is nearly full
+const storageWarnText=()=>lsShare()>=LS_WARN?"Storage is "+Math.round(lsShare()*100)+"% full. Remove closed cases that already have a case package":"";
+
+// Safari (and every browser on an iPad or iPhone) deletes everything a site has stored once it
+// has gone seven days without being opened, unless it runs from the Home Screen. Everything
+// here, sketches and photographs included, lives only in that storage. So on those devices,
+// until the browser has agreed to keep it and while the app is not running from the Home Screen,
+// a bar says so and stays until one of those changes. Other browsers only clear storage when the
+// disk runs short, which Settings › This device explains; a permanent bar there would be noise.
+const onApple=()=>{const ua=navigator.userAgent||"";
+  return /iPad|iPhone|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1)
+    ||(/Safari\//.test(ua)&&!/Chrome|Chromium|CriOS|Edg|Firefox|FxiOS/.test(ua))};
+function renderKeepBar(){
+  try{
+    const b=document.getElementById("keepbar"); if(!b)return;
+    const show=onApple()&&storageState.known&&!storageState.persisted&&!isStandalone();
+    if(!show){b.style.display="none";b.innerHTML="";if(typeof fitHeader==="function")fitHeader();return}
+    b.innerHTML=`<span><b>Safari can delete everything in this app.</b> If it is not opened for 7 days, Safari clears what it has stored on this device, including sketches and photographs not yet saved as a case package. To stop that, add it to the Home Screen: tap Share, then Add to Home Screen, and open it from the new icon.</span>
+      <button id="keephow">How</button>`;
+    b.style.display="";
+    $("#keephow").onclick=()=>{ if(typeof openSettings==="function")openSettings("device") };
+    if(typeof fitHeader==="function")fitHeader();
+  }catch(_){}
 }
 
 const SHEETABLE='button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';

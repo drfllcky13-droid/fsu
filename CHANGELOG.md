@@ -1,5 +1,23 @@
 # FSU change log
 
+## 2026.09.26.1
+Two protections for what is kept on the device.
+
+On an iPad or iPhone, Safari deletes everything the app has stored if it goes 7 days without
+being opened, unless the app runs from the Home Screen. That includes sketches and photographs
+not yet saved as a case package. When the app is open in Safari and the browser has not agreed
+to keep its storage, an amber bar now says so and stays until it is added to the Home Screen and
+opened from there. How opens the steps. The bar appears on iPads, iPhones and Macs only; other
+browsers clear storage only when the device runs short of space, and Settings › This device
+explains that. The app also asks the browser to keep its storage every time it starts.
+
+Settings › This device shows how full the app's storage is. Incidents, forms and sketches share
+about 5 MB; photographs are kept separately with far more room. When it reaches 70%, Home and
+Scenes say so. The same screen can remove closed cases that are already safe in a case package.
+It lists exactly which cases would go and how much room that frees, and removes nothing until you
+confirm. A case is only offered if it is closed, a case package with all of it was saved, and
+nothing in it has changed since. Anything else stays, and the list says why.
+
 ## 2026.09.25.1
 Safer when data comes from another device, and case packages no longer overwrite your work.
 

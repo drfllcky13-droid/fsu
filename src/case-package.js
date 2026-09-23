@@ -32,9 +32,34 @@ async function casePackage(scope){
   for(const id of photoIds){ try{ const d=await photoGet(id); if(d)photos[id]=d }catch(e){} }
   return {fsuCase:1,version:APP_VERSION,exported:new Date().toISOString(),unit:S.vanName||"",incidents:incs,fills,sketches,photos,forms:S.forms||[]};
 }
+// What a case holds: its incident, filled forms, sketches and the photographs they use.
+function caseParts(inc){
+  const fills=(S.fills||[]).filter(f=>f.incidentId===inc.id), sks=(S.sketches||[]).filter(s=>s.incidentId===inc.id), ids=new Set();
+  sks.forEach(s=>{ if(s.bg&&s.bg.imgId)ids.add(s.bg.imgId); (s.objs||[]).forEach(o=>{if(o.photoId)ids.add(o.photoId)}) });
+  return {fills,sks,photos:[...ids].sort()};
+}
+// A fingerprint of everything in a case, photographs included, leaving out the marks that
+// exporting itself makes. A case whose fingerprint still matches the one taken when its package
+// was saved has not changed since, so that package holds all of it.
+async function caseFingerprint(inc){
+  const {fills,sks,photos}=caseParts(inc);
+  const strip=r=>{const c=Object.assign({},r); delete c.packaged; delete c.pkg; return c};
+  const ph=[];
+  for(const id of photos){ let d=null; try{d=await photoGet(id)}catch(e){} ph.push([id,d&&d.data?hash(String(d.data)):"missing"]) }
+  return hash(canon({inc:strip(inc),fills:fills.map(strip),sks:sks.map(strip),ph}));
+}
 async function exportCasePackage(scope,label){
   toast("Gathering the case material…");
   let pkg; try{ pkg=await casePackage(scope) }catch(e){ return toast("Could not gather it: "+(e.message||e)) }
+  // an incident is marked as packaged only when this package holds every form, sketch and
+  // photograph it has; a package of one sketch does not cover the rest of its case
+  const whole=[];
+  for(const inc of pkg.incidents||[]){
+    const {fills,sks,photos}=caseParts(inc);
+    const has=(list,id)=>(list||[]).some(r=>r.id===id);
+    if(fills.every(f=>has(pkg.fills,f.id))&&sks.every(k=>has(pkg.sketches,k.id))&&photos.every(id=>pkg.photos&&pkg.photos[id]))
+      whole.push(inc.id);
+  }
   const name=String(label||"case").replace(/[^a-z0-9]+/gi,"-").toLowerCase()+"-"+new Date().toISOString().slice(0,16).replace(/[:T]/g,"-")+".fsucase.json";
   const blob=new Blob([JSON.stringify(pkg)],{type:"application/json"});
   try{
@@ -44,6 +69,9 @@ async function exportCasePackage(scope,label){
   }catch(e){ if(e&&e.name==="AbortError")return; dlBlob(blob,name) }
   const now=new Date().toISOString(); S.lastCase=now;
   pkg.sketches.forEach(s=>{const sk=(S.sketches||[]).find(x=>x.id===s.id); if(sk)sk.packaged=now});
+  // fingerprinted after the share sheet, not before: it needs the tap that opened it, and the
+  // sheet is modal, so nothing in the case can change in between
+  for(const id of whole){const inc=incidentOf(id); if(inc)inc.pkg={at:now,h:await caseFingerprint(inc)}}
   saveLocal(); if(view==="data"&&typeof renderData==="function")renderData();
   else if(view==="sketch"&&typeof renderSketch==="function")renderSketch();
   const np=Object.keys(pkg.photos).length;
@@ -118,4 +146,62 @@ async function settleClash(how,clash,pclash,photos){
     for(const id of pclash){ if(used.has(id))try{ await photoPut(pids[id],photos[id]) }catch(e){} }
   }
   saveLocal(); render();
+}
+
+/* ---- making room: closed cases that are already safe in a case package ----
+   A case goes only if it is closed, a package holding all of it was saved, and nothing in it
+   has changed since (its fingerprint still matches). Anything else stays, with the reason. */
+async function removableCases(){
+  const go=[], stay=[];
+  for(const inc of closedIncidents()){
+    const {fills,sks,photos}=caseParts(inc);
+    const name=(inc.caseNo||"No case number")+(inc.offence?" \u00b7 "+inc.offence:"");
+    if(!inc.pkg||!inc.pkg.h){stay.push({inc,name,why:"no case package has been saved"});continue}
+    if(await caseFingerprint(inc)!==inc.pkg.h){stay.push({inc,name,why:"changed since its case package was saved"});continue}
+    let rec=JSON.stringify(inc).length, pic=0;
+    fills.forEach(f=>rec+=JSON.stringify(f).length);
+    sks.forEach(k=>{rec+=JSON.stringify(k).length; try{rec+=(localStorage.getItem("fsu-undo-"+k.id)||"").length}catch(_){} });
+    for(const id of photos){ try{const d=await photoGet(id); if(d&&d.data)pic+=String(d.data).length}catch(e){} }
+    go.push({inc,name,fills,sks,photos,rec,pic});
+  }
+  return {go,stay};
+}
+async function removeCasesSheet(){
+  const {go,stay}=await removableCases();
+  const rec=go.reduce((a,c)=>a+c.rec,0), pic=go.reduce((a,c)=>a+c.pic,0);
+  const row=c=>`<li><b>${esc(c.name)}</b><br><span class="hint">closed ${esc(String(c.inc.closed).slice(0,10))}, package saved ${esc(String(c.inc.pkg.at).slice(0,10))} \u00b7 ${c.fills.length} form${c.fills.length===1?"":"s"}, ${c.sks.length} sketch${c.sks.length===1?"":"es"}, ${c.photos.length} photograph${c.photos.length===1?"":"s"} \u00b7 ${fmtBytes(c.rec+c.pic)}</span></li>`;
+  const kept=stay.length?`<div class="idsect">Staying on this device</div>
+    <ul class="storestay" style="margin:0 0 12px;padding-left:20px;font-size:14.5px;line-height:1.5">${stay.map(c=>`<li><b>${esc(c.name)}</b>: ${esc(c.why)}</li>`).join("")}</ul>`:"";
+  if(!go.length){
+    openSheet(`<h3>Nothing to remove</h3>
+      <p style="margin:0 0 12px;color:var(--ink2);font-size:14.5px;line-height:1.5">A case is removed only when it is closed, a case package with all of it has been saved, and nothing in it has changed since. No case here is all three.</p>
+      ${kept}<button class="btn sec" id="cfno" style="max-width:none;margin:0">Close</button>`);
+    $("#cfno").onclick=closeSheet; return;
+  }
+  openSheet(`<h3>Remove closed cases</h3>
+    <p style="margin:0 0 10px;color:var(--ink2);font-size:14.5px;line-height:1.5">These ${go.length===1?"case is":go.length+" cases are"} closed and already in a saved case package, unchanged since. Removing ${go.length===1?"it":"them"} deletes the incident, its forms, sketches and photographs from this device. The case package is then the only copy, so make sure it is in the case file.</p>
+    <ul class="storego" style="margin:0 0 10px;padding-left:20px;font-size:14.5px;line-height:1.5">${go.map(row).join("")}</ul>
+    <p class="hint" id="storefrees" style="margin:0 0 12px">Frees ${fmtBytes(rec)} of the app's record${pic?" and "+fmtBytes(pic)+" of photograph storage":""}.</p>
+    ${kept}
+    <button class="btn sec" id="cfyes" style="max-width:none;margin:0;color:var(--red);border-color:var(--red)">Remove ${go.length} case${go.length===1?"":"s"}</button>
+    <button class="btn" id="cfno" style="max-width:none">Cancel</button>`);
+  $("#cfno").onclick=closeSheet;
+  $("#cfyes").onclick=async()=>{ closeSheet(); const n=await removeCases(go.map(c=>c.inc.id));
+    toast(n?"Removed "+n+" case"+(n===1?"":"s")+". The case packages are the copies now.":"Nothing was removed: the cases changed") };
+}
+// checked again at the moment of removal, so nothing edited while the sheet was open can go
+async function removeCases(ids){
+  const {go}=await removableCases(); let n=0;
+  for(const c of go){
+    if(!ids.includes(c.inc.id))continue;
+    for(const id of c.photos){ try{await photoDel(id)}catch(e){} }
+    c.sks.forEach(k=>{ try{localStorage.removeItem("fsu-undo-"+k.id)}catch(_){} });
+    S.fills=(S.fills||[]).filter(f=>f.incidentId!==c.inc.id);
+    S.sketches=(S.sketches||[]).filter(k=>k.incidentId!==c.inc.id);
+    S.incidents=(S.incidents||[]).filter(i=>i.id!==c.inc.id);
+    logAct("case","Removed "+(c.inc.caseNo||"a case")+" from this device; it is in a case package");
+    n++;
+  }
+  saveLocal(); if(typeof claimStorage==="function")await claimStorage(); render();
+  return n;
 }

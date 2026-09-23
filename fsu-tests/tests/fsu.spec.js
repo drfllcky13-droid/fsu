@@ -16,6 +16,9 @@ async function open(page){
 async function quickSketch(page){
   await page.goto("/scenes.html#v=sketch&ref=new");
   await page.waitForSelector("#skcanvas");
+  // the storage check settles first: the bar it may raise moves the canvas, and the gestures
+  // below are drawn at measured positions
+  await page.waitForFunction(()=>storageState.asked);
   await page.evaluate(()=>{closeSheet(); const sk=curSk(); sk.scale={px:100,real:10,unit:"ft"}; saveLocal(); renderSketch()});
 }
 const sizes=[[1500,1000],[1194,834],[393,852],[320,700]];
@@ -100,9 +103,12 @@ test.describe("sketch flows",()=>{
 
   test("freehand ink stroke becomes an object",async({page})=>{
     await page.evaluate(()=>inkStart());
-    const c=await page.locator("#skcanvas").boundingBox();
-    await page.mouse.move(c.x+c.width*.2,c.y+c.height*.8); await page.mouse.down();
-    for(let i=1;i<=10;i++)await page.mouse.move(c.x+c.width*(.2+i*.04),c.y+c.height*(.8-(i%2)*.05));
+    const c=await page.locator("#skcanvas").boundingBox(), vh=page.viewportSize().height;
+    // drawn on the part of the canvas that is on screen: a bar above the header (the storage
+    // warning, the sync bar) can push the canvas's lower edge below the window
+    const y0=Math.min(c.y+c.height*.8,vh-60), dy=Math.min(c.height*.05,30);
+    await page.mouse.move(c.x+c.width*.2,y0); await page.mouse.down();
+    for(let i=1;i<=10;i++)await page.mouse.move(c.x+c.width*(.2+i*.04),y0-(i%2)*dy);
     await page.mouse.up();
     const r=await page.evaluate(()=>{const o=curSk().objs.filter(x=>x.t==="ink").pop(); return o&&{n:o.pts.length,w:o.w}});
     expect(r.n).toBeGreaterThanOrEqual(2); expect(r.w).toBeGreaterThan(50);
