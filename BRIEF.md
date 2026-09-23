@@ -77,7 +77,12 @@ Each page has its own manifest (`manifest.webmanifest`, `scenes.webmanifest`) an
 pages. The two share every part of the shell — header, side nav, tab bar, sheets, toast, the
 rotation gate — because they are literally the same source parts.
 
-**State.** One object `S`, persisted to `localStorage` on every change via `save()`.
+**State.** One object `S`, persisted to `localStorage` on every change via `save()` (or
+`saveLocal()`, which does not queue a sync). Since 2026.09.30.1 typing is the exception: form fields,
+sketch object names and the backdrop sliders call `saveSoon(patch)` in `src/core.js`, which writes
+500 ms after the last keystroke, at once on `visibilitychange`→hidden and `pagehide`, and with any
+other save. `patch` re-applies the edit to a record the other page saved in the meantime (the
+`storage` listener applies pending patches and writes); `fsu-tests/tests/formsave.spec.js` covers it.
 Contains `items`, `comps`, `forms`, `fills`, `sketches`, `incidents`, `walls`, plus settings.
 `live()` filters `S.items` to those not marked "Not carried".
 

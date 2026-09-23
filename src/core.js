@@ -59,8 +59,26 @@ S.items.forEach(i=>{if(i.date&&/^\d{4}-\d{2}$/.test(i.date))i.date=i.date+"-01";
   if(!i.rel)i.rel=[];
   if(!i.links)i.links=[];
   if(i.loc&&!S.comps.some(x=>x.code===i.loc))S.comps.push({code:i.loc,desc:"",side:"",x:null,y:null,w:6,h:4})});
-const save=()=>{store.set(S);if(typeof queuePush==='function')queuePush()};
-const saveLocal=()=>store.set(S);
+const save=()=>{settle();store.set(S);if(typeof queuePush==='function')queuePush()};
+const saveLocal=()=>{settle();store.set(S)};
+/* Typing saves after a pause, not on every key: each save writes the whole record, and the other
+   open page reads all of it back. saveSoon(patch) writes SAVE_WAIT ms after the last call; any
+   other save before then writes the pending change with it. It is also written the moment the
+   page is hidden (switching apps, locking the screen) or left (pagehide: iPad Safari often skips
+   beforeunload). patch(state) re-applies the edit to a state: if the other page saves in the
+   meantime, the storage listener below takes their record, applies the patches and writes at
+   once, so neither side's change is lost. */
+const SAVE_WAIT=500;
+let saveTimer=null, savePatches=[];
+function settle(){ if(saveTimer!==null){clearTimeout(saveTimer);saveTimer=null} savePatches=[] }
+function saveSoon(patch){
+  if(typeof patch==="function")savePatches.push(patch);
+  if(saveTimer!==null)clearTimeout(saveTimer);
+  saveTimer=setTimeout(flushSave,SAVE_WAIT);
+}
+function flushSave(){ if(saveTimer!==null||savePatches.length)saveLocal() }
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden")flushSave() });
+window.addEventListener("pagehide",flushSave);
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -145,6 +163,8 @@ window.addEventListener("storage",ev=>{
   ["base","tomb"].forEach(b=>{ if(!S[b]||typeof S[b]!=="object")S[b]={};
     ["items","comps","forms"].forEach(k=>{ if(!S[b][k]||typeof S[b][k]!=="object")S[b][k]={} }) });
   if(!Array.isArray(S.conflicts))S.conflicts=[];
+  // typing here that had not been written yet goes on top of their record, and is written now
+  if(savePatches.length){ savePatches.forEach(p=>{try{p(S)}catch(_){}}); saveLocal() }
   if(typeof render==="function")render();
 });
 

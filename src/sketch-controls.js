@@ -237,7 +237,10 @@ document.addEventListener("input",e=>{
       const fEl=on||num, fid=fEl.id, at=fEl.selectionStart;
       if(on)o.label=on.value;
       if(num)o.n=num.value.trim();
-      saveLocal();redrawCanvas();
+      const skId=curSketch, oid=o.id, label=o.label, n=o.n;
+      saveSoon(st=>{const s=(st.sketches||[]).find(x=>x.id===skId), t=s&&(s.objs||[]).find(x=>x.id===oid);
+        if(t){t.label=label; t.n=n}});
+      redrawCanvas();
       // redrawCanvas rebuilds the field itself (the label previews live on the canvas) —
       // put the caret back or every keystroke past the first drops focus to the page
       const el=document.getElementById(fid);

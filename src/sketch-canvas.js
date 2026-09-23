@@ -658,10 +658,13 @@ function bgSheet(sk){
   if(fit)fit.onclick=()=>{sk.bg.x=0;sk.bg.y=hasHeader(sk)?HEADER_H:0;
     sk.bg.w=pageW(sk);sk.bg.h=pageH(sk)-(hasHeader(sk)?HEADER_H:0);
     saveLocal();renderSketch();toast("Fitted")};
+  // a slider being dragged saves once it stops, like typing
+  const bgSoon=()=>{const id=sk.id, bg={...sk.bg}, sc=sk.scale?{...sk.scale}:sk.scale;
+    saveSoon(st=>{const s=(st.sketches||[]).find(x=>x.id===id); if(s){s.bg=bg; if(sc)s.scale=sc}})};
   const br=$("#bgbr");
-  if(br)br.oninput=()=>{sk.bg.br=(+br.value)/100;saveLocal();renderSketch()};
+  if(br)br.oninput=()=>{sk.bg.br=(+br.value)/100;bgSoon();renderSketch()};
   const sa=$("#bgsa");
-  if(sa)sa.oninput=()=>{sk.bg.sa=(+sa.value)/100;saveLocal();renderSketch()};
+  if(sa)sa.oninput=()=>{sk.bg.sa=(+sa.value)/100;bgSoon();renderSketch()};
   const neut=$("#bgneut");
   if(neut)neut.onclick=()=>{sk.bg.br=1.35;sk.bg.sa=0.35;sk.bg.op=1;
     saveLocal();renderSketch();bgSheet(sk);toast("Corrected")};
@@ -673,7 +676,7 @@ function bgSheet(sk){
     sk.bg.w=nw; sk.bg.h=sk.bg.h*f;
     sk.bg.x=cx-sk.bg.w/2; sk.bg.y=cy-sk.bg.h/2;
     if(sk.scale&&sk.scale.px)sk.scale={...sk.scale, px:sk.scale.px*f};
-    saveLocal(); renderSketch();
+    bgSoon(); renderSketch();
   };
   let baseW=(sk.bg&&sk.bg.w)||0;
   const sz=$("#bgsize");
@@ -690,7 +693,7 @@ function bgSheet(sk){
     sk.bg.y=top+((pageH(sk)-top)-sk.bg.h)/2;
     saveLocal(); renderSketch(); toast("Centred")};
   const op=$("#bgop");
-  if(op)op.oninput=()=>{sk.bg.op=(+op.value)/100;saveLocal();renderSketch()};
+  if(op)op.oninput=()=>{sk.bg.op=(+op.value)/100;bgSoon();renderSketch()};
   const f=$("#bgf");
   if(f)f.onchange=()=>{
     const file=f.files&&f.files[0]; if(!file)return;

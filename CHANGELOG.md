@@ -1,5 +1,15 @@
 # FSU change log
 
+## 2026.09.30.1
+Typing stays quick in long reports.
+
+Before, every letter typed into a form, or into the name of something on a sketch, saved the
+whole record on the device, and with the other app open that app read it all back each time. Once
+a record holds a lot of cases, that makes typing lag on an iPad. Now the app saves half a second
+after you stop typing (or stop dragging a backdrop slider). Nothing is lost by waiting: switching
+to another app, locking the screen, closing the page or reloading saves what you typed straight
+away, and if the other app saves something in that half second, both changes are kept.
+
 ## 2026.09.29.1
 The PDF tool is updated.
 
