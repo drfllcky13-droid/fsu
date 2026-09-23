@@ -1,5 +1,14 @@
 # FSU change log
 
+## 2026.09.27.1
+The app opens quickly on a weak signal.
+
+Before, with a poor connection, the app waited for the network for as long as the connection
+took before falling back to the copy kept on the device. Now it waits about three seconds, then
+opens from the device copy and fetches the newer one in the background. If a new version of the
+app has arrived that way, a note says "Updated" with a Reload button; nothing reloads by itself.
+With no connection at all, Scenes now always opens as Scenes, never as the van app.
+
 ## 2026.09.26.2
 Fixed: when FSU and Scenes were open at the same time and one of them saved, the other could stop
 with an error if what was saved was missing a part, such as the automatic-saving settings. The

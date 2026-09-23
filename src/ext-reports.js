@@ -1,8 +1,9 @@
 /* ---------- reports and upkeep, round ten ----------
    report wording, auto-fill, photograph log, Word export, vector PDF, version stamp,
    vehicle check, part numbers, shift handover, service and calibration, help and change log. */
-const APP_VERSION="2026.09.26.2";
+const APP_VERSION="2026.09.27.1";
 const CHANGELOG=[
+  ["2026-09-27","On a weak signal the app opens from the copy on the device after about three seconds and fetches the newer one behind; when a new version arrives that way, a note offers a Reload. With no connection, Scenes always opens as Scenes."],
   ["2026-09-26","Fixed: with FSU and Scenes both open, a save in one could stop the other with an error if the saved record was missing a part. The other app now tidies what it receives as it does when it opens."],
   ["2026-09-26","In Safari, when the app is not on the Home Screen and the browser has not agreed to keep its storage, a bar warns that Safari deletes everything after 7 days unopened and shows how to add it to the Home Screen (Apple devices only; other browsers are covered under Settings › This device). Settings › This device shows how full storage is, Home and Scenes warn at 70%, and closed cases already safe in an unchanged case package can be removed after a confirm that lists exactly what goes."],
   ["2026-09-25","Anything that comes in from outside (automatic saving, a restored backup, a case package) is checked first: an entry that is not safe is left out or repaired, listed under Settings › Recent errors, and the rest still comes in. Both apps refuse to run anything that is not part of the app. Opening a case package over records that are already here and different now asks: Keep mine, Use the package's, or Keep both."],
