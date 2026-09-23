@@ -43,6 +43,7 @@ function renderHome(){
 
   // what needs doing
   const rows=[];
+  if(storageWarnText())rows.unshift(["warn",storageWarnText(),'data-gosec="device"',""]);
   if(ghOn()&&td!=null&&td<=30)rows.push(["warn",td<0?"Automatic saving has stopped, the token has expired":"Sync token expires in "+td+" day"+(td===1?"":"s"),'data-gosec="sync"',""]);
   if(bad.length)rows.push(["","Review "+bad.length+" low or out",'data-list="low"',""]);
   if(soon.length)rows.push(["","Check "+soon.length+" expiring or due for service",'data-list="expiring"',""]);

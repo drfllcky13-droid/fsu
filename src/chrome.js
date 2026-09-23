@@ -50,6 +50,32 @@ async function claimStorage(){
   renderKeepBar();
   if(view==="data"&&typeof renderData==="function")renderData();
 }
+// The app's record and everything else in localStorage share a ceiling of about 5 MB, measured,
+// not assumed (HANDOFF.md). Photographs live in IndexedDB, whose much larger quota comes from
+// navigator.storage.estimate(). At LS_WARN of the ceiling Home and Scenes say so, before a save
+// is refused and work stops being kept.
+const LS_CEIL=5*1024*1024, LS_WARN=0.7;
+function lsBytes(){
+  let n=0;
+  try{ for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i)||""; n+=k.length+(localStorage.getItem(k)||"").length} }catch(_){}
+  return n;
+}
+const lsShare=()=>lsBytes()/LS_CEIL;
+const fmtBytes=n=>n>=1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB";
+function storageMeterHTML(){
+  const used=lsBytes(), pct=Math.min(100,Math.round(used/LS_CEIL*100)), warn=used/LS_CEIL>=LS_WARN;
+  return `<div class="kv" style="margin-bottom:6px">
+      <div><dt>The app's record</dt><dd>${fmtBytes(used)} of about 5 MB <span class="${warn?"warnpill":"okpill"}">${pct}%</span></dd></div></div>
+    <div class="meter${warn?" warn":""}" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="The app's record"><i style="width:${pct}%"></i></div>
+    ${storageState.quota?`<div class="kv" style="margin:10px 0 6px"><div><dt>Photographs and everything else</dt><dd>${fmtBytes(storageState.used)} of ${fmtBytes(storageState.quota)}</dd></div></div>`:""}
+    <p class="hint" style="margin:6px 0 10px">${warn
+      ?"The app's record is nearly full. When it is full, changes stop being saved. Remove closed cases that already have a case package to make room."
+      :"Incidents, forms and sketches are kept in the app's record, which holds about 5 MB. Photographs are kept separately and have much more room."}</p>
+    <button class="btn sec" id="storefree" style="max-width:none;margin:0">Remove closed cases that already have a case package</button>`;
+}
+// one line for Home and Scenes when the record is nearly full
+const storageWarnText=()=>lsShare()>=LS_WARN?"Storage is "+Math.round(lsShare()*100)+"% full. Remove closed cases that already have a case package":"";
+
 // Safari (and every browser on an iPad or iPhone) deletes everything a site has stored once it
 // has gone seven days without being opened, unless it runs from the Home Screen. Everything
 // here, sketches and photographs included, lives only in that storage. So until the browser has

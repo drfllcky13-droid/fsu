@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-sYIFgujTbGCA6Ica1IhPMhiJ2VmxE+X60+qK/PEqmIA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-gfYVn54jN7o9Nia3GKiI+p+fNTd7WC33HRYToMc/gQc='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FSU</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -776,6 +776,12 @@ body.wide .mslot.hit{font-size:14.5px}
 .fmt{background:var(--card2);border:.5px solid var(--line2);border-radius:9px;padding:10px 11px;
   font-family:var(--mono);font-size:13px;line-height:1.5;overflow-x:auto;margin:0 0 12px;white-space:pre}
 .lnkbtn{background:none;border:0;color:var(--blue);font:inherit;padding:0;text-decoration:underline}
+.meter{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--green)}
+.meter.warn i{background:var(--amber)}
+.storego li,.storestay li{margin:0 0 6px}
+.storewarn{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;margin:0 0 12px;padding:10px 14px;
+  border:0;border-radius:10px;background:var(--amberbg);color:var(--amber);font:inherit;font-weight:600;text-align:left;cursor:pointer}
 .okpill{background:var(--greenbg);color:var(--greenink);font-size:13.5px;font-weight:600;
   padding:3px 9px;border-radius:20px}
 .warnpill{background:var(--amberbg);color:var(--amber);font-size:13.5px;font-weight:600;
@@ -2000,6 +2006,32 @@ async function claimStorage(){
   renderKeepBar();
   if(view==="data"&&typeof renderData==="function")renderData();
 }
+// The app's record and everything else in localStorage share a ceiling of about 5 MB, measured,
+// not assumed (HANDOFF.md). Photographs live in IndexedDB, whose much larger quota comes from
+// navigator.storage.estimate(). At LS_WARN of the ceiling Home and Scenes say so, before a save
+// is refused and work stops being kept.
+const LS_CEIL=5*1024*1024, LS_WARN=0.7;
+function lsBytes(){
+  let n=0;
+  try{ for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i)||""; n+=k.length+(localStorage.getItem(k)||"").length} }catch(_){}
+  return n;
+}
+const lsShare=()=>lsBytes()/LS_CEIL;
+const fmtBytes=n=>n>=1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB";
+function storageMeterHTML(){
+  const used=lsBytes(), pct=Math.min(100,Math.round(used/LS_CEIL*100)), warn=used/LS_CEIL>=LS_WARN;
+  return `<div class="kv" style="margin-bottom:6px">
+      <div><dt>The app's record</dt><dd>${fmtBytes(used)} of about 5 MB <span class="${warn?"warnpill":"okpill"}">${pct}%</span></dd></div></div>
+    <div class="meter${warn?" warn":""}" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="The app's record"><i style="width:${pct}%"></i></div>
+    ${storageState.quota?`<div class="kv" style="margin:10px 0 6px"><div><dt>Photographs and everything else</dt><dd>${fmtBytes(storageState.used)} of ${fmtBytes(storageState.quota)}</dd></div></div>`:""}
+    <p class="hint" style="margin:6px 0 10px">${warn
+      ?"The app's record is nearly full. When it is full, changes stop being saved. Remove closed cases that already have a case package to make room."
+      :"Incidents, forms and sketches are kept in the app's record, which holds about 5 MB. Photographs are kept separately and have much more room."}</p>
+    <button class="btn sec" id="storefree" style="max-width:none;margin:0">Remove closed cases that already have a case package</button>`;
+}
+// one line for Home and Scenes when the record is nearly full
+const storageWarnText=()=>lsShare()>=LS_WARN?"Storage is "+Math.round(lsShare()*100)+"% full. Remove closed cases that already have a case package":"";
+
 // Safari (and every browser on an iPad or iPhone) deletes everything a site has stored once it
 // has gone seven days without being opened, unless it runs from the Home Screen. Everything
 // here, sketches and photographs included, lives only in that storage. So until the browser has
@@ -2348,9 +2380,34 @@ async function casePackage(scope){
   for(const id of photoIds){ try{ const d=await photoGet(id); if(d)photos[id]=d }catch(e){} }
   return {fsuCase:1,version:APP_VERSION,exported:new Date().toISOString(),unit:S.vanName||"",incidents:incs,fills,sketches,photos,forms:S.forms||[]};
 }
+// What a case holds: its incident, filled forms, sketches and the photographs they use.
+function caseParts(inc){
+  const fills=(S.fills||[]).filter(f=>f.incidentId===inc.id), sks=(S.sketches||[]).filter(s=>s.incidentId===inc.id), ids=new Set();
+  sks.forEach(s=>{ if(s.bg&&s.bg.imgId)ids.add(s.bg.imgId); (s.objs||[]).forEach(o=>{if(o.photoId)ids.add(o.photoId)}) });
+  return {fills,sks,photos:[...ids].sort()};
+}
+// A fingerprint of everything in a case, photographs included, leaving out the marks that
+// exporting itself makes. A case whose fingerprint still matches the one taken when its package
+// was saved has not changed since, so that package holds all of it.
+async function caseFingerprint(inc){
+  const {fills,sks,photos}=caseParts(inc);
+  const strip=r=>{const c=Object.assign({},r); delete c.packaged; delete c.pkg; return c};
+  const ph=[];
+  for(const id of photos){ let d=null; try{d=await photoGet(id)}catch(e){} ph.push([id,d&&d.data?hash(String(d.data)):"missing"]) }
+  return hash(canon({inc:strip(inc),fills:fills.map(strip),sks:sks.map(strip),ph}));
+}
 async function exportCasePackage(scope,label){
   toast("Gathering the case material…");
   let pkg; try{ pkg=await casePackage(scope) }catch(e){ return toast("Could not gather it: "+(e.message||e)) }
+  // an incident is marked as packaged only when this package holds every form, sketch and
+  // photograph it has; a package of one sketch does not cover the rest of its case
+  const whole=[];
+  for(const inc of pkg.incidents||[]){
+    const {fills,sks,photos}=caseParts(inc);
+    const has=(list,id)=>(list||[]).some(r=>r.id===id);
+    if(fills.every(f=>has(pkg.fills,f.id))&&sks.every(k=>has(pkg.sketches,k.id))&&photos.every(id=>pkg.photos&&pkg.photos[id]))
+      whole.push(inc.id);
+  }
   const name=String(label||"case").replace(/[^a-z0-9]+/gi,"-").toLowerCase()+"-"+new Date().toISOString().slice(0,16).replace(/[:T]/g,"-")+".fsucase.json";
   const blob=new Blob([JSON.stringify(pkg)],{type:"application/json"});
   try{
@@ -2360,6 +2417,9 @@ async function exportCasePackage(scope,label){
   }catch(e){ if(e&&e.name==="AbortError")return; dlBlob(blob,name) }
   const now=new Date().toISOString(); S.lastCase=now;
   pkg.sketches.forEach(s=>{const sk=(S.sketches||[]).find(x=>x.id===s.id); if(sk)sk.packaged=now});
+  // fingerprinted after the share sheet, not before: it needs the tap that opened it, and the
+  // sheet is modal, so nothing in the case can change in between
+  for(const id of whole){const inc=incidentOf(id); if(inc)inc.pkg={at:now,h:await caseFingerprint(inc)}}
   saveLocal(); if(view==="data"&&typeof renderData==="function")renderData();
   else if(view==="sketch"&&typeof renderSketch==="function")renderSketch();
   const np=Object.keys(pkg.photos).length;
@@ -2434,6 +2494,64 @@ async function settleClash(how,clash,pclash,photos){
     for(const id of pclash){ if(used.has(id))try{ await photoPut(pids[id],photos[id]) }catch(e){} }
   }
   saveLocal(); render();
+}
+
+/* ---- making room: closed cases that are already safe in a case package ----
+   A case goes only if it is closed, a package holding all of it was saved, and nothing in it
+   has changed since (its fingerprint still matches). Anything else stays, with the reason. */
+async function removableCases(){
+  const go=[], stay=[];
+  for(const inc of closedIncidents()){
+    const {fills,sks,photos}=caseParts(inc);
+    const name=(inc.caseNo||"No case number")+(inc.offence?" \u00b7 "+inc.offence:"");
+    if(!inc.pkg||!inc.pkg.h){stay.push({inc,name,why:"no case package has been saved"});continue}
+    if(await caseFingerprint(inc)!==inc.pkg.h){stay.push({inc,name,why:"changed since its case package was saved"});continue}
+    let rec=JSON.stringify(inc).length, pic=0;
+    fills.forEach(f=>rec+=JSON.stringify(f).length);
+    sks.forEach(k=>{rec+=JSON.stringify(k).length; try{rec+=(localStorage.getItem("fsu-undo-"+k.id)||"").length}catch(_){} });
+    for(const id of photos){ try{const d=await photoGet(id); if(d&&d.data)pic+=String(d.data).length}catch(e){} }
+    go.push({inc,name,fills,sks,photos,rec,pic});
+  }
+  return {go,stay};
+}
+async function removeCasesSheet(){
+  const {go,stay}=await removableCases();
+  const rec=go.reduce((a,c)=>a+c.rec,0), pic=go.reduce((a,c)=>a+c.pic,0);
+  const row=c=>`<li><b>${esc(c.name)}</b><br><span class="hint">closed ${esc(String(c.inc.closed).slice(0,10))}, package saved ${esc(String(c.inc.pkg.at).slice(0,10))} \u00b7 ${c.fills.length} form${c.fills.length===1?"":"s"}, ${c.sks.length} sketch${c.sks.length===1?"":"es"}, ${c.photos.length} photograph${c.photos.length===1?"":"s"} \u00b7 ${fmtBytes(c.rec+c.pic)}</span></li>`;
+  const kept=stay.length?`<div class="idsect">Staying on this device</div>
+    <ul class="storestay" style="margin:0 0 12px;padding-left:20px;font-size:14.5px;line-height:1.5">${stay.map(c=>`<li><b>${esc(c.name)}</b>: ${esc(c.why)}</li>`).join("")}</ul>`:"";
+  if(!go.length){
+    openSheet(`<h3>Nothing to remove</h3>
+      <p style="margin:0 0 12px;color:var(--ink2);font-size:14.5px;line-height:1.5">A case is removed only when it is closed, a case package with all of it has been saved, and nothing in it has changed since. No case here is all three.</p>
+      ${kept}<button class="btn sec" id="cfno" style="max-width:none;margin:0">Close</button>`);
+    $("#cfno").onclick=closeSheet; return;
+  }
+  openSheet(`<h3>Remove closed cases</h3>
+    <p style="margin:0 0 10px;color:var(--ink2);font-size:14.5px;line-height:1.5">These ${go.length===1?"case is":go.length+" cases are"} closed and already in a saved case package, unchanged since. Removing ${go.length===1?"it":"them"} deletes the incident, its forms, sketches and photographs from this device. The case package is then the only copy, so make sure it is in the case file.</p>
+    <ul class="storego" style="margin:0 0 10px;padding-left:20px;font-size:14.5px;line-height:1.5">${go.map(row).join("")}</ul>
+    <p class="hint" id="storefrees" style="margin:0 0 12px">Frees ${fmtBytes(rec)} of the app's record${pic?" and "+fmtBytes(pic)+" of photograph storage":""}.</p>
+    ${kept}
+    <button class="btn sec" id="cfyes" style="max-width:none;margin:0;color:var(--red);border-color:var(--red)">Remove ${go.length} case${go.length===1?"":"s"}</button>
+    <button class="btn" id="cfno" style="max-width:none">Cancel</button>`);
+  $("#cfno").onclick=closeSheet;
+  $("#cfyes").onclick=async()=>{ closeSheet(); const n=await removeCases(go.map(c=>c.inc.id));
+    toast(n?"Removed "+n+" case"+(n===1?"":"s")+". The case packages are the copies now.":"Nothing was removed: the cases changed") };
+}
+// checked again at the moment of removal, so nothing edited while the sheet was open can go
+async function removeCases(ids){
+  const {go}=await removableCases(); let n=0;
+  for(const c of go){
+    if(!ids.includes(c.inc.id))continue;
+    for(const id of c.photos){ try{await photoDel(id)}catch(e){} }
+    c.sks.forEach(k=>{ try{localStorage.removeItem("fsu-undo-"+k.id)}catch(_){} });
+    S.fills=(S.fills||[]).filter(f=>f.incidentId!==c.inc.id);
+    S.sketches=(S.sketches||[]).filter(k=>k.incidentId!==c.inc.id);
+    S.incidents=(S.incidents||[]).filter(i=>i.id!==c.inc.id);
+    logAct("case","Removed "+(c.inc.caseNo||"a case")+" from this device; it is in a case package");
+    n++;
+  }
+  saveLocal(); if(typeof claimStorage==="function")await claimStorage(); render();
+  return n;
 }
 /* ---------- sample van ---------- */
 const DEMO_COMPS=[
@@ -3106,6 +3224,7 @@ function renderHome(){
 
   // what needs doing
   const rows=[];
+  if(storageWarnText())rows.unshift(["warn",storageWarnText(),'data-gosec="device"',""]);
   if(ghOn()&&td!=null&&td<=30)rows.push(["warn",td<0?"Automatic saving has stopped, the token has expired":"Sync token expires in "+td+" day"+(td===1?"":"s"),'data-gosec="sync"',""]);
   if(bad.length)rows.push(["","Review "+bad.length+" low or out",'data-list="low"',""]);
   if(soon.length)rows.push(["","Check "+soon.length+" expiring or due for service",'data-list="expiring"',""]);
@@ -4338,19 +4457,22 @@ function docKind(kind,name){
 }
 const docIcon=k=>`<svg class="dg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
   stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${DOCICON[k]||DOCICON.report}</svg>`;
+// Scenes' own line for a nearly full record; Home puts the same line in its list of things to do
+const storeWarnHTML=()=>{const t=storageWarnText();
+  return t?`<button class="storewarn" data-gosec="device"><span>${esc(t)}</span><span class="chev">&#8250;</span></button>`:""};
 function renderActive(){
   if(!document.getElementById("v-active"))return;   // that view is on the other page
   $("#title").textContent="Scenes";
-  if(scenesTab==="closed"){ renderForms(); $("#v-active").innerHTML=scenesHead()+$("#v-forms").innerHTML; $("#title").textContent="Scenes"; return }
+  if(scenesTab==="closed"){ renderForms(); $("#v-active").innerHTML=scenesHead()+storeWarnHTML()+$("#v-forms").innerHTML; $("#title").textContent="Scenes"; return }
   const incs=openIncidents(), loose=openDocs();
   if(!incs.length&&!loose.length){
-    $("#v-active").innerHTML=scenesHead()+`<div class="empty"><strong>Nothing open</strong>
+    $("#v-active").innerHTML=scenesHead()+storeWarnHTML()+`<div class="empty"><strong>Nothing open</strong>
       <p>Start an incident and the app keeps its forms and sketches together,
          then bundles them into one report. Closed ones stay under Closed.</p>
       <button class="btn" data-newinc="1">Start an incident</button></div>`;
     return;
   }
-  $("#v-active").innerHTML=scenesHead()
+  $("#v-active").innerHTML=scenesHead()+storeWarnHTML()
     +(isIPadLike()?activeSpotlightHTML(incs,loose):!document.body.classList.contains("wide")?activeCardsHTML(incs,loose):activeTableHTML(incs,loose));
 }
 function incProgress(inc){
@@ -4645,7 +4767,6 @@ function settingsSectionBody(k){
       <div><dt>Storage</dt><dd>${!storageState.asked?"checking\u2026"
         :storageState.persisted?`<span class="okpill">Kept by the browser</span>`
         :`<span class="warnpill">Can be cleared</span>`}</dd></div>
-      ${storageState.quota?`<div><dt>Space used</dt><dd>${(storageState.used/1048576).toFixed(1)} MB of ${(storageState.quota/1048576).toFixed(0)} MB</dd></div>`:""}
       <div><dt>Home screen</dt><dd>${isStandalone()?`<span class="okpill">Installed</span>`:"Not installed"}</dd></div>
       <div><dt>Version</dt><dd>${esc(APP_VERSION)}</dd></div>
     </div>
@@ -4654,6 +4775,8 @@ function settingsSectionBody(k){
       : isStandalone()||!onApple()
         ? "Everything you enter is written to this device as you go. The browser has not yet marked it as protected storage, which normally happens after the app has been used a few times. Keep a backup until it does."
         : "Everything you enter is written to this device as you go. Opened in Safari rather than from the Home Screen, it is deleted if the app goes 7 days without being opened, sketches and photographs included. Add it to the Home Screen (below) and open it from there."}</p>
+    <div class="idsect">Space</div>
+    ${storageMeterHTML()}
     <div class="idsect">On the home screen</div>
     <p class="hint" style="margin:0">${isStandalone()
       ? "Installed. It opens full screen from its own icon and works without a connection."
@@ -5197,6 +5320,8 @@ document.addEventListener("click",e=>{
     return toast(S.mode==="auto"?"Matching the screen":S.mode==="phone"?"Handheld layout":"Desktop layout")}
   if(e.target.closest("#gear")){openSettings(null);return}
   if(e.target.closest("#dlj")){ backupOut(); return }
+  if(e.target.closest("#storefree")){ removeCasesSheet(); return }
+  const gs=e.target.closest(".storewarn[data-gosec]"); if(gs){ openSettings(gs.dataset.gosec); return }
   if(e.target.closest("#dlc")){
     return toast(download(toCSV(),"van-inventory-"+today()+".csv","text/csv")
       ?"CSV downloaded":"Download blocked — use Copy CSV")}

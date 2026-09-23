@@ -333,19 +333,22 @@ function docKind(kind,name){
 }
 const docIcon=k=>`<svg class="dg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
   stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${DOCICON[k]||DOCICON.report}</svg>`;
+// Scenes' own line for a nearly full record; Home puts the same line in its list of things to do
+const storeWarnHTML=()=>{const t=storageWarnText();
+  return t?`<button class="storewarn" data-gosec="device"><span>${esc(t)}</span><span class="chev">&#8250;</span></button>`:""};
 function renderActive(){
   if(!document.getElementById("v-active"))return;   // that view is on the other page
   $("#title").textContent="Scenes";
-  if(scenesTab==="closed"){ renderForms(); $("#v-active").innerHTML=scenesHead()+$("#v-forms").innerHTML; $("#title").textContent="Scenes"; return }
+  if(scenesTab==="closed"){ renderForms(); $("#v-active").innerHTML=scenesHead()+storeWarnHTML()+$("#v-forms").innerHTML; $("#title").textContent="Scenes"; return }
   const incs=openIncidents(), loose=openDocs();
   if(!incs.length&&!loose.length){
-    $("#v-active").innerHTML=scenesHead()+`<div class="empty"><strong>Nothing open</strong>
+    $("#v-active").innerHTML=scenesHead()+storeWarnHTML()+`<div class="empty"><strong>Nothing open</strong>
       <p>Start an incident and the app keeps its forms and sketches together,
          then bundles them into one report. Closed ones stay under Closed.</p>
       <button class="btn" data-newinc="1">Start an incident</button></div>`;
     return;
   }
-  $("#v-active").innerHTML=scenesHead()
+  $("#v-active").innerHTML=scenesHead()+storeWarnHTML()
     +(isIPadLike()?activeSpotlightHTML(incs,loose):!document.body.classList.contains("wide")?activeCardsHTML(incs,loose):activeTableHTML(incs,loose));
 }
 function incProgress(inc){
@@ -640,7 +643,6 @@ function settingsSectionBody(k){
       <div><dt>Storage</dt><dd>${!storageState.asked?"checking\u2026"
         :storageState.persisted?`<span class="okpill">Kept by the browser</span>`
         :`<span class="warnpill">Can be cleared</span>`}</dd></div>
-      ${storageState.quota?`<div><dt>Space used</dt><dd>${(storageState.used/1048576).toFixed(1)} MB of ${(storageState.quota/1048576).toFixed(0)} MB</dd></div>`:""}
       <div><dt>Home screen</dt><dd>${isStandalone()?`<span class="okpill">Installed</span>`:"Not installed"}</dd></div>
       <div><dt>Version</dt><dd>${esc(APP_VERSION)}</dd></div>
     </div>
@@ -649,6 +651,8 @@ function settingsSectionBody(k){
       : isStandalone()||!onApple()
         ? "Everything you enter is written to this device as you go. The browser has not yet marked it as protected storage, which normally happens after the app has been used a few times. Keep a backup until it does."
         : "Everything you enter is written to this device as you go. Opened in Safari rather than from the Home Screen, it is deleted if the app goes 7 days without being opened, sketches and photographs included. Add it to the Home Screen (below) and open it from there."}</p>
+    <div class="idsect">Space</div>
+    ${storageMeterHTML()}
     <div class="idsect">On the home screen</div>
     <p class="hint" style="margin:0">${isStandalone()
       ? "Installed. It opens full screen from its own icon and works without a connection."

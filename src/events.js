@@ -248,6 +248,8 @@ document.addEventListener("click",e=>{
     return toast(S.mode==="auto"?"Matching the screen":S.mode==="phone"?"Handheld layout":"Desktop layout")}
   if(e.target.closest("#gear")){openSettings(null);return}
   if(e.target.closest("#dlj")){ backupOut(); return }
+  if(e.target.closest("#storefree")){ removeCasesSheet(); return }
+  const gs=e.target.closest(".storewarn[data-gosec]"); if(gs){ openSettings(gs.dataset.gosec); return }
   if(e.target.closest("#dlc")){
     return toast(download(toCSV(),"van-inventory-"+today()+".csv","text/csv")
       ?"CSV downloaded":"Download blocked — use Copy CSV")}
