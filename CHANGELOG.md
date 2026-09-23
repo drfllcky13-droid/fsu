@@ -18,6 +18,9 @@ lists them and asks: Keep mine, Use the package's, or Keep both. If you close th
 without choosing, your version stays. Keep both adds the package's version as a copy beside
 yours. Anything identical is skipped, and anything new comes straight in.
 
+Scenes: the Templates sheet no longer says templates travel with the van data. They stay on this
+device and are not synced or backed up; save layouts, not real scenes.
+
 ## 2026.09.24.1
 Automatic saving to GitHub is safer, and backups no longer carry case material.
 

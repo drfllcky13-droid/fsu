@@ -367,8 +367,8 @@ Map360, Easy Street Draw and Crime Zone had that FSU did not. Most of it is now 
 - **Area fills.** Hatched boxes and ovals, grass, water, concrete, gravel, tile, wood, brick,
   blood pool. Outline an area by tapping its corners; drag the corners afterwards.
 - **Templates.** Six standard layouts plus save-your-own. Saved templates (`S.sktpl`) stay on this
-  device: they are not synced and, since 2026.09.24.1, not in backups either. The Templates sheet's
-  hint still says they "travel with the van data"; that wording is wrong and has not been changed.
+  device: they are not synced and, since 2026.09.24.1, not in backups either. The Templates sheet
+  says so, and still asks for layouts rather than real scenes, because a template outlives the case.
 - **DXF export.** R12 DXF with one CAD layer per sketch layer, in real units when the sketch
   has a scale. Symbols go across as outlines with their names.
 - **Print at a fixed ratio** on Letter, Legal or Tabloid, so a ruler works on the paper.

@@ -618,7 +618,7 @@ function tplSheet(sk){
     ${mine.length?`<div class="rows">${mine.map(t=>row(t.id,t.name,(t.objs||[]).length+" objects"+(t.scale?", to scale":""),true)).join("")}</div>`
       :`<p class="hint">None saved yet. Lay out a scene you draw often, then save it here.</p>`}
     <button class="btn sec" id="tplsave" style="max-width:none;margin:12px 0 0"${(sk.objs||[]).length?"":" disabled"}>Save this sketch as a template</button>
-    <p class="hint" style="margin:8px 0 0">Templates travel with the van data, so save layouts, not real scenes. Photographs and measurements are left out.</p>
+    <p class="hint" style="margin:8px 0 0">Templates stay on this device: they are not synced to other devices or kept in backups. Save layouts, not real scenes, because a template stays here after the case is closed. Photographs and measurements are left out.</p>
     <button class="btn sec" id="tplx" style="max-width:none">Cancel</button>`);
   $("#tplx").onclick=closeSheet;
   $$("[data-tpl]").forEach(b=>b.onclick=()=>{
