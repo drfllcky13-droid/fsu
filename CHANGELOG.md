@@ -7,8 +7,9 @@ On an iPad or iPhone, Safari deletes everything the app has stored if it goes 7 
 being opened, unless the app runs from the Home Screen. That includes sketches and photographs
 not yet saved as a case package. When the app is open in Safari and the browser has not agreed
 to keep its storage, an amber bar now says so and stays until it is added to the Home Screen and
-opened from there. How opens the steps. The app also asks the browser to keep its storage every
-time it starts.
+opened from there. How opens the steps. The bar appears on iPads, iPhones and Macs only; other
+browsers clear storage only when the device runs short of space, and Settings › This device
+explains that. The app also asks the browser to keep its storage every time it starts.
 
 Settings › This device shows how full the app's storage is. Incidents, forms and sketches share
 about 5 MB; photographs are kept separately with far more room. When it reaches 70%, Home and

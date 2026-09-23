@@ -99,8 +99,10 @@ Contains `items`, `comps`, `forms`, `fills`, `sketches`, `incidents`, `walls`, p
   else.
 - Safari, and every browser on an iPad or iPhone, deletes a site's storage after seven days
   without a visit unless it runs from the Home Screen. `claimStorage` asks for persistence on
-  every start, and while the answer is no and the app is not standalone, `#keepbar` (above the
-  sync bar on both pages, `renderKeepBar` in `chrome.js`) says so and stays.
+  every start, and on Apple devices (`onApple()`), while the answer is no and the app is not
+  standalone, `#keepbar` (above the sync bar on both pages, `renderKeepBar` in `chrome.js`) says so
+  and stays. Other browsers evict only under disk pressure, so they get no bar; Settings › This
+  device explains it.
 
 **Rendering.** `render()` calls a `renderX()` per view, each rebuilding `innerHTML` from state.
 No framework, no virtual DOM, no reactivity. Re-render is the only update mechanism. The sketch

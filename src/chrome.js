@@ -78,20 +78,19 @@ const storageWarnText=()=>lsShare()>=LS_WARN?"Storage is "+Math.round(lsShare()*
 
 // Safari (and every browser on an iPad or iPhone) deletes everything a site has stored once it
 // has gone seven days without being opened, unless it runs from the Home Screen. Everything
-// here, sketches and photographs included, lives only in that storage. So until the browser has
-// agreed to keep it, and while the app is not running from the Home Screen, a bar says so and
-// stays until one of those changes.
+// here, sketches and photographs included, lives only in that storage. So on those devices,
+// until the browser has agreed to keep it and while the app is not running from the Home Screen,
+// a bar says so and stays until one of those changes. Other browsers only clear storage when the
+// disk runs short, which Settings › This device explains; a permanent bar there would be noise.
 const onApple=()=>{const ua=navigator.userAgent||"";
   return /iPad|iPhone|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1)
     ||(/Safari\//.test(ua)&&!/Chrome|Chromium|CriOS|Edg|Firefox|FxiOS/.test(ua))};
 function renderKeepBar(){
   try{
     const b=document.getElementById("keepbar"); if(!b)return;
-    const show=storageState.known&&!storageState.persisted&&!isStandalone();
+    const show=onApple()&&storageState.known&&!storageState.persisted&&!isStandalone();
     if(!show){b.style.display="none";b.innerHTML="";if(typeof fitHeader==="function")fitHeader();return}
-    b.innerHTML=`<span>${onApple()
-      ?"<b>Safari can delete everything in this app.</b> If it is not opened for 7 days, Safari clears what it has stored on this device, including sketches and photographs not yet saved as a case package. To stop that, add it to the Home Screen: tap Share, then Add to Home Screen, and open it from the new icon."
-      :"<b>This browser can clear everything in this app.</b> It has not agreed to keep what the app stores, so it may delete it to free space or after a long gap. Install the app or add it to the home screen, and open it from there."}</span>
+    b.innerHTML=`<span><b>Safari can delete everything in this app.</b> If it is not opened for 7 days, Safari clears what it has stored on this device, including sketches and photographs not yet saved as a case package. To stop that, add it to the Home Screen: tap Share, then Add to Home Screen, and open it from the new icon.</span>
       <button id="keephow">How</button>`;
     b.style.display="";
     $("#keephow").onclick=()=>{ if(typeof openSettings==="function")openSettings("device") };

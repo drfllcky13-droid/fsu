@@ -1,13 +1,16 @@
 // Safari deletes a site's storage after seven days without a visit unless the app runs from the
 // Home Screen, and everything FSU and Scenes keep lives only there. Until the browser has agreed
 // to keep it (navigator.storage.persisted()), and while the app is not running from the Home
-// Screen, a bar says so and stays. The app asks for persistence on every start.
+// Screen, a bar says so and stays: on Apple devices only, where the deletion is real. Other
+// browsers clear storage only when the disk runs short; Settings › This device explains that.
+// The app asks for persistence on every start, everywhere.
 const {test,expect}=require("@playwright/test");
 
+const CHROME="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 const IPAD="Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
 // the browser's side of it: whether the page runs from the Home Screen, what persisted() says,
 // and what persist() grants when asked
-async function device(page,{standalone,persisted,grants,noApi}){
+async function device(page,{standalone,persisted,grants,noApi,ua}){
   await page.addInitScript(o=>{
     Object.defineProperty(navigator,"userAgent",{get:()=>o.ua,configurable:true});
     window.__persistCalls=0;
@@ -18,7 +21,7 @@ async function device(page,{standalone,persisted,grants,noApi}){
       estimate:async()=>({usage:2e6,quota:1e9})}});
     const mm=window.matchMedia.bind(window);
     window.matchMedia=q=>/display-mode:\s*standalone/.test(q)?{matches:!!o.standalone,media:q,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}}:mm(q);
-  },{ua:IPAD,standalone,persisted,grants,noApi});
+  },{ua:ua||IPAD,standalone,persisted,grants,noApi});
 }
 const bar=page=>page.evaluate(()=>{const b=document.getElementById("keepbar");
   return {shown:!!b&&b.style.display!=="none"&&b.offsetParent!==null,text:b?b.textContent:"",calls:window.__persistCalls}});
@@ -71,4 +74,15 @@ test("a browser with no storage API: no claim either way, so no warning",async({
   await device(page,{noApi:true});
   await openPage(page,"/index.html","#v-home");
   expect((await bar(page)).shown).toBe(false);
+});
+
+test("desktop Chrome, not installed and not kept: no bar, but This device explains the risk",async({page})=>{
+  await device(page,{ua:CHROME,standalone:false,persisted:false,grants:false});
+  await openPage(page,"/index.html","#v-home");
+  const b=await bar(page);
+  expect(b.shown,"a permanent bar in a desktop browser tab").toBe(false);
+  expect(b.calls,"the app did not ask the browser to keep its storage").toBeGreaterThan(0);
+  const text=await page.evaluate(()=>{SET_SEC="device";view="data";render();return document.querySelector("#v-data").textContent});
+  expect(text).toContain("Can be cleared");
+  expect(text).toContain("may clear it if the device runs short of space");
 });
