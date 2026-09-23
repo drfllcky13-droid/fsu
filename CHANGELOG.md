@@ -1,5 +1,15 @@
 # FSU change log
 
+## 2026.09.29.1
+The PDF tool is updated.
+
+The library that makes the app's PDFs (jsPDF) goes from version 2.5.1 to 4.2.1, which fixes the
+security problems published against the old version, and the one that draws the vector sketch
+(svg2pdf) goes to 2.8.1 to match. The incident bundle, the report, and the sketch as an image or
+as a vector drawing were each made with the old and the new tools and compared page by page: they
+look the same. The tools are kept in the app's own folder with a checksum for each file, and the
+checks fail if one changes without the list being updated.
+
 ## 2026.09.28.1
 Three protections for records and photographs.
 
