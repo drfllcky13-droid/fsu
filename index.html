@@ -3981,9 +3981,14 @@ function ingest(text,replace){
 }
 // the share sheet puts the file straight into Drive or Mail; download is the fallback
 async function backupOut(){
-  const safe=Object.assign({},S);delete safe.gh;delete safe.fills;delete safe.sketches;
-  delete safe.base;delete safe.tomb;delete safe.dev;   // sync bookkeeping, meaningless elsewhere
-  safe.items=(safe.items||[]).map(i=>{const c=Object.assign({},i);delete c.dupOf;return c});
+  // van data only, named one field at a time. Copying the whole record and deleting what
+  // should not go let incidents, the activity log, handover notes and sketch templates ride
+  // along to Drive or Mail, and anything added to the record later would have followed.
+  const safe={backup:"van",version:APP_VERSION,savedAt:new Date().toISOString(),vanName:S.vanName||"",
+    items:(S.items||[]).map(i=>{const c=Object.assign({},i);delete c.dupOf;return c}),
+    comps:S.comps||[],
+    forms:(S.forms||[]).map(f=>{const c=Object.assign({},f);delete c.fills;return c}),   // an old build kept filled copies inside the form
+    walls:S.walls,demo:!!S.demo};
   const text=JSON.stringify(safe,null,1);
   const name="van-backup-"+today()+".json";
   const mark=()=>{S.lastBackup=today();save();renderData()};

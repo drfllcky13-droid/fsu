@@ -146,6 +146,36 @@ test("the token is in no file the app writes out",async({page})=>{
   expect(thrown).toEqual([]);
 });
 
+test("a backup carries van data only, never case material",async({page})=>{
+  const thrown=watch(page);
+  await open(page);
+  await page.evaluate(arm);
+  const out=await page.evaluate(async()=>{
+    const CASE="26-004411";
+    const inc=newIncident(); inc.caseNo=CASE; inc.offence="Burglary"; inc.addr="412 Elm Street";
+    S.fills.push({id:"f1",incidentId:inc.id,values:{a:CASE}});
+    S.sketches.push({id:"sk1",caseNo:CASE,objs:[]});
+    S.activity=[{t:"x",who:"DA",k:"export",m:"Exported "+CASE}];
+    S.handovers=[{t:"x",text:"Scene at "+CASE+" still open"}];
+    S.sktpl=[{id:"t1",name:"From "+CASE,objs:[{t:"text",label:CASE}]}];
+    S.errors=[{t:"x",m:"failed on "+CASE}];
+    S.conflicts=[{k:"items",key:"a",name:CASE,rec:{id:"a",name:CASE}}];
+    S.forms[0].fills=[{values:{a:CASE}}];          // an old build kept fills inside the form
+    saveLocal(); window.__cap=[];
+    await backupOut();
+    const text=window.__cap.find(t=>t.trim()[0]==="{"&&t.includes('"items"'));
+    const o=JSON.parse(text);
+    return {keys:Object.keys(o).sort(),hasCase:text.includes(CASE),items:o.items.length===S.items.length,
+      comps:o.comps.length===S.comps.length,forms:o.forms.length===S.forms.length};
+  });
+  for(const k of ["incidents","activity","handovers","sktpl","errors","conflicts","fills","sketches",
+      "gh","ghOwner","ghRepo","ghExp","base","tomb","dev","who","whoName"])
+    expect(out.keys,"the backup carries "+k).not.toContain(k);
+  expect(out.hasCase,"case material is in the backup").toBe(false);
+  expect(out.items&&out.comps&&out.forms,"the van data is not all there").toBe(true);
+  expect(thrown).toEqual([]);
+});
+
 test("the token is not on the settings screen, in text or in an attribute",async({page})=>{
   const thrown=watch(page);
   await open(page);   // Settings lives with the van
