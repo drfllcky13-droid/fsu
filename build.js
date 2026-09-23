@@ -33,7 +33,14 @@ function withHash(html){
   if(html.split("__FSU_SCRIPT_HASH__").length!==2)throw new Error("expected one CSP hash placeholder");
   return html.replace("__FSU_SCRIPT_HASH__",h);
 }
-const build=name=>withHash(TARGETS[name].map(f=>fs.readFileSync(path.join(__dirname,"src",f),"utf8")).join(""));
+// The service worker's cache name is set once, in sw.js; the pages get the same name here.
+function withCache(html){
+  const m=fs.readFileSync(path.join(__dirname,"sw.js"),"utf8").match(/const CACHE="([^"]+)"/);
+  if(!m)throw new Error("sw.js has no CACHE name");
+  if(html.split("__FSU_CACHE__").length!==2)throw new Error("expected one cache name placeholder");
+  return html.replace("__FSU_CACHE__",m[1]);
+}
+const build=name=>withHash(withCache(TARGETS[name].map(f=>fs.readFileSync(path.join(__dirname,"src",f),"utf8")).join("")));
 
 if(process.argv.includes("--check")){
   let bad=0;

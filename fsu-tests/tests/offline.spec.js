@@ -53,7 +53,7 @@ test("every file the page asks for is in the cache",async({page})=>{
   expect([...asked]).toContain("/index.html");
   console.log("cache check: "+[...asked].join(" "));
   const missing=await page.evaluate(async paths=>{
-    const c=await caches.open("fsu-v1"), out=[];
+    const c=await caches.open(FSU_CACHE), out=[];
     for(const p of paths)if(!await c.match(location.origin+p))out.push(p);
     return out;
   },[...asked]);

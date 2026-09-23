@@ -336,7 +336,7 @@ test("the worker precaches both pages and both open with the network cut",async(
   await page.reload();
   await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
   const cached=await page.evaluate(async()=>{
-    const c=await caches.open("fsu-v1");
+    const c=await caches.open(FSU_CACHE);
     const has=async p=>!!await c.match(new URL(p,location.href).href);
     return {van:await has("index.html"), scenes:await has("scenes.html")};
   });

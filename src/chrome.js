@@ -187,7 +187,20 @@ window.addEventListener("error",e=>logErr((e.message||"Error")+" at "+String(e.f
 window.addEventListener("unhandledrejection",e=>logErr("Promise: "+((e.reason&&e.reason.message)||e.reason)));
 
 /* 3. installable: a service worker when served over http, so it opens from the home screen and works offline */
+// the worker's cache, named in sw.js and copied here by build.js
+const FSU_CACHE="__FSU_CACHE__";
 if("serviceWorker" in navigator&&/^https?:/.test(location.protocol)){
   try{ navigator.serviceWorker.register("sw.js").catch(()=>{}) }catch(_){}
+  // the page opened from the cache and a newer version has since arrived: offer a reload, and
+  // leave the moment to the technician rather than reloading under them
+  try{ navigator.serviceWorker.addEventListener("message",e=>{ if(e.data&&e.data.fsu==="updated")showUpdated() }) }catch(_){}
+}
+function showUpdated(){
+  if(document.getElementById("updbar"))return;
+  const b=document.createElement("div"); b.id="updbar"; b.setAttribute("role","status");
+  b.innerHTML=`<span>Updated. Reload to use the new version.</span><button id="updreload">Reload</button><button id="updlater" aria-label="Later">Later</button>`;
+  document.body.appendChild(b);
+  $("#updreload").onclick=()=>location.reload();
+  $("#updlater").onclick=()=>b.remove();
 }
 
