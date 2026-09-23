@@ -2,10 +2,15 @@
 
 ```
 cd fsu-tests
-npm install
+npm ci
 npm run install-browser
 npm test
 ```
+
+`@playwright/test` is pinned to one exact version in `package.json`, and `package-lock.json` is
+committed. `npm ci` installs exactly that, and `npm run install-browser` then fetches the browser
+builds that version expects; CI does the same. To move to a newer Playwright, change the version in
+`package.json`, run `npm install` to rewrite the lockfile, and commit both.
 
 `serve.js` serves the folder above, so a spec opens a page by name: `/index.html` is the van,
 `/scenes.html` is the scene. They are the same app and the same `localStorage`, so a spec that
