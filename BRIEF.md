@@ -170,7 +170,9 @@ the county aerial imagery. The PDF, Word, QR and map libraries and the map's fon
 This device › Download for offline use (`OFFLINE` and `offlineDownload` in
 `src/views-items.js`) puts every one of those files into `sw.js`'s cache (`FSU_CACHE`, named in `sw.js`), and the
 worker serves them back when there is no network. The list and `lib/` have to move together;
-`map.spec.js` fails if the list names a file that is not there. The download records the app
+`map.spec.js` fails if the list names a file that is not there. `lib/SOURCES.txt` gives the version, source and SHA-256 of every file in `lib/`;
+`libs.spec.js` fails if a file is added, removed or changed without it. Since 2026.09.29.1 jsPDF is
+4.2.1 and svg2pdf 2.8.1 (2.5.1 had published advisories, and svg2pdf 2.2.4 only works with jsPDF 2). The download records the app
 version it was made with, so Settings can say when to fetch again. `fsu-tests/serve.js` has to
 serve `.mjs` as JavaScript or MapLibre will not load under test; GitHub Pages already does. A
 preview server started before that fix kept serving the old type until it was restarted.
@@ -348,8 +350,8 @@ Every change today was checked by a script that, at **1500 / 1194 / 393 / 320 px
 
 It caught roughly a dozen bugs that reading the code did not. The original script was not in
 the handoff; a rewrite is in `sweep.js` beside this file, and `fsu-tests/` runs it in Chromium at
-all four widths in both schemes plus the sketch flows (`npm install`, `npm run install-browser`,
-`npm test`). Run it before and after every change.
+all four widths in both schemes plus the sketch flows (`npm ci`, `npm run install-browser`,
+`npm test`; `@playwright/test` is pinned exactly and the lockfile is committed). Run it before and after every change.
 
 It walks the `section.view` elements of whatever page it is loaded on, so since the split a run
 against `index.html` sees the van's 14 views and no symbols (`SHAPES` is only on the scene page),

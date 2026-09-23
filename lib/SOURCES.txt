@@ -2,11 +2,12 @@ THIRD-PARTY FILES SERVED FROM lib/
 They are kept in the repository instead of loading from a CDN, so the app works with no signal
 once a device has them: Settings › This device › Download for offline use fetches them all, along
 with the map data. They are byte-for-byte copies of the published files; replace each file whole
-to update it, and update this list and the OFFLINE list in src/views-items.js together.
+to update it, and update this list, the checksums below and the OFFLINE list in src/views-items.js
+together.
 
 File                                  Version  From                                          Licence
-jspdf.umd.min.js                      2.5.1    cdnjs.cloudflare.com/ajax/libs/jspdf          MIT
-svg2pdf.umd.min.js                    2.2.4    cdn.jsdelivr.net/npm/svg2pdf.js               MIT
+jspdf.umd.min.js                      4.2.1    cdnjs.cloudflare.com/ajax/libs/jspdf          MIT
+svg2pdf.umd.min.js                    2.8.1    cdn.jsdelivr.net/npm/svg2pdf.js               MIT
 jszip.min.js                          3.10.1   cdnjs.cloudflare.com/ajax/libs/jszip          MIT (or GPLv3)
 qrcode.min.js                         1.4.4    cdnjs.cloudflare.com/ajax/libs/qrcode-generator  MIT
 jsQR.js                               1.4.0    cdn.jsdelivr.net/npm/jsqr                      Apache-2.0
@@ -18,3 +19,23 @@ fonts/Noto Sans Regular/0-255.pbf     -        tiles.openfreemap.org/fonts (glyp
 MapLibre finds its worker as ./maplibre-gl-worker.mjs next to maplibre-gl.mjs, so the three .mjs
 files must stay together. Their sourceMappingURL comments point at .map files that are not copied;
 only a browser's developer tools ever ask for them.
+
+jsPDF went from 2.5.1 to 4.2.1 on 2026-09-23 for the published advisories against 2.5.1 (the last,
+GHSA-wfv2-pwc8-crg5 and GHSA-7x6v-j9x4-qf24, affect up to 4.2.0). svg2pdf went to 2.8.1 with it,
+because 2.2.4 only works with jsPDF 2. Both files are identical to dist/ in the npm packages
+jspdf@4.2.1 and svg2pdf.js@2.8.1. jsPDF's optional helpers (DOMPurify, html2canvas, canvg) are
+not copied: they serve doc.html() and SVG-as-image, which the app does not use.
+
+SHA-256 of every file above. fsu-tests/tests/libs.spec.js fails if a file in lib/ is missing
+from this list or does not match it. To check by hand:
+  cd lib && grep -E '^[0-9a-f]{64}  ' SOURCES.txt | sha256sum -c
+ef1f38a3f1978591e846e9eaddf8a54f7047f546fc6aaed7872cc53151a5de78  fonts/Noto Sans Regular/0-255.pbf
+bc40c8a15196236b2314db0856f72ca0b49980cd5413b8c852a7349f5fee0859  jsQR.js
+e6551fcdc32f09d6853b2c5126d18d01d9447e0da618a41a11ebeee0f6c20d54  jspdf.umd.min.js
+acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e  jszip.min.js
+0996a0ff2ecb2807afc3f053992539ff7fe45c1678a02304b2b33120136f81f3  maplibre/maplibre-gl-shared.mjs
+7d5ebf88ec25a72cc48cc320d374f41d921e5105d2f1fc774d463a4b68164227  maplibre/maplibre-gl-worker.mjs
+8e2dbbab312dc57656fbb76e9fa5308c75c9d7c7ba5808a7d55bcdb64cc813fa  maplibre/maplibre-gl.css
+454e0bbb16c721cfbf952a92ff3e4362130346ed59a5bff56ae5d6fbebb651f7  maplibre/maplibre-gl.mjs
+164fc2c1c9eaf0a03aa8dfdb855e82e41a5c6922fbad8bb3238116207e26bef7  qrcode.min.js
+2f10c0d16959e9a0c4cfd8605cfce0830ddc384337f74fa0351a6eff1c1efb8b  svg2pdf.umd.min.js
