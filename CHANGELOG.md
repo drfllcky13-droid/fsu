@@ -1,5 +1,23 @@
 # FSU change log
 
+## 2026.09.25.1
+Safer when data comes from another device, and case packages no longer overwrite your work.
+
+Anything that comes into the app from somewhere else is now checked first: the van list from
+automatic saving, a backup you restore, and a case package you open. If something in it is not
+what the app expects, or could be used to run something harmful, that one entry is left out or
+repaired, and the rest still comes in. The details are listed under Settings › Recent errors.
+Links in the guide and certificate links only open if they are ordinary web addresses. Both apps
+also now refuse to run anything that is not part of the app itself, even if it somehow got onto
+the page. The map, PDF and Word files, QR labels, label scanning and the offline download work
+as before.
+
+Opening a case package no longer replaces what is already on this device without asking. If an
+incident, sketch, form or photograph in the package is already here but different, the app
+lists them and asks: Keep mine, Use the package's, or Keep both. If you close the question
+without choosing, your version stays. Keep both adds the package's version as a copy beside
+yours. Anything identical is skipped, and anything new comes straight in.
+
 ## 2026.09.24.1
 Automatic saving to GitHub is safer, and backups no longer carry case material.
 

@@ -343,6 +343,16 @@ A backup restored on a connected device (24 Sep 2026)
   stamps removed; nothing is replaced or deleted. To start over from a backup,
   disconnect first.
 
+A file carrying something unsafe (25 Sep 2026)
+  The synced file is written by other devices and by anyone holding a token, and what is in it
+  ends up in the page's markup. ghGet runs cleanVan (core.js) on it before anything merges: an
+  item or form with an id, or a compartment with a code, outside /^[\w-]{1,64}$/ is left out;
+  geometry that is not a number is reset, links that are not http(s) are removed, and a wall
+  layout that is not numbers is not used. Each is listed once under Settings › Recent errors.
+  The base is taken from the file before the repair, so a repaired record differs from it, is
+  stamped at the next sync, and the repaired copy goes up. A key that is left out never enters
+  the base, so it never becomes a tombstone either.
+
 Storage that refuses writes
   Unchanged and already correct: store.set falls back to an in-memory record
   (app.js:166) and the save-failed banner goes up. Sync keeps working from that

@@ -15,7 +15,7 @@ the problem, not the behaviour.
 
 | | |
 |---|---|
-| `index.html` | the van. ~400 KB, built from `src/` by `node build.js` (23 parts). Libraries loaded on demand from cdnjs: jsPDF, the QR encoder, JSZip for Word export, svg2pdf for the vector option. Beside it: `sw.js`, `manifest.webmanifest`, `scenes.webmanifest`, icons, `sweep.js`, `fsu-tests/`, `CHANGELOG.md`, and a GitHub Actions workflow that checks both builds and runs the suite |
+| `index.html` | the van. ~400 KB, built from `src/` by `node build.js` (23 parts). Libraries loaded on demand from `lib/` beside the page (never from another site; the Content-Security-Policy would refuse it): jsPDF, the QR encoder, JSZip for Word export, svg2pdf for the vector option. Beside it: `sw.js`, `manifest.webmanifest`, `scenes.webmanifest`, icons, `sweep.js`, `fsu-tests/`, `CHANGELOG.md`, and a GitHub Actions workflow that checks both builds and runs the suite |
 | `scenes.html` | the scene. ~800 KB, built from the same `src/` by the same command (31 parts: the shared set, plus PDF, the symbol tables and the sketch engine, which the van page does not carry) |
 | JavaScript | ~34 parts under `src/`, all global scope, concatenated byte for byte. The extensions sit in blocks just before the init call (sketch rounds one to three on the scene page, then round four for the van side: guided sweep, item cards, verification, reorder states, labels and deep links, activity log, count mode) and hook into the existing listeners |
 | CSS | 81 KB, `src/app.css`, one `<style>` block, the same on both pages |
@@ -162,8 +162,26 @@ notes, saved sketch templates, errors and sync conflicts stay out too; add a fie
 only if it is van data. Deleting an incident also removes its sketches' `fsu-undo-<id>` keys,
 and Scenes clears any undo key whose sketch is gone when it opens. Keep that. The only way case material leaves the device is a **case package** (Settings › Case packages,
 or Scene › Save a case package): one JSON file with incidents, forms, sketches and photographs,
-shared to Files. The same view restores one. A sketch nags after six hours of changes with no
-package.
+shared to Files. The same view restores one. Restoring never silently replaces anything: an
+incident, filled form, sketch or photograph already here with different contents is listed in a
+sheet with Keep mine (the default, and what closing the sheet does), Use the package's, and Keep
+both (a copy with new ids; `copyOf` names the original). Identical records are skipped. A sketch
+nags after six hours of changes with no package.
+
+**Data from outside, and the Content-Security-Policy.** Since 2026.09.25.1 everything that comes
+from outside the device is checked on the way in, in `core.js` (`cleanVan`, `cleanCase`,
+`cleanSketchParts`): the synced file (in `ghGet`, before merging), a restored backup or CSV
+(`ingest`), a case package (`importCasePackage`) and stored sketches (`repairSketch`). Record ids
+and compartment codes match `/^[\w-]{1,64}$/`, geometry and coordinates are finite numbers,
+images are base64 `data:image/` URLs and links are http(s). A record that fails is left out or
+repaired, and each is listed once under Settings › Recent errors (`noteBad`); one bad record
+never stops the rest. On the way out, `esc()` escapes `& < > " '` and every record id in an
+attribute goes through it. Both pages carry a CSP meta tag whose `script-src` names the one
+inline script by its SHA-256, which `build.js` computes, so an injected `<script>` or `onerror=`
+cannot run. Keep to one inline `<script>` per page, no inline event-handler attributes, and no
+other site beyond the two in `connect-src` (`api.github.com`, `imagery.pasda.psu.edu`) without
+changing the policy in `src/head.html` and `src/head-scenes.html`; `fsu-tests/tests/csp.spec.js`
+runs every feature that loads a library or fetches something under the policy.
 
 ---
 
@@ -323,7 +341,7 @@ both pages. Pointing the sweep at both is the obvious next thing to do to the su
    `incidents.js` and `case-package.js`, and the whole thing then became two pages. `src/` holds
    34 parts that `node build.js` concatenates byte for byte into `index.html` and `scenes.html`;
    CI refuses a commit whose built pages disagree with `src/`. No bundler, no modules, no build
-   step beyond concatenation — keep it that way.
+   step beyond concatenation and the CSP hash of the joined script — keep it that way.
 2. **Move the symbol tables** into data files. Done: `src/sketch-objects.js`, scene page only.
 3. **CI.** `.github/workflows/fsu.yml` runs the build check and the suite on every push.
    Pages needs no workflow: it serves the branch. Do not add a `deploy-pages` workflow unless the
@@ -348,8 +366,9 @@ Map360, Easy Street Draw and Crime Zone had that FSU did not. Most of it is now 
   a fixed pitch when stretched.
 - **Area fills.** Hatched boxes and ovals, grass, water, concrete, gravel, tile, wood, brick,
   blood pool. Outline an area by tapping its corners; drag the corners afterwards.
-- **Templates.** Six standard layouts plus save-your-own. Saved templates sync with the van
-  data, so the sheet tells the user to save layouts, not real scenes.
+- **Templates.** Six standard layouts plus save-your-own. Saved templates (`S.sktpl`) stay on this
+  device: they are not synced and, since 2026.09.24.1, not in backups either. The Templates sheet's
+  hint still says they "travel with the van data"; that wording is wrong and has not been changed.
 - **DXF export.** R12 DXF with one CAD layer per sketch layer, in real units when the sketch
   has a scale. Symbols go across as outlines with their names.
 - **Print at a fixed ratio** on Letter, Legal or Tabloid, so a ruler works on the paper.
@@ -441,7 +460,7 @@ Be sceptical of all of this — it is one sweep old.
   tap counts on phones, a guide verification pass, ordered and received states on the reorder
   list, lot and received and opened dates on reagents, a count check on regulated stock before a
   compartment can be marked swept, QR labels with deep links and an in-app scanner, initials and
-  an activity log, a folded data view, and a count mode. The QR encoder is loaded from cdnjs the
+  an activity log, a folded data view, and a count mode. The QR encoder is loaded from `lib/` the
   first time labels are printed. The scanner was not tested on a device.
 - Round ten (same day, reports and upkeep): wording snippets on narrative fields (`S.snippets`,
   seeded once), auto-fill from the incident including `S.whoName`, a Photograph log stock form
