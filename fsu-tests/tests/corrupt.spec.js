@@ -147,3 +147,27 @@ for(const c of CASES){
       expect(await page.evaluate(c.recovered),"good data was dropped along with the bad").toEqual(c.expect);
   });
 }
+
+// The other page (FSU and Scenes share one record) saves, and this page takes that copy. It gets
+// the same clean-up a load gives: a copy with no sync settings, no walls and an item that is a
+// string must not crash the next draw. This is the path that made the damaged-record tests above
+// fail now and then in CI, when a test's own write reached the reloaded page as a storage event.
+for(const [url,sel,views] of [["/index.html","#v-home",["home","compartments","inventory","data"]],
+                               ["/scenes.html","#v-active",["active","data"]]]){
+  test(`a copy from the other page with parts missing does not crash ${url}`,async({page})=>{
+    const errs=[]; page.on("pageerror",e=>errs.push(e.message));
+    await page.goto(url);
+    await page.waitForFunction(s=>typeof render==="function"&&document.querySelector(s),sel);
+    const out=await page.evaluate(async vs=>{
+      const copy={items:[{id:"a1",name:"Gloves",qty:1,cat:"A",cls:"Consumable",loc:""},"Screwdriver set",null],
+        comps:"not a list",incidents:[{id:"in1",caseNo:"26-1"}]};
+      window.dispatchEvent(new StorageEvent("storage",{key:"van3",newValue:JSON.stringify(copy)}));
+      await new Promise(r=>setTimeout(r,50));
+      for(const v of vs){ view=v; render() }
+      return {items:S.items.map(i=>i.id),comps:Array.isArray(S.comps),gh:!!(S.gh&&typeof S.gh==="object"),
+        walls:!!S.walls,incs:S.incidents.length,sync:ghOn()};
+    },views);
+    expect(errs,"taking the other page's copy crashed the page").toEqual([]);
+    expect(out).toEqual({items:["a1"],comps:true,gh:true,walls:true,incs:1,sync:false});
+  });
+}

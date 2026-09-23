@@ -1,5 +1,10 @@
 # FSU change log
 
+## 2026.09.26.2
+Fixed: when FSU and Scenes were open at the same time and one of them saved, the other could stop
+with an error if what was saved was missing a part, such as the automatic-saving settings. The
+other app now tidies what it receives the same way it does when it opens.
+
 ## 2026.09.26.1
 Two protections for what is kept on the device.
 

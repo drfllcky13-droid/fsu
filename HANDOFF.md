@@ -43,7 +43,8 @@ bays, items, the sweep, the guide, the printable map and labels, restock, tidy a
 filled in, form templates, the sketch, and its own Settings. Same origin, same path, so **same
 `localStorage` — one record, nothing copied, nothing to sync between them.** A save on one page
 is picked up by the other through the `storage` event listener in `src/core.js`, which takes
-their version whole and re-renders; do not add a merge there, and do not write a copy of
+their version whole, gives it the same clean-up a load does (lists of records, sync settings and
+bookkeeping, walls, conflicts; since 2026.09.26.2) and re-renders; do not add a merge there, and do not write a copy of
 anything into the other page.
 
 **They are independent apps, on purpose, since 13 September 2026.** Neither has a control that

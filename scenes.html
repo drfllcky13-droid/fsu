@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-itAfJELEJn2mM7mMOQEHsY/0OvdUG+XZQPdX0Gd24T0='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZoxGbYgaKZuS/w5npF9cfhRSXNKE6zAwgHfQmvfnbGA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FSU Scenes</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1777,6 +1777,15 @@ window.addEventListener("storage",ev=>{
   MEM=null;
   for(const k of Object.keys(S))delete S[k];
   Object.assign(S,o);
+  // the same minimum a load gives the record: lists that are lists of records, and the parts
+  // the rest of the app reads without checking (sync settings and bookkeeping, walls, conflicts)
+  ["items","comps","forms","fills","sketches","incidents"].forEach(k=>S[k]=rows(S[k]));
+  if(!Array.isArray(S.locs))S.locs=[];
+  if(!S.walls||typeof S.walls!=="object")S.walls=JSON.parse(JSON.stringify(WALLDEF));
+  if(!S.gh||typeof S.gh!=="object")S.gh={owner:"",repo:"",path:"data.json",token:"",sha:"",last:""};
+  ["base","tomb"].forEach(b=>{ if(!S[b]||typeof S[b]!=="object")S[b]={};
+    ["items","comps","forms"].forEach(k=>{ if(!S[b][k]||typeof S[b][k]!=="object")S[b][k]={} }) });
+  if(!Array.isArray(S.conflicts))S.conflicts=[];
   if(typeof render==="function")render();
 });
 
@@ -6047,8 +6056,9 @@ function appExtraClick9(e){
 /* ---------- reports and upkeep, round ten ----------
    report wording, auto-fill, photograph log, Word export, vector PDF, version stamp,
    vehicle check, part numbers, shift handover, service and calibration, help and change log. */
-const APP_VERSION="2026.09.26.1";
+const APP_VERSION="2026.09.26.2";
 const CHANGELOG=[
+  ["2026-09-26","Fixed: with FSU and Scenes both open, a save in one could stop the other with an error if the saved record was missing a part. The other app now tidies what it receives as it does when it opens."],
   ["2026-09-26","In Safari, when the app is not on the Home Screen and the browser has not agreed to keep its storage, a bar warns that Safari deletes everything after 7 days unopened and shows how to add it to the Home Screen (Apple devices only; other browsers are covered under Settings › This device). Settings › This device shows how full storage is, Home and Scenes warn at 70%, and closed cases already safe in an unchanged case package can be removed after a confirm that lists exactly what goes."],
   ["2026-09-25","Anything that comes in from outside (automatic saving, a restored backup, a case package) is checked first: an entry that is not safe is left out or repaired, listed under Settings › Recent errors, and the rest still comes in. Both apps refuse to run anything that is not part of the app. Opening a case package over records that are already here and different now asks: Keep mine, Use the package's, or Keep both."],
   ["2026-09-24","Automatic saving: a change made while the previous one was still sending, or made offline, is no longer undone, and a delete in that moment no longer comes back. A device updating from the previous version keeps the changes it had not sent yet. Nothing is sent when nothing in the van changed, and a GitHub slow-down waits and carries on instead of saying the token expired. Backups hold the van only. Restoring while automatic saving is on only adds what is missing. Deleting an incident removes its sketches' undo history too."],

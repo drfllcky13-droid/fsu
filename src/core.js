@@ -114,6 +114,15 @@ window.addEventListener("storage",ev=>{
   MEM=null;
   for(const k of Object.keys(S))delete S[k];
   Object.assign(S,o);
+  // the same minimum a load gives the record: lists that are lists of records, and the parts
+  // the rest of the app reads without checking (sync settings and bookkeeping, walls, conflicts)
+  ["items","comps","forms","fills","sketches","incidents"].forEach(k=>S[k]=rows(S[k]));
+  if(!Array.isArray(S.locs))S.locs=[];
+  if(!S.walls||typeof S.walls!=="object")S.walls=JSON.parse(JSON.stringify(WALLDEF));
+  if(!S.gh||typeof S.gh!=="object")S.gh={owner:"",repo:"",path:"data.json",token:"",sha:"",last:""};
+  ["base","tomb"].forEach(b=>{ if(!S[b]||typeof S[b]!=="object")S[b]={};
+    ["items","comps","forms"].forEach(k=>{ if(!S[b][k]||typeof S[b][k]!=="object")S[b][k]={} }) });
+  if(!Array.isArray(S.conflicts))S.conflicts=[];
   if(typeof render==="function")render();
 });
 
