@@ -504,8 +504,9 @@ Be sceptical of all of this — it is one sweep old.
   The Word file was checked for a valid zip and structure, not opened in Word; open one.
 - **Sample case.** `fsu-tests/sample.js` builds a complete incident (entry log, evidence log, photo
   log with placeholder photographs, sketch with measurements and photo points, report) in a fresh
-  browser and saves every export to `sample-2026-0912/`; `fsu-tests/pdf2png.js` renders any PDF
-  to page images through pdf.js. Use them to eyeball output after a change. Fixes found this way:
+  browser and saves every export to `sample-2026-0912/` (it runs on `scenes.html` and starts
+  `serve.js` itself if nothing is on 8766); `fsu-tests/pdf2png.js` renders any PDF to page images
+  through pdf.js, which is kept in `fsu-tests/vendor/pdfjs/` so it needs no network. Use them to eyeball output after a change. Fixes found this way:
   measurement table rows no longer overlap or split across pages, captions stay upright on rotated
   photo points, long fields keep their line breaks in the PDF, the photo log is in the bundle order.
 - **Bundle order** is report, entry log, evidence log, sketch, photo log. The photograph index page

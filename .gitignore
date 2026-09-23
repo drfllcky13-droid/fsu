@@ -1,6 +1,8 @@
 node_modules/
 fsu-tests/test-results/
 fsu-tests/playwright-report/
+fsu-tests/last-run.txt
+fsu-tests/.mutate-orig.json
 sample-*/
 *.log
 .DS_Store

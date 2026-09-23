@@ -28,3 +28,8 @@ jobs:
       - name: Sweep and flows
         working-directory: fsu-tests
         run: npx playwright test
+      # the failed and flaky tests by name, even if the log above was cut short
+      - name: Failures, if any
+        if: always()
+        working-directory: fsu-tests
+        run: cat last-run.txt || true
