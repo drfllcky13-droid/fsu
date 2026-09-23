@@ -13,12 +13,18 @@ jobs:
       # both pages: index.html (the van) and scenes.html (the scene) are built from the same src/
       - name: index.html and scenes.html match src/
         run: node build.js --check
+      # npm ci installs exactly what package-lock.json records and fails if it disagrees with
+      # package.json, so the suite always runs on the pinned @playwright/test
       - name: Install the test suite
         working-directory: fsu-tests
-        run: npm install
+        run: npm ci
+      # the browsers come from that same Playwright, so their builds match it
       - name: Install Chromium and WebKit
         working-directory: fsu-tests
         run: npx playwright install --with-deps chromium webkit
+      - name: Playwright version
+        working-directory: fsu-tests
+        run: npx playwright --version
       - name: Sweep and flows
         working-directory: fsu-tests
         run: npx playwright test

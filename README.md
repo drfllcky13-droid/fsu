@@ -86,7 +86,7 @@ repository is public; nothing in it is case material.
   which page.
 - `sw.js`, `manifest.webmanifest`, `scenes.webmanifest` and the icons make both pages installable
   from a web address.
-- `fsu-tests/` is the Playwright suite (`npm install`, `npm run install-browser`, `npm test`).
+- `fsu-tests/` is the Playwright suite (`npm ci`, `npm run install-browser`, `npm test`; Playwright is pinned).
 - `HANDOFF.md` explains the structure and the things that bite. `CHANGELOG.md` is the version history.
 - `.github/workflows/fsu.yml` checks the build and runs the suite on every push.
 

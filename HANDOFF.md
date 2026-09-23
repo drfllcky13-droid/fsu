@@ -350,8 +350,8 @@ Every change today was checked by a script that, at **1500 / 1194 / 393 / 320 px
 
 It caught roughly a dozen bugs that reading the code did not. The original script was not in
 the handoff; a rewrite is in `sweep.js` beside this file, and `fsu-tests/` runs it in Chromium at
-all four widths in both schemes plus the sketch flows (`npm install`, `npm run install-browser`,
-`npm test`). Run it before and after every change.
+all four widths in both schemes plus the sketch flows (`npm ci`, `npm run install-browser`,
+`npm test`; `@playwright/test` is pinned exactly and the lockfile is committed). Run it before and after every change.
 
 It walks the `section.view` elements of whatever page it is loaded on, so since the split a run
 against `index.html` sees the van's 14 views and no symbols (`SHAPES` is only on the scene page),
