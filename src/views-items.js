@@ -646,7 +646,9 @@ function settingsSectionBody(k){
     </div>
     <p class="hint" style="margin:0 0 12px">${storageState.persisted
       ? "Everything you enter is written to this device as you go. The browser has agreed not to clear it to reclaim space, so it survives restarts and long gaps between shifts."
-      : "Everything you enter is written to this device as you go. The browser has not yet marked it as protected storage, which normally happens after the app has been used a few times. Keep a backup until it does."}</p>
+      : isStandalone()||!onApple()
+        ? "Everything you enter is written to this device as you go. The browser has not yet marked it as protected storage, which normally happens after the app has been used a few times. Keep a backup until it does."
+        : "Everything you enter is written to this device as you go. Opened in Safari rather than from the Home Screen, it is deleted if the app goes 7 days without being opened, sketches and photographs included. Add it to the Home Screen (below) and open it from there."}</p>
     <div class="idsect">On the home screen</div>
     <p class="hint" style="margin:0">${isStandalone()
       ? "Installed. It opens full screen from its own icon and works without a connection."
