@@ -710,7 +710,7 @@ async function offlineDownload(btn){
   const st=$("#offst"); btn.disabled=true; st.style.color="";
   try{
     if(typeof caches==="undefined")throw new Error("This browser cannot keep files for use without a connection");
-    const c=await caches.open("fsu-v1"); let bytes=0;
+    const c=await caches.open(FSU_CACHE); let bytes=0;
     for(let i=0;i<OFFLINE.length;i++){
       st.textContent=`Downloading ${i+1} of ${OFFLINE.length}\u2026`;
       const r=await fetch(OFFLINE[i],{cache:"no-store"});

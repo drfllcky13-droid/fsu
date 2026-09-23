@@ -26,7 +26,7 @@ the problem, not the behaviour.
 Runs from a local file or GitHub Pages. Lives at https://drfllcky13-droid.github.io/fsu/
 (repository `drfllcky13-droid/fsu`, Pages source: branch `main`, root; a push to `main` is live
 within about a minute). `install.html` beside it is the printable install sheet. Works offline. No server. Served over http it registers
-`sw.js` (network first, cache fallback, this site's own files only: requests to GitHub and the county aerial go straight to the network and are never cached) and can be added to the home screen; Settings › This device says how.
+`sw.js` (this site's own files only: requests to GitHub and the county aerial go straight to the network and are never cached. Since 2026.09.27.1 each request waits up to 3 s for the network, then answers from the cache and lets the network refresh it behind; a page that turns out to have changed shows "Updated" with a Reload button. Offline, Scenes falls back to `scenes.html` and FSU to `index.html`. The cache name is set only in `sw.js`; `build.js` copies it into the pages as `FSU_CACHE`. The worker's own fetches are out of reach of Playwright's routing and `setOffline`, so `fsu-tests/serve.js` takes a per-test network plan; `sw.spec.js` shows how) and can be added to the home screen; Settings › This device says how.
 
 **Test data:** `van-backup-2026-09-04.json` — 72 items, 62 compartments, 41 items placed across
 unit 1. Load it through the app's own restore (Settings › Restore or import), not by assigning to
@@ -159,7 +159,7 @@ needs its two classes.
 the county aerial imagery. The PDF, Word, QR and map libraries and the map's font are in `lib/`
 (see `lib/SOURCES.txt`). The map data sits beside the pages as `williamsport-*.json`. Settings ›
 This device › Download for offline use (`OFFLINE` and `offlineDownload` in
-`src/views-items.js`) puts every one of those files into `sw.js`'s cache, `fsu-v1`, and the
+`src/views-items.js`) puts every one of those files into `sw.js`'s cache (`FSU_CACHE`, named in `sw.js`), and the
 worker serves them back when there is no network. The list and `lib/` have to move together;
 `map.spec.js` fails if the list names a file that is not there. The download records the app
 version it was made with, so Settings can say when to fetch again. `fsu-tests/serve.js` has to

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZoxGbYgaKZuS/w5npF9cfhRSXNKE6zAwgHfQmvfnbGA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-dw2ghVP6n1uuWAUQeisg+tpauNAPBZcxIqZoGRRTfko='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FSU Scenes</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -776,6 +776,12 @@ body.wide .mslot.hit{font-size:14.5px}
 .fmt{background:var(--card2);border:.5px solid var(--line2);border-radius:9px;padding:10px 11px;
   font-family:var(--mono);font-size:13px;line-height:1.5;overflow-x:auto;margin:0 0 12px;white-space:pre}
 .lnkbtn{background:none;border:0;color:var(--blue);font:inherit;padding:0;text-decoration:underline}
+#updbar{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:190;
+  display:flex;align-items:center;gap:10px;max-width:calc(100% - 32px);padding:8px 8px 8px 16px;border-radius:12px;
+  background:var(--ink,#111);color:var(--card,#fff);font-size:14.5px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+#updbar span{flex:1 1 auto}
+#updbar button{min-height:40px;padding:8px 14px;border-radius:9px;border:1px solid currentColor;background:transparent;color:inherit;font:inherit;font-weight:600;cursor:pointer}
+#updbar #updreload{background:var(--card,#fff);color:var(--ink,#111)}
 .meter{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
 .meter i{display:block;height:100%;background:var(--green)}
 .meter.warn i{background:var(--amber)}
@@ -2142,8 +2148,21 @@ window.addEventListener("error",e=>logErr((e.message||"Error")+" at "+String(e.f
 window.addEventListener("unhandledrejection",e=>logErr("Promise: "+((e.reason&&e.reason.message)||e.reason)));
 
 /* 3. installable: a service worker when served over http, so it opens from the home screen and works offline */
+// the worker's cache, named in sw.js and copied here by build.js
+const FSU_CACHE="fsu-v1";
 if("serviceWorker" in navigator&&/^https?:/.test(location.protocol)){
   try{ navigator.serviceWorker.register("sw.js").catch(()=>{}) }catch(_){}
+  // the page opened from the cache and a newer version has since arrived: offer a reload, and
+  // leave the moment to the technician rather than reloading under them
+  try{ navigator.serviceWorker.addEventListener("message",e=>{ if(e.data&&e.data.fsu==="updated")showUpdated() }) }catch(_){}
+}
+function showUpdated(){
+  if(document.getElementById("updbar"))return;
+  const b=document.createElement("div"); b.id="updbar"; b.setAttribute("role","status");
+  b.innerHTML=`<span>Updated. Reload to use the new version.</span><button id="updreload">Reload</button><button id="updlater" aria-label="Later">Later</button>`;
+  document.body.appendChild(b);
+  $("#updreload").onclick=()=>location.reload();
+  $("#updlater").onclick=()=>b.remove();
 }
 
 /* ---------- two apps, one record ----------
@@ -4832,7 +4851,7 @@ async function offlineDownload(btn){
   const st=$("#offst"); btn.disabled=true; st.style.color="";
   try{
     if(typeof caches==="undefined")throw new Error("This browser cannot keep files for use without a connection");
-    const c=await caches.open("fsu-v1"); let bytes=0;
+    const c=await caches.open(FSU_CACHE); let bytes=0;
     for(let i=0;i<OFFLINE.length;i++){
       st.textContent=`Downloading ${i+1} of ${OFFLINE.length}\u2026`;
       const r=await fetch(OFFLINE[i],{cache:"no-store"});
@@ -6056,8 +6075,9 @@ function appExtraClick9(e){
 /* ---------- reports and upkeep, round ten ----------
    report wording, auto-fill, photograph log, Word export, vector PDF, version stamp,
    vehicle check, part numbers, shift handover, service and calibration, help and change log. */
-const APP_VERSION="2026.09.26.2";
+const APP_VERSION="2026.09.27.1";
 const CHANGELOG=[
+  ["2026-09-27","On a weak signal the app opens from the copy on the device after about three seconds and fetches the newer one behind; when a new version arrives that way, a note offers a Reload. With no connection, Scenes always opens as Scenes."],
   ["2026-09-26","Fixed: with FSU and Scenes both open, a save in one could stop the other with an error if the saved record was missing a part. The other app now tidies what it receives as it does when it opens."],
   ["2026-09-26","In Safari, when the app is not on the Home Screen and the browser has not agreed to keep its storage, a bar warns that Safari deletes everything after 7 days unopened and shows how to add it to the Home Screen (Apple devices only; other browsers are covered under Settings › This device). Settings › This device shows how full storage is, Home and Scenes warn at 70%, and closed cases already safe in an unchanged case package can be removed after a confirm that lists exactly what goes."],
   ["2026-09-25","Anything that comes in from outside (automatic saving, a restored backup, a case package) is checked first: an entry that is not safe is left out or repaired, listed under Settings › Recent errors, and the rest still comes in. Both apps refuse to run anything that is not part of the app. Opening a case package over records that are already here and different now asks: Keep mine, Use the package's, or Keep both."],
