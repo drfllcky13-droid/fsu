@@ -111,6 +111,15 @@ function loadUndo(sk){
   try{ const s=localStorage.getItem("fsu-undo-"+sk.id);
     if(s){const st=JSON.parse(s); if(Array.isArray(st)&&st.length)UNDO[sk.id]=st} }catch(_){}
 }
+// undo history whose sketch is gone: left by deletes made before these keys were cleared with
+// them. It is case material, and it takes room the main record needs.
+function pruneUndo(){
+  try{ const live=new Set((S.sketches||[]).map(s=>"fsu-undo-"+s.id)), gone=[];
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);
+      if(k&&k.indexOf("fsu-undo-")===0&&!live.has(k))gone.push(k)}
+    gone.forEach(k=>localStorage.removeItem(k)) }catch(_){}
+}
+pruneUndo();
 
 /* 13. the first sketch, five steps */
 function guideSheet(){

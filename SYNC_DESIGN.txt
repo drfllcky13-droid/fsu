@@ -135,15 +135,32 @@ ghPush()
   5. 409 in that window: another device wrote between 2 and 4. Go to 1, up to
      four times, then give up and raise the old conflict flag. In practice step
      5 does not fire; it exists so that it is not a data-loss path when it does.
-  6. on success, rebase (S.base := hashes of what was just pushed)
+  3a. (24 Sep 2026) if the merge found nothing the remote lacks and took nothing
+     from it, stop here: no PUT, no commit. S.base := hashes of the file read.
+  4a. (24 Sep 2026) the hashes of the records being uploaded are taken in the
+     same instant as the payload, and the merged record is saved to storage
+     before the PUT so the other page picks it up.
+  6. on success, S.base := the hashes taken at 4a — what was pushed, not the
+     live copy after the PUT returns (see "An edit made while a request is on
+     the wire" in section 8). S.synced := true, so the device that created the
+     file is no longer treated as never-synced.
 
 ghPull()
-  Same merge, then rebase, then push if the merge produced anything the remote
-  does not have. A pull can no longer discard local work, so the pull button is
-  now just "check for changes" and is safe to press at any time.
+  Same merge, then S.base := hashes of the file that came down, then push if the
+  merge produced anything the remote does not have. A pull can no longer discard
+  local work, so the pull button is now just "check for changes" and is safe to
+  press at any time.
+
+Both run under navigator.locks "fsu-sync", so only one pull or push runs at a
+time across both pages (a promise chain on the page where locks are missing).
+Every request to GitHub gives up after 20 seconds and takes the normal retry
+path.
 
 Cost: one extra GET per push. Push is debounced 2.5s; a PAT allows 5000 requests
-an hour. Not a constraint at this scale.
+an hour. The tighter limit is GitHub's cap on content-creating requests (about
+80 a minute and 500 an hour): every save used to make a commit, even when
+nothing that syncs had changed. Since 24 Sep 2026 a push with nothing to send
+makes no commit (3a), and a rate limit is waited out (section 8).
 
 --------------------------------------------------------------------------------
 5. THE OLD-BUILD PROBLEM
@@ -283,13 +300,48 @@ The clock on one device being wrong
   before.
 
 A token that has lapsed
-  401 or 403 on a write stops the retry loop instead of backing off forever,
+  401, or a 403 without rate-limit headers, stops the retry loop instead of
+  backing off forever,
   sets a distinct state, and shows "The access token has expired or been
   revoked. Your changes are safe on this device." with a Reconnect button. The
   token is not erased and the queued work stays queued: paste a new token and
   everything that piled up pushes. Expiry is read from GitHub's own
   github-authentication-token-expiration response header when it is exposed, so
   the countdown is right without anyone typing a date.
+
+GitHub's rate limit (24 Sep 2026)
+  A 429, or a 403 carrying retry-after or x-ratelimit-remaining: 0, is not a
+  dead token. It shows "GitHub asked this device to slow down", keeps the work
+  queued, and pushes again after the time GitHub gives (retry-after, or
+  x-ratelimit-reset; clamped to 1 s .. 1 h). Before this it set the token-
+  expired state and sync stopped until someone reconnected.
+
+An edit made while a request is on the wire (24 Sep 2026)
+  S.base used to be rebuilt from the live copy after the PUT or GET returned.
+  An edit or delete made while the PUT was out, or an edit made offline and
+  still unpushed when the next pull ran (every open of the app pulls first),
+  was then counted as already synced; the following sync saw the repo's older
+  copy as "their" change and reverted it, with nothing stashed. The base is now
+  always what the repo holds: the records pushed, or the records pulled. An edit
+  made in the gap differs from that base, is stamped, and goes up next time.
+
+Both pages syncing at once (24 Sep 2026)
+  navigator.locks "fsu-sync" serialises every pull and push across the two
+  pages, and the merged record is saved before each PUT. One narrow window
+  remains: the other page saving in the few milliseconds between that save and
+  its storage event arriving.
+
+A request that never answers (24 Sep 2026)
+  After 20 seconds the request is aborted and reported as "GitHub did not
+  answer in time", and the push retries on the normal back-off.
+
+A backup restored on a connected device (24 Sep 2026)
+  Replacing everything from a backup turned every record added since the backup
+  into a tombstone and restamped the backup's old values as newest, on every
+  device. While sync is connected, restore now only adds records (items by id,
+  compartments by code, forms by id) that are not on this device, with their old
+  stamps removed; nothing is replaced or deleted. To start over from a backup,
+  disconnect first.
 
 Storage that refuses writes
   Unchanged and already correct: store.set falls back to an in-memory record
@@ -359,7 +411,21 @@ So the token dance stays, and the things around it get shorter:
   real van. The one case this costs is two devices that separately restored the
   same backup, edited it, and then connected: the second one's edits to records
   they share defer. Records only that device has still survive. Connect a device
-  before a shift's work, not after, and this cannot arise.
+  before a shift's work, not after, and this cannot arise. The device that
+  creates the file (a 404 on its first sync) counts as synced once its PUT
+  succeeds; until 24 Sep 2026 it did not, and its next push deferred to its own
+  upload and reverted the edits made in between.
+* A device upgrading from the build before merging was the same case: no
+  stamps, no base, no synced flag, so its unpushed edits deferred to the repo
+  and were overwritten without a copy. Since 24 Sep 2026 such a device fetches
+  the file it last synced (the blob at its stored S.gh.sha, through GitHub's
+  git/blobs API) and uses it as the base, so the merge is a real three-way
+  one. That file gets the same load-time defaults core.js fills in before it
+  is hashed. If it cannot be fetched the device still defers, but every
+  record of its own that loses is stashed in S.conflicts to put back.
+  Checked against a copy of the real data.json with two upgrading devices,
+  each holding one unpushed edit: both edits survived on both devices, no
+  record was deleted, and walls came through unchanged.
 * GitHub's token-expiry response header is read when it is exposed to the page.
   If a future GitHub stops exposing it the countdown falls back to the date
   typed in by hand, which is still offered under Settings. Nothing else depends

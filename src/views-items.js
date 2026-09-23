@@ -230,10 +230,26 @@ function download(text,name,type){
     const a=document.createElement("a");a.href=u;a.download=name;
     document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);
     S.lastBackup=today();save();return true}catch(e){return false}}
+// with sync on, what is on this device is also on every other device, so a backup must not
+// replace it: a replace turned everything added since the backup into deletions for the whole
+// unit and put old values over newer ones. Only what is missing here comes back.
+function missingFrom(o){
+  const clean=r=>{const c=Object.assign({},r);Object.keys(c).forEach(k=>{if(k[0]==="_")delete c[k]});return c};
+  const miss=(list,have,key)=>rows(list).filter(r=>r[key]!=null&&r[key]!==""&&!have.some(x=>String(x[key])===String(r[key]))).map(clean);
+  return {items:miss(o.items,S.items,"id"),comps:miss(o.comps,S.comps,"code"),forms:miss(o.forms,S.forms,"id")};
+}
+const countOf=(n,one,many)=>n+" "+(n===1?one:many);
+const missingText=m=>[countOf(m.items.length,"item","items"),countOf(m.comps.length,"compartment","compartments"),
+  countOf(m.forms.length,"form","forms")].join(", ");
 function ingest(text,replace){
   text=(text||"").trim(); if(!text)return toast("Nothing pasted");
   if(text[0]==="{"){let o;try{o=JSON.parse(text)}catch(e){return toast("That backup didn't parse")}
     if(!o.items)return toast("No items in that file");
+    if(ghOn()){
+      const m=missingFrom(o);
+      S.items=S.items.concat(m.items); S.comps=S.comps.concat(m.comps); S.forms=S.forms.concat(m.forms);
+      nameComps(); save(); renderData();
+      return toast("Added "+missingText(m)+" that were missing. Nothing was replaced, because sync is on")}
     if(replace){S.items=o.items;S.comps=o.comps||[];S.forms=o.forms||[];if(o.walls)S.walls=o.walls;S.demo=!!o.demo}
     else o.items.forEach(x=>{x.id=newId();S.items.push(x)});
     nameComps();
@@ -255,9 +271,14 @@ function ingest(text,replace){
 }
 // the share sheet puts the file straight into Drive or Mail; download is the fallback
 async function backupOut(){
-  const safe=Object.assign({},S);delete safe.gh;delete safe.fills;delete safe.sketches;
-  delete safe.base;delete safe.tomb;delete safe.dev;   // sync bookkeeping, meaningless elsewhere
-  safe.items=(safe.items||[]).map(i=>{const c=Object.assign({},i);delete c.dupOf;return c});
+  // van data only, named one field at a time. Copying the whole record and deleting what
+  // should not go let incidents, the activity log, handover notes and sketch templates ride
+  // along to Drive or Mail, and anything added to the record later would have followed.
+  const safe={backup:"van",version:APP_VERSION,savedAt:new Date().toISOString(),vanName:S.vanName||"",
+    items:(S.items||[]).map(i=>{const c=Object.assign({},i);delete c.dupOf;return c}),
+    comps:S.comps||[],
+    forms:(S.forms||[]).map(f=>{const c=Object.assign({},f);delete c.fills;return c}),   // an old build kept filled copies inside the form
+    walls:S.walls,demo:!!S.demo};
   const text=JSON.stringify(safe,null,1);
   const name="van-backup-"+today()+".json";
   const mark=()=>{S.lastBackup=today();save();renderData()};
@@ -592,11 +613,13 @@ function settingsSectionBody(k){
       compartments, wall layout and your form templates. The CSV is items only, for a spreadsheet.
       Losing or wiping the device still loses the data, so keep a backup somewhere else.</p>`;
   else if(k==="restore")body=`
-    <p class="hint" style="margin:0 0 10px">Paste a backup file to bring a van back, or a CSV of items. Add rows keeps what is here; Replace everything starts over from the file.</p>
+    <p class="hint" style="margin:0 0 10px">${ghOn()
+      ?"Sync is on, so restoring a backup file only adds what is missing: items, compartments and forms in the file that are not on this device. Nothing here is replaced or deleted, on this device or any other. To start over from a backup, disconnect sync first. A CSV of items is added as new rows."
+      :"Paste a backup file to bring a van back, or a CSV of items. Add rows keeps what is here; Replace everything starts over from the file."}</p>
     <textarea id="imp" rows="5" placeholder="Paste a backup file or CSV here"></textarea>
     <div class="stackb" style="margin-top:10px">
       <button class="btn sec" id="impadd" style="max-width:none;margin:0">Add rows</button>
-      <button class="btn sec" id="imprep" style="max-width:none">Replace everything</button></div>`;
+      <button class="btn sec" id="imprep" style="max-width:none">${ghOn()?"Restore what is missing":"Replace everything"}</button></div>`;
   else if(k==="case")body=`
     <p class="hint" style="margin:0 0 12px">Sketches, filled forms and photographs are never in a backup
       or in the automatic saving \u2014 they stay on this device. A case package is the only copy that leaves it.

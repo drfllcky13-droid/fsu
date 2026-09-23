@@ -47,6 +47,35 @@ test("deleting an incident takes its own material and nobody else's",async({page
   expect(left.fills).toEqual([b.fill]);
 });
 
+test("deleting an incident removes its sketches' undo history and nobody else's",async({page})=>{
+  await openScenes(page);
+  const {a,b}=await seed(page);
+  await page.evaluate(({a,b})=>{
+    localStorage.setItem("fsu-undo-"+a.sk,"[[1]]"); localStorage.setItem("fsu-undo-"+b.sk,"[[2]]");
+    curInc=a.inc;view="incident";
+    document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id==="v-incident"));render();
+    document.querySelector("[data-incdel]").click()},{a,b});
+  await confirmSheet(page);
+  const left=await page.evaluate(({a,b})=>({a:localStorage.getItem("fsu-undo-"+a.sk),b:localStorage.getItem("fsu-undo-"+b.sk)}),{a,b});
+  expect(left.a,"the deleted sketch's undo history was left behind").toBeNull();
+  expect(left.b,"another incident's undo history was taken").toBe("[[2]]");
+});
+
+test("undo history for sketches that no longer exist is cleared when the app opens",async({page})=>{
+  await openScenes(page);
+  const {b}=await seed(page);
+  await page.evaluate(id=>{
+    localStorage.setItem("fsu-undo-gone1","[[1]]"); localStorage.setItem("fsu-undo-gone2","[[1]]");
+    localStorage.setItem("fsu-undo-"+id,"[[2]]"); localStorage.setItem("fsuOffline","{}")},b.sk);
+  await openScenes(page);
+  const keys=await page.evaluate(()=>{const o=[];for(let i=0;i<localStorage.length;i++)o.push(localStorage.key(i));return o.sort()});
+  expect(keys).not.toContain("fsu-undo-gone1");
+  expect(keys).not.toContain("fsu-undo-gone2");
+  expect(keys,"a live sketch's undo history was cleared").toContain("fsu-undo-"+b.sk);
+  expect(keys).toContain("fsuOffline");
+  expect(keys).toContain("van3");
+});
+
 test("deleting a sketch leaves the incident and the other sketch alone",async({page})=>{
   await openScenes(page);
   const {a,b}=await seed(page);

@@ -101,8 +101,9 @@ document.addEventListener("click",e=>{
       "Delete everything",true,()=>{
         (S.sketches||[]).forEach(s=>{ if(s.incidentId===inc.id&&s.bg&&s.bg.imgId)
           photoDel(s.bg.imgId).catch(()=>{});
-          if(s.incidentId===inc.id)(s.objs||[]).forEach(o=>{
-            if(o.photoId)photoDel(o.photoId).catch(()=>{})}) });
+          if(s.incidentId===inc.id){(s.objs||[]).forEach(o=>{
+            if(o.photoId)photoDel(o.photoId).catch(()=>{})});
+            try{localStorage.removeItem("fsu-undo-"+s.id)}catch(_){} } });   // its undo history is case material too
         S.fills=(S.fills||[]).filter(x=>x.incidentId!==inc.id);
         S.sketches=(S.sketches||[]).filter(x=>x.incidentId!==inc.id);
         S.incidents=(S.incidents||[]).filter(x=>x.id!==inc.id);
@@ -296,6 +297,11 @@ document.addEventListener("click",e=>{
     let parsed=null;
     try{ parsed=JSON.parse(t) }catch(err){ return toast("That doesn't look like a backup file") }
     if(!parsed||!parsed.items)return toast("No items in that file");
+    if(ghOn()){const miss=missingFrom(parsed);
+      return askConfirm("Restore what is missing",
+        "Sync is on, so nothing on this device or any other is replaced or deleted. "+missingText(miss)+
+        " in that file are not on this device and will be added. Everything else in the file is already here and is left as it is.",
+        "Add them",false,()=>ingest(t,true))}
     const n=(parsed.comps||[]).length, m=(parsed.items||[]).length;
     return askConfirm("Replace everything",
       "Everything currently in the app is discarded and replaced by the "+m+" item"+(m===1?"":"s")+

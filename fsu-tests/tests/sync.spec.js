@@ -21,19 +21,28 @@ function remote(state){
   state.gets=0;
   return async route=>{
     const req=route.request();
+    // a file as it stood at an earlier sha, the way GitHub's blobs API serves it
+    const bl=req.url().match(/\/git\/blobs\/([^/?]+)/);
+    if(bl){state.blobGets=(state.blobGets||0)+1; const d=(state.blobs||{})[bl[1]];
+      return d?route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({sha:bl[1],content:b64(d),encoding:"base64"})})
+              :route.fulfill({status:404,contentType:"application/json",body:JSON.stringify({message:"Not Found"})})}
     if(req.method()==="GET"){
       state.gets++;
       if(state.beforeGet)state.beforeGet(state);
       if(state.missing)return route.fulfill({status:404,contentType:"application/json",body:"{}"});
-      if(state.status)return route.fulfill({status:state.status,contentType:"application/json",body:JSON.stringify({message:"no"})});
+      if(state.status)return route.fulfill({status:state.status,contentType:"application/json",headers:state.headers||{},body:JSON.stringify({message:"no"})});
       return route.fulfill({status:200,contentType:"application/json",
         headers:state.expires?{"github-authentication-token-expiration":state.expires,
           "access-control-expose-headers":"github-authentication-token-expiration"}:{},
         body:JSON.stringify({sha:state.sha,content:state.raw!=null?state.raw:b64(state.data),encoding:"base64"})});
     }
     const sent=JSON.parse(req.postData()||"{}");
-    if(state.status)return route.fulfill({status:state.status,contentType:"application/json",body:JSON.stringify({message:"no"})});
-    if(sent.sha!==state.sha)
+    // a test can act while the PUT is on the wire, as a technician tapping away would
+    if(state.beforePut){const h=state.beforePut; state.beforePut=null; await h(state)}
+    if(state.status)return route.fulfill({status:state.status,contentType:"application/json",headers:state.headers||{},body:JSON.stringify({message:"no"})});
+    // no file yet: GitHub creates it from a PUT that carries no sha
+    if(state.missing&&!sent.sha)state.missing=false;
+    else if(sent.sha!==state.sha)
       return route.fulfill({status:409,contentType:"application/json",body:JSON.stringify({message:"conflict"})});
     state.sha="sha"+(+String(state.sha).replace(/\D/g,"")+1);
     state.data=unb64(sent.content); state.raw=null;
@@ -111,6 +120,103 @@ test("a 409 in the gap between the read and the write is merged again, not surfa
   expect(out.r).toBe("ok");
   expect(out.conflict,"a retriable race was pushed onto the user").toBe(false);
   expect(out.ids).toEqual(["a","mine","z"]);
+});
+
+/* ---------------- while a request is on the wire ---------------- */
+
+test("an edit made while a push is on the wire goes up next time instead of being reverted",async({page})=>{
+  const state={sha:"sha1",data:file([it("a","Gloves",3,"devB",{qty:1})])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  await page.evaluate(()=>{S.items.find(i=>i.id==="a").qty=2;saveLocal()});
+  // the count is tapped again while the first change is still uploading
+  state.beforePut=()=>page.evaluate(()=>{S.items.find(i=>i.id==="a").qty=3;saveLocal()});
+  await page.evaluate(()=>ghPush(false));
+  expect(state.data.items.find(i=>i.id==="a").qty,"the first change should be what went up").toBe(2);
+  const out=await page.evaluate(async()=>{await ghPush(false);
+    return {qty:S.items.find(i=>i.id==="a").qty,stashed:S.conflicts.length}});
+  expect(out.qty,"the edit made during the upload was reverted").toBe(3);
+  expect(state.data.items.find(i=>i.id==="a").qty,"the edit made during the upload never went up").toBe(3);
+  expect(out.stashed).toBe(0);
+});
+
+test("a delete made while a push is on the wire stays deleted",async({page})=>{
+  const state={sha:"sha1",data:file([it("a","Gloves",3,"devB"),it("b","Swabs",3,"devB")])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  await page.evaluate(()=>{S.items.find(i=>i.id==="b").qty=9;saveLocal()});
+  state.beforePut=()=>page.evaluate(()=>{S.items=S.items.filter(i=>i.id!=="a");saveLocal()});
+  await page.evaluate(()=>ghPush(false));
+  const ids=await page.evaluate(async()=>{await ghPush(false);return S.items.map(i=>i.id).sort()});
+  expect(ids,"the deleted item came back").toEqual(["b"]);
+  expect(state.data.items.filter(i=>!i._x).map(i=>i.id)).toEqual(["b"]);
+});
+
+test("an edit made offline survives the pull when the app next opens",async({page})=>{
+  const state={sha:"sha1",data:file([it("a","Gloves",3,"devB",{qty:1})])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  // edited with no signal; the app is closed and opened again, which pulls before it pushes
+  const out=await page.evaluate(async()=>{
+    S.items.find(i=>i.id==="a").qty=4; saveLocal();
+    await ghPull(true); await ghPush(false);
+    return S.items.find(i=>i.id==="a").qty});
+  expect(out,"the offline edit was reverted by the pull").toBe(4);
+  expect(state.data.items.find(i=>i.id==="a").qty).toBe(4);
+});
+
+test("the device that creates the file keeps the edits it makes afterwards",async({page})=>{
+  const state={sha:"sha1",missing:true,data:file([])};
+  await page.route(FILE,remote(state));
+  await open(page);
+  const out=await page.evaluate(async()=>{
+    S.gh={owner:"unit",repo:"van-data",path:"data.json",token:"t",sha:"",last:""};
+    S.items=[{id:"mine",name:"Mine",qty:1,cat:"A",cls:"Consumable",loc:""}]; saveLocal();
+    const pulled=await ghPull(true), created=await ghPush(false);
+    S.items[0].qty=5; saveLocal();
+    const next=await ghPush(false);
+    return {pulled,created,next,qty:S.items[0].qty}});
+  expect(out.pulled).toBe("empty");
+  expect(out.created).toBe("ok");
+  expect(out.next).toBe("ok");
+  expect(out.qty,"its own first edit after creating the file was reverted").toBe(5);
+  expect(state.data.items.find(i=>i.id==="mine").qty).toBe(5);
+});
+
+test("two syncs started at once take turns instead of interleaving",async({page})=>{
+  const state={sha:"sha1",data:file([it("a","Gloves",3,"devB",{qty:1})])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  // count requests in flight at once; a slow PUT gives a second sync every chance to overlap
+  const route=remote(state); let now=0, most=0;
+  state.beforePut=()=>new Promise(r=>setTimeout(r,200));
+  await page.unroute(FILE);
+  await page.route(FILE,async r=>{now++; most=Math.max(most,now); try{await route(r)}finally{now--}});
+  const out=await page.evaluate(async()=>{
+    S.items.find(i=>i.id==="a").qty=6; saveLocal();
+    const rs=await Promise.all([ghPush(false),ghPush(false),ghPull(true)]);
+    return {rs,qty:S.items.find(i=>i.id==="a").qty}});
+  expect(out.rs).toEqual(["ok","ok","ok"]);
+  expect(most,"two syncs were talking to GitHub at the same time").toBe(1);
+  expect(out.qty).toBe(6);
+  expect(state.data.items.find(i=>i.id==="a").qty).toBe(6);
+});
+
+test("a GitHub request that never answers gives up and retries instead of hanging",async({page})=>{
+  const state={sha:"sha1",data:file([])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  await page.unroute(FILE);
+  await page.route(FILE,()=>{});             // the request goes out and nothing ever comes back
+  const out=await page.evaluate(async()=>{
+    GH_TIMEOUT=300;
+    S.items.push({id:"x",name:"Typed on bad signal",qty:1,cat:"A",cls:"Consumable",loc:""}); saveLocal();
+    const t=Date.now(); const r=await ghPush(false);
+    return {r,ms:Date.now()-t,err:syncErr,tokenBad}});
+  expect(out.r).toBe("error");
+  expect(out.ms).toBeLessThan(5000);
+  expect(out.err).toContain("did not answer");
+  expect(out.tokenBad).toBe(false);
 });
 
 /* ---------------- the same record on two devices ---------------- */
@@ -338,6 +444,62 @@ test("connecting asks for three things and never asks which copy survives",async
   expect(state.data.items.map(i=>i.id).sort()).toEqual(["mine","theirs"]);
 });
 
+/* ---------------- GitHub's limits ---------------- */
+
+test("a push with nothing new makes no commit",async({page})=>{
+  const state={sha:"sha1",data:file([it("a","Gloves",3,"devB")])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  const puts=state.puts.length;
+  const out=await page.evaluate(async()=>{
+    S.curLoc=""; save();                        // a save that touches nothing that syncs
+    const r=await ghPush(false);
+    return {r,dirty,err:syncErr}});
+  expect(out.r).toBe("ok");
+  expect(state.puts.length,"a commit was made with nothing in it").toBe(puts);
+  expect(out.dirty).toBe(false);
+  expect(out.err).toBe("");
+  // and a real change still goes up
+  await page.evaluate(async()=>{S.items.find(i=>i.id==="a").qty=8; save(); await ghPush(false)});
+  expect(state.puts.length).toBe(puts+1);
+  expect(state.data.items.find(i=>i.id==="a").qty).toBe(8);
+});
+
+for(const [name,status,headers] of [
+  ["a 403 that says the rate limit is used up",403,{"x-ratelimit-remaining":"0","x-ratelimit-reset":String(Math.floor(Date.now()/1000)+1)}],
+  ["a 403 with retry-after",403,{"retry-after":"1"}],
+  ["a 429",429,{"retry-after":"1"}]]){
+  test(name+" waits and retries instead of calling the token dead",async({page})=>{
+    const state={sha:"sha1",data:file([])};
+    await page.route(FILE,remote(state));
+    await connected(page,"devA");
+    state.status=status;
+    state.headers=Object.assign({"access-control-expose-headers":"retry-after, x-ratelimit-remaining, x-ratelimit-reset"},headers);
+    const out=await page.evaluate(async()=>{
+      S.items.push({id:"slow",name:"Typed during a busy hour",qty:1,cat:"A",cls:"Consumable",loc:""});
+      save(); await ghPush(false);
+      return {tokenBad,err:syncErr,dirty,bar:(document.querySelector("#syncbar")||{}).textContent||""}});
+    expect(out.tokenBad,"a rate limit was taken for a dead token").toBe(false);
+    expect(out.bar).not.toContain("expired");
+    expect(out.err).toContain("slow down");
+    expect(out.dirty).toBe(true);
+    state.status=0;
+    await expect.poll(()=>!!state.data.items.find(i=>i.id==="slow"),
+      {message:"it never tried again after the wait",timeout:8000}).toBe(true);
+  });
+}
+
+test("a plain 403 is still a token that cannot write",async({page})=>{
+  const state={sha:"sha1",data:file([])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  state.status=403;
+  const out=await page.evaluate(async()=>{
+    S.items.push({id:"x",name:"X",qty:1,cat:"A",cls:"Consumable",loc:""}); save();
+    await ghPush(false); return tokenBad});
+  expect(out).toBe(true);
+});
+
 /* ---------------- the file itself ---------------- */
 
 test("a file that will not open is reported and never written over",async({page})=>{
@@ -386,6 +548,58 @@ test("a missing file is a first sync, not an error",async({page})=>{
 });
 
 /* ---------------- yesterday's build, still in a van ---------------- */
+
+// an old device holds the real van as the old build left it: no stamps, no base, no synced
+// flag, but the sha of the file it last synced, and one edit it never got to push
+function oldDevice(o,dev,edit){
+  const r=JSON.parse(JSON.stringify(o)); edit(r);
+  // the one-time migrations an installed device has long since run
+  return JSON.stringify({seeded:true,guideSeeded:1,stockMarked:1,srcTidy:1,formsSeeded:"STOCKV",curLoc:"",locs:[],dev,items:r.items,comps:r.comps,forms:r.forms,
+    walls:r.walls,gh:{owner:"unit",repo:"van-data",path:"data.json",token:"t",sha:"old1",last:"2026-09-04T19:14:00.000Z"}});
+}
+test("two devices upgrading from the old build keep their unpushed edits, and nothing is deleted",async({browser})=>{
+  // shaped as the old build wrote them: it filled in the load-time defaults before pushing
+  const rec=(id,name,qty,loc)=>({id,name,qty,cat:"A",cls:"Consumable",loc,uses:[],rel:[],links:[]});
+  const old={items:[rec("a","Gloves",0,"A1"),rec("b","Swabs",3,"A1"),rec("c","Tape",2,"A2")],
+    comps:[{code:"A1",desc:"",side:"",x:null,y:null,w:6,h:4},{code:"A2",desc:"",side:"",x:null,y:null,w:6,h:4}],
+    forms:[],walls:{"Driver side":{cols:3,rows:2}},demo:false,lastCat:"A",lastCls:"Consumable",savedAt:"2026-09-04T19:14:00.000Z"};
+  const state={sha:"old1",data:JSON.parse(JSON.stringify(old)),blobs:{old1:old}};
+  const devs=[];
+  for(const [dev,edit] of [["devA",o=>{o.items[0].qty=77}],["devB",o=>{o.items[1].name="Swabs, sterile"}]]){
+    const ctx=await browser.newContext({serviceWorkers:"block"}); await ctx.route(FILE,remote(state));
+    const page=await ctx.newPage();
+    await page.goto("/index.html"); await page.evaluate(r=>{localStorage.clear();localStorage.setItem("van3",r.replace('"STOCKV"',STOCKV))},oldDevice(old,dev,edit));
+    await page.goto("/index.html"); await page.waitForFunction(()=>typeof render==="function");
+    await page.evaluate(async()=>{await ghPull(true); await ghPush(false)});
+    devs.push(page);
+  }
+  await devs[0].evaluate(()=>ghPull(true));
+  expect(state.blobGets,"the old file was never fetched to judge against").toBeGreaterThan(0);
+  const alive=state.data.items.filter(i=>!i._x);
+  expect(alive.map(i=>i.id).sort(),"something was deleted").toEqual(["a","b","c"]);
+  expect(alive.find(i=>i.id==="a").qty,"device A's edit was lost").toBe(77);
+  expect(alive.find(i=>i.id==="b").name,"device B's edit was lost").toBe("Swabs, sterile");
+  expect(state.data.comps.filter(c=>!c._x).map(c=>c.code).sort()).toEqual(["A1","A2"]);
+  expect(state.data.walls).toEqual(old.walls);
+  for(const page of devs){
+    const d=await page.evaluate(()=>({a:S.items.find(i=>i.id==="a").qty,b:S.items.find(i=>i.id==="b").name,
+      n:S.items.length,walls:S.walls,conflicts:S.conflicts.length}));
+    expect(d).toEqual({a:77,b:"Swabs, sterile",n:3,walls:old.walls,conflicts:0});
+  }
+});
+
+test("an old device whose last file cannot be fetched keeps its differing records to put back",async({page})=>{
+  const old={items:[{id:"a",name:"Gloves",qty:0,cat:"A",cls:"Consumable",loc:""}],comps:[],forms:[],walls:{}};
+  const state={sha:"new9",data:file([it("a","Gloves",9,"devB",{qty:5})]),blobs:{}};
+  await page.route(FILE,remote(state));
+  await page.goto("/index.html"); await page.evaluate(r=>{localStorage.clear();localStorage.setItem("van3",r.replace('"STOCKV"',STOCKV))},
+    oldDevice(old,"devA",o=>{o.items[0].qty=77}));
+  await page.goto("/index.html"); await page.waitForFunction(()=>typeof render==="function");
+  const out=await page.evaluate(async()=>{await ghPull(true);
+    return {qty:S.items[0].qty,stash:S.conflicts.map(c=>c.rec.qty)}});
+  expect(out.qty).toBe(5);
+  expect(out.stash,"the old device's edit was dropped without a copy").toEqual([77]);
+});
 
 test("an old build's whole-file push cannot delete anything, because absence is not deletion",async({page})=>{
   const state={sha:"sha1",data:file([it("a","Gloves",3,"devB"),it("b","Swabs",3,"devB")])};
@@ -441,6 +655,43 @@ test("a tombstone is dropped once it is far older than any device could be offli
   });
   expect(out).toEqual(["fresh"]);
   expect(state.data.items.map(i=>i.id).sort()).toEqual(["b","fresh"]);
+});
+
+/* ---------------- restoring a backup on a connected device ---------------- */
+
+test("restoring a backup while connected only adds what is missing and deletes nothing anywhere",async({page})=>{
+  const state={sha:"sha1",data:file([it("a","Gloves",3,"devB",{qty:1}),it("b","Swabs",3,"devB")])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  // since the backup was taken: one item edited, one added, on this and other devices
+  await page.evaluate(async()=>{
+    S.items.find(i=>i.id==="a").qty=7;
+    S.items.push({id:"new",name:"Added after the backup",qty:1,cat:"A",cls:"Consumable",loc:""});
+    save(); await ghPush(false)});
+  const backup=JSON.stringify({items:[
+      {id:"a",name:"Gloves",qty:1,cat:"A",cls:"Consumable",loc:"",_v:1,_d:"old"},
+      {id:"gone",name:"Only in the backup",qty:2,cat:"A",cls:"Consumable",loc:""}],
+    comps:[{code:"Z9",desc:"From the backup",side:"",x:null,y:null,w:6,h:4}],forms:[],walls:{}});
+  const out=await page.evaluate(async t=>{
+    SET_SEC="restore"; view="data"; renderData();
+    const hint=document.querySelector("#v-data").textContent;
+    document.querySelector("#imp").value=t;
+    document.querySelector("#imprep").click();
+    const ask=document.querySelector("#sheetbody").textContent;
+    document.querySelector("#cfyes").click();
+    await ghPush(false);
+    return {hint,ask,ids:S.items.map(i=>i.id).sort(),qty:S.items.find(i=>i.id==="a").qty,
+      comps:S.comps.map(c=>c.code)};
+  },backup);
+  expect(out.hint,"the screen does not say what restore will do while sync is on").toContain("only adds");
+  expect(out.ask).toContain("1 item");
+  expect(out.ids,"the restore deleted or failed to add").toEqual(["a","b","gone","new"]);
+  expect(out.qty,"the restore put an old value over a newer edit").toBe(7);
+  expect(out.comps).toContain("Z9");
+  const up=state.data.items.filter(i=>!i._x).map(i=>i.id).sort();
+  expect(up,"the restore deleted something on every other device").toEqual(["a","b","gone","new"]);
+  expect(state.data.items.find(i=>i.id==="a").qty).toBe(7);
+  expect(state.data.items.filter(i=>i._x).length,"the restore sent tombstones").toBe(0);
 });
 
 /* ---------------- storage that refuses to keep anything ---------------- */
