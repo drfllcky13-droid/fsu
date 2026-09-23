@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-FLcTGv2pfI4HnTcsHQxF/luaGO57GGrt9reiTcl4zP8='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-WLiqwTgA5MoH3tIu1ugSWGtskmXEUuGScej9e0vOzBg='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FSU Scenes</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -785,7 +785,7 @@ body.wide .mslot.hit{font-size:14.5px}
 .meter{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
 .meter i{display:block;height:100%;background:var(--green)}
 .meter.warn i{background:var(--amber)}
-.storego li,.storestay li,.heldlist li{margin:0 0 6px}
+.storego li,.storestay li,.heldlist li,.photomiss li,.photoorph li{margin:0 0 6px}
 .storewarn{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;margin:0 0 12px;padding:10px 14px;
   border:0;border-radius:10px;background:var(--amberbg);color:var(--amber);font:inherit;font-weight:600;text-align:left;cursor:pointer}
 .okpill{background:var(--greenbg);color:var(--greenink);font-size:13.5px;font-weight:600;
@@ -2032,7 +2032,8 @@ function storageMeterHTML(){
     <p class="hint" style="margin:6px 0 10px">${warn
       ?"The app's record is nearly full. When it is full, changes stop being saved. Remove closed cases that already have a case package to make room."
       :"Incidents, forms and sketches are kept in the app's record, which holds about 5 MB. Photographs are kept separately and have much more room."}</p>
-    <button class="btn sec" id="storefree" style="max-width:none;margin:0">Remove closed cases that already have a case package</button>`;
+    <button class="btn sec" id="storefree" style="max-width:none;margin:0">Remove closed cases that already have a case package</button>
+    <button class="btn sec" id="photocheck" style="max-width:none">Check photographs</button>`;
 }
 // one line for Home and Scenes when the record is nearly full
 const storageWarnText=()=>lsShare()>=LS_WARN?"Storage is "+Math.round(lsShare()*100)+"% full. Remove closed cases that already have a case package":"";
@@ -2391,11 +2392,15 @@ async function casePackage(scope){
   sketches.forEach(s=>{if(s.incidentId)incIds.add(s.incidentId)});
   const incs=incidents().filter(i=>all||incIds.has(i.id));
   const fills=(S.fills||[]).filter(f=>all||incIds.has(f.incidentId));
-  const photoIds=new Set();
-  sketches.forEach(s=>{ if(s.bg&&s.bg.imgId)photoIds.add(s.bg.imgId); (s.objs||[]).forEach(o=>{if(o.photoId)photoIds.add(o.photoId)}) });
-  const photos={};
-  for(const id of photoIds){ try{ const d=await photoGet(id); if(d)photos[id]=d }catch(e){} }
-  return {fsuCase:1,version:APP_VERSION,exported:new Date().toISOString(),unit:S.vanName||"",incidents:incs,fills,sketches,photos,forms:S.forms||[]};
+  const where={};   // photograph id -> what uses it, to name one that cannot be read
+  sketches.forEach(s=>{ const sk="sketch for "+(s.caseNo||"no case number");
+    if(s.bg&&s.bg.imgId)where[s.bg.imgId]="the backdrop of the "+sk;
+    (s.objs||[]).forEach(o=>{if(o.photoId)where[o.photoId]="photo point "+(o.n||o.label||"")+" on the "+sk}) });
+  const photos={}, missingPhotos=[];
+  for(const id in where){ let d=null; try{ d=await photoGet(id) }catch(e){}
+    if(d&&d.data)photos[id]=d; else missingPhotos.push({id,where:where[id].replace(/ +/g," ")}) }
+  // the package says what it could not include, so whoever opens it knows too
+  return {fsuCase:1,version:APP_VERSION,exported:new Date().toISOString(),unit:S.vanName||"",incidents:incs,fills,sketches,photos,missingPhotos,forms:S.forms||[]};
 }
 // What a case holds: its incident, filled forms, sketches and the photographs they use.
 function caseParts(inc){
@@ -2440,6 +2445,17 @@ async function exportCasePackage(scope,label){
   saveLocal(); if(view==="data"&&typeof renderData==="function")renderData();
   else if(view==="sketch"&&typeof renderSketch==="function")renderSketch();
   const np=Object.keys(pkg.photos).length;
+  if(pkg.missingPhotos.length){
+    // a photograph that could not be read is named, not skipped without a word
+    logAct("case","Saved a case package without "+pkg.missingPhotos.length+" photograph"+(pkg.missingPhotos.length===1?"":"s")+" that could not be read");
+    openSheet(`<h3>Saved, but ${pkg.missingPhotos.length===1?"one photograph is":pkg.missingPhotos.length+" photographs are"} missing</h3>
+      <p style="margin:0 0 10px;color:var(--ink2);font-size:14.5px;line-height:1.5">The case package was saved with ${np} photograph${np===1?"":"s"}. ${pkg.missingPhotos.length===1?"This one":"These"} could not be read on this device and ${pkg.missingPhotos.length===1?"is":"are"} not in it:</p>
+      <ul class="photomiss" style="margin:0 0 12px;padding-left:20px;font-size:14.5px;line-height:1.5">${pkg.missingPhotos.map(m=>`<li>${esc(m.where)} <span class="hint">(${esc(m.id)})</span></li>`).join("")}</ul>
+      <p class="hint" style="margin:0 0 12px">If the original is in the camera roll, attach it again to the photo point and save a new case package.</p>
+      <button class="btn" id="cfno" style="max-width:none;margin:0">OK</button>`);
+    $("#cfno").onclick=closeSheet;
+    return;
+  }
   logAct("case","Saved a case package"); toast("Case package saved — "+pkg.sketches.length+" sketch"+(pkg.sketches.length===1?"":"es")+", "+np+" photograph"+(np===1?"":"s")+". Put it in the case file.");
 }
 async function importCasePackage(text){
@@ -2569,6 +2585,48 @@ async function removeCases(ids){
   }
   saveLocal(); if(typeof claimStorage==="function")await claimStorage(); render();
   return n;
+}
+
+/* ---- photographs and the records that use them ----
+   A photograph with no record is left over from something deleted; a record whose photograph is
+   gone shows an empty frame and prints without it. The check lists both. Only the first can be
+   cleaned up, and only after a confirm; a photograph that an undo step could bring back counts as
+   in use. */
+async function photoAudit(){
+  const used=new Map(), inUndo=new Set();
+  (S.sketches||[]).forEach(s=>{ const sk="sketch for "+(s.caseNo||"no case number");
+    if(s.bg&&s.bg.imgId)used.set(s.bg.imgId,"the backdrop of the "+sk);
+    (s.objs||[]).forEach(o=>{if(o.photoId)used.set(o.photoId,("photo point "+(o.n||o.label||"")+" on the "+sk).replace(/ +/g," "))}) });
+  try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(!k||k.indexOf("fsu-undo-")!==0)continue;
+    const t=localStorage.getItem(k)||""; for(const m of t.matchAll(/"(?:photoId|imgId)":"([\w-]{1,64})"/g))inUndo.add(m[1]) } }catch(_){}
+  let keys=[]; try{ keys=await photoKeys() }catch(e){}
+  const have=new Set(keys.map(String)), orphans=[];
+  for(const id of have){ if(used.has(id)||inUndo.has(id))continue;
+    let n=0; try{const d=await photoGet(id); n=d&&d.data?String(d.data).length:0}catch(e){} orphans.push({id,n}) }
+  const missing=[...used].filter(([id])=>!have.has(id)).map(([id,where])=>({id,where}));
+  return {orphans,missing,count:have.size};
+}
+async function photoCheckSheet(){
+  const {orphans,missing,count}=await photoAudit(), freed=orphans.reduce((a,o)=>a+o.n,0);
+  openSheet(`<h3>Photographs on this device</h3>
+    <p style="margin:0 0 10px;color:var(--ink2);font-size:14.5px;line-height:1.5">${count} photograph${count===1?"":"s"} stored.
+      ${!orphans.length&&!missing.length?"Every one is used by a sketch, and every sketch's photographs are here.":""}</p>
+    ${missing.length?`<div class="idsect">Missing: a record points to a photograph that is not here</div>
+      <ul class="photomiss" style="margin:0 0 12px;padding-left:20px;font-size:14.5px;line-height:1.5">${missing.map(m=>`<li>${esc(m.where)} <span class="hint">(${esc(m.id)})</span></li>`).join("")}</ul>
+      <p class="hint" style="margin:0 0 12px">Attach the photograph to that photo point again if you still have it. Nothing here removes these records.</p>`:""}
+    ${orphans.length?`<div class="idsect">Not used by any record</div>
+      <ul class="photoorph" style="margin:0 0 10px;padding-left:20px;font-size:14.5px;line-height:1.5">${orphans.map(o=>`<li>${esc(o.id)} <span class="hint">${fmtBytes(o.n)}</span></li>`).join("")}</ul>
+      <button class="btn sec" id="photoclean" style="max-width:none;margin:0;color:var(--red);border-color:var(--red)">Delete ${orphans.length} photograph${orphans.length===1?"":"s"} no record uses (${fmtBytes(freed)})</button>`:""}
+    <button class="btn" id="cfno" style="max-width:none">Close</button>`);
+  $("#cfno").onclick=closeSheet;
+  const c=$("#photoclean"); if(c)c.onclick=()=>askConfirm("Delete unused photographs",
+    orphans.length+" photograph"+(orphans.length===1?"":"s")+" that no sketch, photo point or undo step uses "+(orphans.length===1?"is":"are")+" deleted from this device.",
+    "Delete",true,async()=>{
+      // checked again: a photograph attached since the list was drawn stays
+      const now=await photoAudit(), still=new Set(now.orphans.map(o=>o.id)); let n=0;
+      for(const o of orphans){ if(!still.has(o.id))continue; try{await photoDel(o.id);n++}catch(e){} }
+      if(typeof claimStorage==="function")await claimStorage();
+      toast("Deleted "+n+" unused photograph"+(n===1?"":"s")) });
 }
 /* ---------- sample van ---------- */
 const DEMO_COMPS=[
@@ -5376,6 +5434,7 @@ document.addEventListener("click",e=>{
   if(e.target.closest("#gear")){openSettings(null);return}
   if(e.target.closest("#dlj")){ backupOut(); return }
   if(e.target.closest("#storefree")){ removeCasesSheet(); return }
+  if(e.target.closest("#photocheck")){ photoCheckSheet(); return }
   if(e.target.closest("#heldsend")){ KINDS.forEach(k=>S.held[k]={}); save(); renderData(); return toast("They go up with the next sync") }
   if(e.target.closest("#helddrop"))
     return askConfirm("Remove from this device","The records held back are deleted from this device. They were never sent, so no other device is affected.","Remove",true,()=>{

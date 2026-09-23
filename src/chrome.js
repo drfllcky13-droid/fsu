@@ -71,7 +71,8 @@ function storageMeterHTML(){
     <p class="hint" style="margin:6px 0 10px">${warn
       ?"The app's record is nearly full. When it is full, changes stop being saved. Remove closed cases that already have a case package to make room."
       :"Incidents, forms and sketches are kept in the app's record, which holds about 5 MB. Photographs are kept separately and have much more room."}</p>
-    <button class="btn sec" id="storefree" style="max-width:none;margin:0">Remove closed cases that already have a case package</button>`;
+    <button class="btn sec" id="storefree" style="max-width:none;margin:0">Remove closed cases that already have a case package</button>
+    <button class="btn sec" id="photocheck" style="max-width:none">Check photographs</button>`;
 }
 // one line for Home and Scenes when the record is nearly full
 const storageWarnText=()=>lsShare()>=LS_WARN?"Storage is "+Math.round(lsShare()*100)+"% full. Remove closed cases that already have a case package":"";

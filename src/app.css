@@ -768,7 +768,7 @@ body.wide .mslot.hit{font-size:14.5px}
 .meter{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
 .meter i{display:block;height:100%;background:var(--green)}
 .meter.warn i{background:var(--amber)}
-.storego li,.storestay li,.heldlist li{margin:0 0 6px}
+.storego li,.storestay li,.heldlist li,.photomiss li,.photoorph li{margin:0 0 6px}
 .storewarn{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;margin:0 0 12px;padding:10px 14px;
   border:0;border-radius:10px;background:var(--amberbg);color:var(--amber);font:inherit;font-weight:600;text-align:left;cursor:pointer}
 .okpill{background:var(--greenbg);color:var(--greenink);font-size:13.5px;font-weight:600;
