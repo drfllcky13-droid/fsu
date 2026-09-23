@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-WLiqwTgA5MoH3tIu1ugSWGtskmXEUuGScej9e0vOzBg='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Z2xV3s4BmBj+WVZ7ibon3Bxn30iy2M7rTQWbv1C78aE='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FSU Scenes</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1673,10 +1673,32 @@ const ICONS={home:"M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z",
  active:"M4 6h6v5H4zM14 6h6v5h-6zM4 15h6v3H4zM14 15h6v3h-6z"};
 
 let MEM=null, memOnly=false;
+// A record that will not read is never written over. Its text is kept under a key of its own,
+// van3.bad-<time>, before the app starts afresh. With no room for a second copy the original is
+// moved rather than copied; if even that fails it stays where it is and nothing is saved over it
+// until it has been downloaded (BADREC.key is null until then). The page says so (chrome.js).
+let BADREC=null;
+const LEGACY=["vaninv2","vaninv"];
+function keepBad(from,raw){
+  const bad="van3.bad-"+new Date().toISOString().replace(/[:.]/g,"-");
+  try{ localStorage.setItem(bad,raw); BADREC={key:bad,from,raw}; return }catch(e){}
+  try{ localStorage.removeItem(from); localStorage.setItem(bad,raw); BADREC={key:bad,from,raw}; return }catch(e){}
+  try{ localStorage.setItem(from,raw) }catch(e){}
+  BADREC={key:null,from,raw};
+}
 const store={get(){if(MEM)return MEM;
-   try{const r=localStorage.getItem("van3")||localStorage.getItem("vaninv2")||localStorage.getItem("vaninv");
-     return r?JSON.parse(r):null}catch(e){return null}},
- set(v){try{localStorage.setItem("van3",JSON.stringify(v));MEM=null;if(typeof saveFailed==="function")saveFailed(false);if(typeof savedTick==="function")savedTick()}
+   let from=null, raw=null;
+   try{ for(const k of ["van3"].concat(LEGACY)){const r=localStorage.getItem(k); if(r){from=k;raw=r;break}} }catch(e){return null}
+   if(raw==null)return null;
+   let o; try{o=JSON.parse(raw)}catch(e){}
+   if(o&&typeof o==="object"&&!Array.isArray(o)){
+     // the current record read: the old keys it replaced are no longer needed
+     if(from==="van3")LEGACY.forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+     return o;
+   }
+   keepBad(from,raw); return null},
+ set(v){if(BADREC&&!BADREC.key){MEM=v;if(typeof saveFailed==="function")saveFailed(true);return}
+   try{localStorage.setItem("van3",JSON.stringify(v));MEM=null;if(typeof saveFailed==="function")saveFailed(false);if(typeof savedTick==="function")savedTick()}
    catch(e){MEM=v;if(typeof saveFailed==="function")saveFailed(true)}}};
 // writing may be refused while reading still works: private browsing, blocked storage, a
 // full disk. Read the record anyway and carry on in memory; do not start from nothing.
@@ -2033,7 +2055,17 @@ function storageMeterHTML(){
       ?"The app's record is nearly full. When it is full, changes stop being saved. Remove closed cases that already have a case package to make room."
       :"Incidents, forms and sketches are kept in the app's record, which holds about 5 MB. Photographs are kept separately and have much more room."}</p>
     <button class="btn sec" id="storefree" style="max-width:none;margin:0">Remove closed cases that already have a case package</button>
-    <button class="btn sec" id="photocheck" style="max-width:none">Check photographs</button>`;
+    <button class="btn sec" id="photocheck" style="max-width:none">Check photographs</button>
+    ${badCopiesHTML()}`;
+}
+// damaged records kept by keepBad (core.js), with a way to take each one off the device
+function badCopies(){ const out=[]; try{ for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i); if(k&&k.indexOf("van3.bad-")===0)out.push(k)} }catch(_){} return out.sort() }
+function badCopiesHTML(){
+  const ks=badCopies(); if(!ks.length)return "";
+  return `<div class="idsect">Damaged records kept</div>
+    <p class="hint" style="margin:0 0 8px">A saved record that could not be read, kept as it was in case whoever looks after the app can recover it.</p>
+    ${ks.map(k=>`<div class="cfrow"><span class="cfn">${esc(k)}<i>${fmtBytes((localStorage.getItem(k)||"").length)}</i></span>
+      <span class="cfb"><button class="btn sec" data-baddl="${esc(k)}">Download</button><button class="btn sec" data-baddel="${esc(k)}">Delete</button></span></div>`).join("")}`;
 }
 // one line for Home and Scenes when the record is nearly full
 const storageWarnText=()=>lsShare()>=LS_WARN?"Storage is "+Math.round(lsShare()*100)+"% full. Remove closed cases that already have a case package":"";
@@ -2149,6 +2181,26 @@ window.addEventListener("error",e=>logErr((e.message||"Error")+" at "+String(e.f
 window.addEventListener("unhandledrejection",e=>logErr("Promise: "+((e.reason&&e.reason.message)||e.reason)));
 
 /* 3. installable: a service worker when served over http, so it opens from the home screen and works offline */
+// the saved record would not read (core.js, keepBad): say so, and where the damaged copy is
+function renderBadBar(){
+  try{
+    if(!BADREC||BADREC.seen)return;
+    let b=document.getElementById("badbar");
+    if(!b){ b=document.createElement("div"); b.id="badbar"; b.className="demobar bad";
+      const at=document.getElementById("syncbar"); if(at)at.before(b); else document.body.prepend(b) }
+    b.innerHTML=`<span>${BADREC.key
+      ?"<b>The saved record could not be read.</b> The app has started from a blank record. The damaged copy is kept on this device as "+esc(BADREC.key)+"; download it for whoever looks after the app."
+      :"<b>The saved record could not be read, and there is no room to keep a copy.</b> Nothing is saved over it until you download it. Download it, then the app carries on from a blank record."}</span>
+      <button id="baddl">Download it</button>${BADREC.key?`<button id="badok">Dismiss</button>`:""}`;
+    $("#baddl").onclick=()=>{ dlBlob(new Blob([BADREC.raw],{type:"application/json"}),(BADREC.key||"van3.bad")+".json");
+      if(!BADREC.key){ BADREC.key="downloaded"; BADREC.seen=true; b.remove(); store.set(S); if(typeof fitHeader==="function")fitHeader() } };
+    const ok=$("#badok"); if(ok)ok.onclick=()=>{ BADREC.seen=true; b.remove(); if(typeof fitHeader==="function")fitHeader() };
+    if(typeof fitHeader==="function")fitHeader();
+  }catch(_){}
+}
+// after start-up: the note and the bar need the rest of the page (view is declared further on)
+if(BADREC)setTimeout(()=>{ noteBad("The saved record could not be read; "+(BADREC.key?"the damaged copy is kept as "+BADREC.key:"there was no room to keep a copy, so saving waits until it is downloaded"));
+  saveLocal(); renderBadBar() },0);
 // the worker's cache, named in sw.js and copied here by build.js
 const FSU_CACHE="fsu-v1";
 if("serviceWorker" in navigator&&/^https?:/.test(location.protocol)){
@@ -5435,6 +5487,10 @@ document.addEventListener("click",e=>{
   if(e.target.closest("#dlj")){ backupOut(); return }
   if(e.target.closest("#storefree")){ removeCasesSheet(); return }
   if(e.target.closest("#photocheck")){ photoCheckSheet(); return }
+  const bdl=e.target.closest("[data-baddl]"); if(bdl){ const k=bdl.dataset.baddl; dlBlob(new Blob([localStorage.getItem(k)||""],{type:"application/json"}),k+".json"); return }
+  const bdd=e.target.closest("[data-baddel]"); if(bdd){ const k=bdd.dataset.baddel;
+    return askConfirm("Delete the damaged record","The damaged copy "+k+" is deleted from this device. Download it first if anyone may want to recover it.","Delete",true,()=>{
+      try{localStorage.removeItem(k)}catch(_){} renderData(); toast("Deleted")}) }
   if(e.target.closest("#heldsend")){ KINDS.forEach(k=>S.held[k]={}); save(); renderData(); return toast("They go up with the next sync") }
   if(e.target.closest("#helddrop"))
     return askConfirm("Remove from this device","The records held back are deleted from this device. They were never sent, so no other device is affected.","Remove",true,()=>{

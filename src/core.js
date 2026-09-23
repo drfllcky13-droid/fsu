@@ -4,10 +4,32 @@
  active:"M4 6h6v5H4zM14 6h6v5h-6zM4 15h6v3H4zM14 15h6v3h-6z"};
 
 let MEM=null, memOnly=false;
+// A record that will not read is never written over. Its text is kept under a key of its own,
+// van3.bad-<time>, before the app starts afresh. With no room for a second copy the original is
+// moved rather than copied; if even that fails it stays where it is and nothing is saved over it
+// until it has been downloaded (BADREC.key is null until then). The page says so (chrome.js).
+let BADREC=null;
+const LEGACY=["vaninv2","vaninv"];
+function keepBad(from,raw){
+  const bad="van3.bad-"+new Date().toISOString().replace(/[:.]/g,"-");
+  try{ localStorage.setItem(bad,raw); BADREC={key:bad,from,raw}; return }catch(e){}
+  try{ localStorage.removeItem(from); localStorage.setItem(bad,raw); BADREC={key:bad,from,raw}; return }catch(e){}
+  try{ localStorage.setItem(from,raw) }catch(e){}
+  BADREC={key:null,from,raw};
+}
 const store={get(){if(MEM)return MEM;
-   try{const r=localStorage.getItem("van3")||localStorage.getItem("vaninv2")||localStorage.getItem("vaninv");
-     return r?JSON.parse(r):null}catch(e){return null}},
- set(v){try{localStorage.setItem("van3",JSON.stringify(v));MEM=null;if(typeof saveFailed==="function")saveFailed(false);if(typeof savedTick==="function")savedTick()}
+   let from=null, raw=null;
+   try{ for(const k of ["van3"].concat(LEGACY)){const r=localStorage.getItem(k); if(r){from=k;raw=r;break}} }catch(e){return null}
+   if(raw==null)return null;
+   let o; try{o=JSON.parse(raw)}catch(e){}
+   if(o&&typeof o==="object"&&!Array.isArray(o)){
+     // the current record read: the old keys it replaced are no longer needed
+     if(from==="van3")LEGACY.forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+     return o;
+   }
+   keepBad(from,raw); return null},
+ set(v){if(BADREC&&!BADREC.key){MEM=v;if(typeof saveFailed==="function")saveFailed(true);return}
+   try{localStorage.setItem("van3",JSON.stringify(v));MEM=null;if(typeof saveFailed==="function")saveFailed(false);if(typeof savedTick==="function")savedTick()}
    catch(e){MEM=v;if(typeof saveFailed==="function")saveFailed(true)}}};
 // writing may be refused while reading still works: private browsing, blocked storage, a
 // full disk. Read the record anyway and carry on in memory; do not start from nothing.

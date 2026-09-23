@@ -72,7 +72,17 @@ function storageMeterHTML(){
       ?"The app's record is nearly full. When it is full, changes stop being saved. Remove closed cases that already have a case package to make room."
       :"Incidents, forms and sketches are kept in the app's record, which holds about 5 MB. Photographs are kept separately and have much more room."}</p>
     <button class="btn sec" id="storefree" style="max-width:none;margin:0">Remove closed cases that already have a case package</button>
-    <button class="btn sec" id="photocheck" style="max-width:none">Check photographs</button>`;
+    <button class="btn sec" id="photocheck" style="max-width:none">Check photographs</button>
+    ${badCopiesHTML()}`;
+}
+// damaged records kept by keepBad (core.js), with a way to take each one off the device
+function badCopies(){ const out=[]; try{ for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i); if(k&&k.indexOf("van3.bad-")===0)out.push(k)} }catch(_){} return out.sort() }
+function badCopiesHTML(){
+  const ks=badCopies(); if(!ks.length)return "";
+  return `<div class="idsect">Damaged records kept</div>
+    <p class="hint" style="margin:0 0 8px">A saved record that could not be read, kept as it was in case whoever looks after the app can recover it.</p>
+    ${ks.map(k=>`<div class="cfrow"><span class="cfn">${esc(k)}<i>${fmtBytes((localStorage.getItem(k)||"").length)}</i></span>
+      <span class="cfb"><button class="btn sec" data-baddl="${esc(k)}">Download</button><button class="btn sec" data-baddel="${esc(k)}">Delete</button></span></div>`).join("")}`;
 }
 // one line for Home and Scenes when the record is nearly full
 const storageWarnText=()=>lsShare()>=LS_WARN?"Storage is "+Math.round(lsShare()*100)+"% full. Remove closed cases that already have a case package":"";
@@ -188,6 +198,26 @@ window.addEventListener("error",e=>logErr((e.message||"Error")+" at "+String(e.f
 window.addEventListener("unhandledrejection",e=>logErr("Promise: "+((e.reason&&e.reason.message)||e.reason)));
 
 /* 3. installable: a service worker when served over http, so it opens from the home screen and works offline */
+// the saved record would not read (core.js, keepBad): say so, and where the damaged copy is
+function renderBadBar(){
+  try{
+    if(!BADREC||BADREC.seen)return;
+    let b=document.getElementById("badbar");
+    if(!b){ b=document.createElement("div"); b.id="badbar"; b.className="demobar bad";
+      const at=document.getElementById("syncbar"); if(at)at.before(b); else document.body.prepend(b) }
+    b.innerHTML=`<span>${BADREC.key
+      ?"<b>The saved record could not be read.</b> The app has started from a blank record. The damaged copy is kept on this device as "+esc(BADREC.key)+"; download it for whoever looks after the app."
+      :"<b>The saved record could not be read, and there is no room to keep a copy.</b> Nothing is saved over it until you download it. Download it, then the app carries on from a blank record."}</span>
+      <button id="baddl">Download it</button>${BADREC.key?`<button id="badok">Dismiss</button>`:""}`;
+    $("#baddl").onclick=()=>{ dlBlob(new Blob([BADREC.raw],{type:"application/json"}),(BADREC.key||"van3.bad")+".json");
+      if(!BADREC.key){ BADREC.key="downloaded"; BADREC.seen=true; b.remove(); store.set(S); if(typeof fitHeader==="function")fitHeader() } };
+    const ok=$("#badok"); if(ok)ok.onclick=()=>{ BADREC.seen=true; b.remove(); if(typeof fitHeader==="function")fitHeader() };
+    if(typeof fitHeader==="function")fitHeader();
+  }catch(_){}
+}
+// after start-up: the note and the bar need the rest of the page (view is declared further on)
+if(BADREC)setTimeout(()=>{ noteBad("The saved record could not be read; "+(BADREC.key?"the damaged copy is kept as "+BADREC.key:"there was no room to keep a copy, so saving waits until it is downloaded"));
+  saveLocal(); renderBadBar() },0);
 // the worker's cache, named in sw.js and copied here by build.js
 const FSU_CACHE="__FSU_CACHE__";
 if("serviceWorker" in navigator&&/^https?:/.test(location.protocol)){
