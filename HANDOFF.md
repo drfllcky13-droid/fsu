@@ -513,3 +513,57 @@ Be sceptical of all of this — it is one sweep old.
 - The reorder list has never been handed to anyone who orders stock.
 - The bundle has never been given to whoever receives it. Its order and cover are a guess and
   should be expected to change.
+
+---
+
+## Report for Chat
+
+Rewritten (not appended to) at the end of every work session.
+
+**2026-09-23.** Live `APP_VERSION`: **2026.09.28.1** (index.html and scenes.html on Pages are byte-identical to `main` at 0b8cb1c).
+
+### Open PRs
+
+| PR | Head | CI | Local suite |
+|---|---|---|---|
+| [#7](https://github.com/drfllcky13-droid/fsu/pull/7) jsPDF 4.2.1, lib/ checksums, Playwright pin (draft, 2026.09.29.1) | this report's commit; code at a28ebb4 | green on a28ebb4 (both jobs, Playwright 1.62.1 with `npm ci`) | 287/287 in Chromium, visual.spec.js excluded |
+| [#8](https://github.com/drfllcky13-droid/fsu/pull/8) Handoff protocol: CLAUDE.md, HANDOFF.md as mailbox, brief → BRIEF.md (draft) | 9a2d0ff | running at the time of writing | 285/285 |
+
+### What changed since the last report (one line per commit)
+- `76e1904` jsPDF 2.5.1 → 4.2.1 and svg2pdf 2.2.4 → 2.8.1. `lib/SOURCES.txt` has versions and a SHA-256 for every file in `lib/`, and `libs.spec.js` checks them. Version 2026.09.29.1, with the CHANGELOG entry and in-app line.
+- `a28ebb4` `@playwright/test` pinned to 1.62.1, lockfile root updated, CI runs `npm ci` and prints the Playwright version.
+- (PR #8) `501c085` CLAUDE.md handoff protocol; the brief moved to BRIEF.md. `9a2d0ff` first mailbox HANDOFF.md.
+- This commit: this section.
+
+### PR #7 against its requirements
+- **Advisories.** `npm audit` on jspdf 2.5.1 lists 16 advisories (2 critical, 10 high, 4 moderate). The newest range ends at 4.2.0. On jspdf 4.2.1 with svg2pdf 2.8.1, `npm audit` finds 0 vulnerabilities. svg2pdf has no advisories of its own, but 2.2.4 only accepts jsPDF 2, so it had to move too.
+- **Checksums and test.** Done in 76e1904. The test failed on the old `lib/`, and fails again if one byte of a file changes.
+- **Every PDF path under the CSP.** Exports were made on `main` and on PR #7 with a frozen clock and the `sample.js` case, then rendered with the repo's `fsu-tests/pdf2png.js`. A preload served pdf.js locally because this sandbox's Chromium can't reach cdnjs; pdf2png.js itself is unchanged.
+  - 0 CSP violations and 0 page errors on both. The vector sketch did not fall back.
+  - Bundle (9 pages), report (2), raster sketch (2), vector sketch (2) and labels (3): the only visible difference is the version in the footer, 2026.09.28.1 → 2026.09.29.1, on 5 pages. Everything else is pixel-identical.
+  - With the version held constant, all 18 pages are identical, so the library change itself alters nothing.
+  - The case package is JSON, not a PDF. It is identical apart from its random ids.
+  - The before/after sheet was sent to the user in chat.
+- **Playwright.** All three parts are done in a28ebb4: an exact pin, the lockfile committed (it already was), and CI installs the matching browsers.
+
+### Decisions needed from the user
+1. **What HANDOFF.md is.** PR #8 (your choice earlier today) moves this brief to BRIEF.md and makes HANDOFF.md a mailbox that is overwritten each time. Today's instruction puts this report at the end of the brief instead. Options:
+   - (a) Merge PR #8 and move this report into the mailbox file.
+   - (b) Close PR #8 and keep the report here, at the end of the brief.
+   - (c) Merge PR #8 but keep the report in BRIEF.md.
+   Recommended: (a), so the brief stays stable and the report stays short.
+2. **Merge PR #7** once reviewed. Code does not merge it.
+
+### Noticed but not acted on
+- `fsu-tests/pdf2png.js` loads pdf.js from cdnjs every run, so it fails wherever Chromium doesn't trust the network's TLS or there is no network. Vendoring pdf.js into fsu-tests would fix that.
+- `fsu-tests/sample.js` opens `/index.html` to build the sketch, but the sketch is only on `scenes.html` since the split. `fsu-tests/mutate.js` still targets `src/app.js`, which no longer exists. Both are finding 19.
+- The label QR codes encode the page's own address, so labels printed from a preview server on another port don't match the live ones. That is expected; noted because it shows up in comparisons.
+- The `visual.spec.js` baselines are Windows-only and skipped in CI (finding 19).
+- `bulk.spec.js` has a render-time budget that is occasionally tight on a busy machine. It passed in every run today.
+
+### Remaining backlog, in recommended order
+1. Settle decision 1 and merge PRs #7 and #8.
+2. Finding 19, the rest: fix `sample.js` and `mutate.js`, vendor pdf.js for `pdf2png.js`, and generate Linux visual baselines in CI's container.
+3. Finding 16: stop saving the whole record on every keystroke in a form (debounce `nav.js:51`), and make the other open page's reload cheaper.
+4. Finding 17: page size. `scenes.html` is about 900 KB. With the 3-second network wait already in, measure first.
+5. Finding 18: the gradual structure path. Only as needed, no rewrite.
