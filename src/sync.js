@@ -11,6 +11,12 @@ if(!S.base||typeof S.base!=="object")S.base={};
 KINDS.forEach(k=>{if(!S.tomb[k]||typeof S.tomb[k]!=="object")S.tomb[k]={};
   if(!S.base[k]||typeof S.base[k]!=="object")S.base[k]={}});
 if(!Array.isArray(S.conflicts))S.conflicts=[];
+// records held back from sync: on this device only when it rejoined after more than TOMBDAYS
+// away. They stay here, flagged in Settings › Automatic saving, until someone sends or removes them.
+if(!S.held||typeof S.held!=="object")S.held={};
+KINDS.forEach(k=>{if(!S.held[k]||typeof S.held[k]!=="object")S.held[k]={}});
+const isHeld=(k,r)=>!!(S.held[k]&&S.held[k][kKey(k,r)]);
+const heldCount=()=>KINDS.reduce((n,k)=>n+Object.keys(S.held[k]||{}).length,0);
 let dirty=false, pushT=null, conflict=false, syncErr="", tokenBad=false, badFile=false;
 
 // content hash, ignoring the _ stamps and the order the keys happen to sit in, so that
@@ -78,7 +84,9 @@ const TOMBSHAPE={items:{name:"",status:"Not carried",gapType:"deliberate",cat:""
     loc:"",qty:0,par:"",date:"",note:"",steps:[],uses:[],rel:[],links:[]},
   comps:{desc:"",side:"",x:null,y:null,w:6,h:4},
   forms:{name:"",cat:"",rev:"",desc:"",fields:[]}};
-const TOMBDAYS=90;
+// a deletion is remembered for a year. A device that has not synced for longer than that could
+// hold records deleted elsewhere whose markers are gone, so it rejoins as if new (rejoinIfStale).
+const TOMBDAYS=365;
 function splitWire(k,arr,alive,tomb){
   (Array.isArray(arr)?arr:[]).forEach(r=>{
     if(!r||typeof r!=="object")return;
@@ -88,7 +96,7 @@ function splitWire(k,arr,alive,tomb){
   });
 }
 function joinWire(k){
-  const out=S[k].slice(), T=S.tomb[k], cut=Date.now()-TOMBDAYS*86400000;
+  const out=S[k].filter(r=>!isHeld(k,r)), T=S.tomb[k], cut=Date.now()-TOMBDAYS*86400000;
   Object.keys(T).forEach(key=>{
     const t=T[key], when=Date.parse(t._t||"")||Date.now();
     if(when<cut)return delete T[key];
@@ -115,7 +123,7 @@ function mergeRemote(o){
   // a device that has never synced has no claim that its copy is the newer one, and the
   // stamps it just gave its own seeded defaults would otherwise beat the repo's real van.
   // Local-only records still survive: the merge is a union either way.
-  const virgin=!S.synced;
+  const virgin=!S.synced, rejoin=!!S.rejoin;
   // an old-build device whose last file could not be fetched still defers, but its copies are
   // real work rather than seeded defaults, so the ones that lose are kept to put back
   const oldBuild=virgin&&!!S.gh.sha;
@@ -129,7 +137,13 @@ function mergeRemote(o){
     Object.keys(keys).forEach(key=>{
       const lv=mine[key]||T[key], rv=ra[key]||rt[key];
       maxv=Math.max(maxv,(rv&&+rv._v)||0,(lv&&+lv._v)||0);
-      if(!rv){ahead=true;return}                      // never reached them: keep ours
+      if(!rv){
+        // a device back after more than a year: what only it has may have been deleted
+        // everywhere else long ago, so it is kept here and held back, not sent
+        if(rejoin&&mine[key]){S.held[k][key]=1;return}
+        if(S.held[k][key])return;
+        ahead=true;return}                          // never reached them: keep ours
+      if(S.held[k][key])delete S.held[k][key];      // the repo has it after all
       const rH=ra[key]?rhash(ra[key]):-1, lH=mine[key]?rhash(mine[key]):-1;
       if(!lv){applyRec(k,key,rv,ra[key]);mergeTook++;return}
       if(virgin){if(rH!==lH){mergeTook++;if(oldBuild&&mine[key])stashLoser(k,key,mine[key])}
@@ -155,6 +169,8 @@ function mergeRemote(o){
   S.lam=Math.max(S.lam,maxv);                          // Lamport receive
   mergeRemote.ahead=ahead;
   S.synced=true;
+  if(rejoin){ delete S.rejoin; const n=heldCount();
+    noteBad("This device had not synced for over a year, so it took the repo's copy. "+(n?n+" record"+(n===1?"":"s")+" only on this device "+(n===1?"was":"were")+" held back: see Settings › Automatic saving.":"Nothing here was held back.")) }
   S.demo=S.items.some(i=>i.demo)||S.comps.some(c=>c.demo)||S.forms.some(f=>f.demo);
   if(S.curLoc&&!S.comps.some(c=>c.code===S.curLoc))S.curLoc="";
   return ahead;
@@ -237,7 +253,18 @@ async function ghGet(){
 // flag, so it looked like a brand-new device and deferred to the repo: every edit it had not
 // pushed yet was overwritten. It does hold the sha of the file it last synced, and that file
 // is the common ancestor. Fetch it (GitHub keeps every version) and judge against it.
+// last synced more than TOMBDAYS ago: deletions made elsewhere since may have been forgotten, so
+// this device's base and markers are stale. It starts over like a new device (the repo wins for
+// what both hold, and its own differing copies are kept to put back); rejoin holds what only it has.
+function rejoinIfStale(){
+  if(!S.synced||!S.gh.last)return;
+  const age=Date.now()-Date.parse(S.gh.last);
+  if(!(age>TOMBDAYS*86400000))return;
+  S.synced=false; S.rejoin=true;
+  KINDS.forEach(k=>{S.base[k]={}; S.tomb[k]={}}); delete S.base.walls;
+}
 async function adoptOldBase(){
+  if(S.rejoin)return;
   if(S.synced||!S.gh.sha||Object.keys(S.base.items||{}).length)return;
   try{
     const {r,text}=await ghFetch(`https://api.github.com/repos/${S.gh.owner}/${S.gh.repo}/git/blobs/${S.gh.sha}`,
@@ -286,7 +313,7 @@ function ghPull(silent){
 async function ghPullNow(silent){
   if(!ghOn())return;
   try{
-    await adoptOldBase();
+    rejoinIfStale(); await adoptOldBase();
     const g=await ghGet();
     if(g.missing){S.gh.sha="";store.set(S);
       if(!silent)toast("No data file yet — sync to create it");return"empty"}
@@ -315,7 +342,7 @@ async function ghPushNow(force){
   if(!ghOn())return;
   clearTimeout(pushT);
   try{
-    await adoptOldBase();
+    rejoinIfStale(); await adoptOldBase();
     for(let attempt=0;attempt<4;attempt++){
       const g=await ghGet();
       if(g.bad&&!force){badFile=true;syncErr="The file in the repo can't be read";
@@ -335,7 +362,8 @@ async function ghPushNow(force){
       } else stampDirty();
       // what goes up, and its base, are taken in the same instant; edits made from here on
       // are measured against it at the next sync
-      const up=payload(), sent=baseOf({items:S.items,comps:S.comps,forms:S.forms,walls:S.walls}), gen=saveGen;
+      const up=payload(), gen=saveGen,
+        sent=baseOf({items:S.items.filter(r=>!isHeld("items",r)),comps:S.comps.filter(r=>!isHeld("comps",r)),forms:S.forms.filter(r=>!isHeld("forms",r)),walls:S.walls});
       // the merge is on disk before the wait, so the other page picks it up rather than
       // saving over it with a copy that does not have it
       store.set(S);

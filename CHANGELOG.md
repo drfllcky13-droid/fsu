@@ -1,5 +1,24 @@
 # FSU change log
 
+## 2026.09.28.1
+Three protections for records and photographs.
+
+Automatic saving remembers a deletion for a year instead of three months. A device that has not
+synced for more than a year now rejoins as if new: it takes what the other devices have, keeps
+its own changed versions to put back, and does not send anything only it has. Those records stay
+on the device and are listed under Settings › Automatic saving, to send or remove. Before, a
+long-unused device could bring back items deleted long ago.
+
+Saving a case package now names any photograph it could not read, and where it belongs, instead
+of leaving it out without a word. Settings › This device › Check photographs lists photographs
+no record uses and records whose photograph is missing, and can delete the unused ones after you
+confirm.
+
+If the app's saved record ever cannot be read, the damaged copy is now kept on the device as it
+was, the app says so and offers to download it, and it starts from a blank record. Before, the
+damaged record was replaced without a word. Very old copies left behind by early versions are
+removed once the current record has loaded.
+
 ## 2026.09.27.1
 The app opens quickly on a weak signal.
 

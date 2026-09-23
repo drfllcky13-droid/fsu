@@ -643,18 +643,51 @@ test("a tombstone survives a round trip through an old build and is invisible to
   expect(hidden.requests).toBe(0);
 });
 
-test("a tombstone is dropped once it is far older than any device could be offline",async({page})=>{
+test("a deletion is remembered for a year, then dropped",async({page})=>{
   const state={sha:"sha1",data:file([it("b","Swabs",3,"devB")])};
   await page.route(FILE,remote(state));
   await connected(page,"devA");
   const out=await page.evaluate(async()=>{
-    S.tomb.items.stale={_v:2,_d:"devB",_t:new Date(Date.now()-200*86400000).toISOString()};
-    S.tomb.items.fresh={_v:2,_d:"devB",_t:new Date(Date.now()-3*86400000).toISOString()};
+    const ago=d=>new Date(Date.now()-d*86400000).toISOString();
+    S.tomb.items.old={_v:2,_d:"devB",_t:ago(400)};
+    S.tomb.items.mid={_v:2,_d:"devB",_t:ago(200)};
+    S.tomb.items.fresh={_v:2,_d:"devB",_t:ago(3)};
     await ghPush(false);
     return Object.keys(S.tomb.items).sort();
   });
-  expect(out).toEqual(["fresh"]);
-  expect(state.data.items.map(i=>i.id).sort()).toEqual(["b","fresh"]);
+  expect(out,"a deletion from 200 days ago was forgotten").toEqual(["fresh","mid"]);
+  expect(state.data.items.map(i=>i.id).sort()).toEqual(["b","fresh","mid"]);
+});
+
+test("a device back after more than a year rejoins as new: the repo wins, and what only it has is held, not sent",async({page})=>{
+  const state={sha:"sha1",data:file([it("a","Gloves",3,"devB",{qty:1}),it("d","Tape",3,"devB")])};
+  await page.route(FILE,remote(state));
+  await connected(page,"devA");
+  // a year and more later: the repo has moved on, and so has this device
+  state.data.items=[it("a","Gloves",90,"devB",{qty:5}),it("d","Tape",3,"devB"),it("r","Added elsewhere",90,"devB")];
+  state.data.lam=90;
+  const out=await page.evaluate(async()=>{
+    S.gh.last=new Date(Date.now()-400*86400000).toISOString();
+    S.items.find(i=>i.id==="a").qty=9;                      // edited here
+    S.items=S.items.filter(i=>i.id!=="d");                  // deleted here
+    S.items.push({id:"only",name:"Only on this device",qty:1,cat:"A",cls:"Consumable",loc:""});
+    saveLocal();
+    await ghPull(true); await ghPush(false);
+    SET_SEC="sync"; view="data"; renderData();
+    return {a:S.items.find(i=>i.id==="a").qty, ids:S.items.map(i=>i.id).sort(), held:Object.keys(S.held.items),
+      stash:S.conflicts.map(c=>c.rec.qty), shown:[...document.querySelectorAll("#v-data .heldlist li")].map(l=>l.textContent)};
+  });
+  expect(out.a,"this device's year-old copy beat the repo").toBe(5);
+  expect(out.stash,"this device's own edit was not kept to put back").toEqual([9]);
+  expect(out.ids,"the repo's records did not all come back, or the local-only one went").toEqual(["a","d","only","r"]);
+  expect(out.held).toEqual(["only"]);
+  expect(out.shown).toEqual(["Only on this device"]);
+  const up=state.data.items.filter(i=>!i._x).map(i=>i.id).sort();
+  expect(up,"the local-only record was sent, or a deletion from a year ago went up").toEqual(["a","d","r"]);
+  expect(state.data.items.filter(i=>i._x).length).toBe(0);
+  // sending them is a deliberate act
+  await page.evaluate(async()=>{ document.querySelector("#heldsend").click(); await ghPush(false) });
+  expect(state.data.items.some(i=>i.id==="only"&&!i._x)).toBe(true);
 });
 
 /* ---------------- restoring a backup on a connected device ---------------- */

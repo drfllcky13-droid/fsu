@@ -249,6 +249,15 @@ document.addEventListener("click",e=>{
   if(e.target.closest("#gear")){openSettings(null);return}
   if(e.target.closest("#dlj")){ backupOut(); return }
   if(e.target.closest("#storefree")){ removeCasesSheet(); return }
+  if(e.target.closest("#photocheck")){ photoCheckSheet(); return }
+  const bdl=e.target.closest("[data-baddl]"); if(bdl){ const k=bdl.dataset.baddl; dlBlob(new Blob([localStorage.getItem(k)||""],{type:"application/json"}),k+".json"); return }
+  const bdd=e.target.closest("[data-baddel]"); if(bdd){ const k=bdd.dataset.baddel;
+    return askConfirm("Delete the damaged record","The damaged copy "+k+" is deleted from this device. Download it first if anyone may want to recover it.","Delete",true,()=>{
+      try{localStorage.removeItem(k)}catch(_){} renderData(); toast("Deleted")}) }
+  if(e.target.closest("#heldsend")){ KINDS.forEach(k=>S.held[k]={}); save(); renderData(); return toast("They go up with the next sync") }
+  if(e.target.closest("#helddrop"))
+    return askConfirm("Remove from this device","The records held back are deleted from this device. They were never sent, so no other device is affected.","Remove",true,()=>{
+      KINDS.forEach(k=>{ S[k]=S[k].filter(r=>!isHeld(k,r)); S.held[k]={} }); save(); renderData(); toast("Removed")});
   const gs=e.target.closest(".storewarn[data-gosec]"); if(gs){ openSettings(gs.dataset.gosec); return }
   if(e.target.closest("#dlc")){
     return toast(download(toCSV(),"van-inventory-"+today()+".csv","text/csv")

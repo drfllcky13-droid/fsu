@@ -107,9 +107,17 @@ On the wire they are written back *into* the items/comps/forms arrays, shaped so
 an old build of the app cannot see them (see §5). splitTomb()/joinTomb() at the
 fetch/PUT boundary is the only code that knows about the difference.
 
-Tombstones are dropped 90 days after _t. 90 days is far past the offline-for-a-
-week case with room to spare, and _t is only compared against a three-month
-threshold so an hour of clock skew is irrelevant.
+Tombstones are dropped a year (TOMBDAYS, 365 days) after _t; it was 90 days until
+28 Sep 2026. A spare iPad can sit in a drawer longer than three months. _t is only
+compared against a one-year threshold, so an hour of clock skew is irrelevant.
+
+A device whose last sync is older than that (S.gh.last) may hold records deleted
+elsewhere whose tombstones are gone, and would put them back. rejoinIfStale() runs
+before every pull and push: such a device clears its base and tombstones and syncs
+as if new. The repo wins for what both hold, and its own differing copies are
+stashed to put back. Its deletions from a year ago are not sent. Records only it has
+are kept but held back (S.held, left out of the payload and the base) and listed in
+Settings › Automatic saving with Send and Remove.
 
 3.5 What is merged and what is not
   items, comps, forms   per record, as above
@@ -293,8 +301,9 @@ A delete on one device and an edit to the same record on another
 The clock on one device being wrong
   Ordering does not consult the clock at all. Nothing misresolves. Three
   cosmetic effects remain: "Synced 14:32" shows that device's idea of the time;
-  a tombstone's 90-day expiry is judged against a wrong clock, which needs to be
-  three months out to matter; and the token countdown is a date subtraction, so
+  a tombstone's one-year expiry is judged against a wrong clock, which needs to be
+  a year out to matter (and a clock a year ahead makes the device rejoin as new,
+  which holds its own records back rather than losing them); and the token countdown is a date subtraction, so
   a badly wrong clock can claim the token expires next week. The countdown no
   longer claims saving has stopped — saving stops when GitHub says 401 and not
   before.
@@ -407,8 +416,8 @@ So the token dance stays, and the things around it get shorter:
 * One extra GET per push.
 * S.base — one hash per record — is carried in local storage and in nothing else.
   On a 400-record van that is a few kilobytes.
-* Tombstones live in the file for 90 days, so the file is slightly larger than
-  the live data.
+* Tombstones live in the file for a year, so the file is slightly larger than
+  the live data (a few hundred bytes per deletion).
 * A same-record conflict still needs a human. It is surfaced and reversible
   rather than silent, which is the most that can be true without inventing
   records nobody entered.
