@@ -21,7 +21,6 @@ async function svgVector(doc,svgStr,x,y,w,h){
 
 /* ---- vehicle check ---- */
 /* ---------- sketch objects ---------- */
-const VBW=1000, VBH=750;
 const curSk=()=>S.sketches.find(x=>x.id===curSketch);
 // a sketch is to scale once one known distance has been declared
 const scaleOf=sk=>(sk&&sk.scale&&sk.scale.px>0&&sk.scale.real>0)?sk.scale:null;

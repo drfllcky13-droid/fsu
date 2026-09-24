@@ -24,29 +24,9 @@ function activityHTML(){
 
 /* one Scenes list */
 let scenesTab="open";
-function scenesSeg(){
-  return `<div class="seg" style="margin-bottom:12px">
-    <button data-scenestab="open"${scenesTab==="open"?' class="on"':''}>Open${openIncidents().length?" · "+openIncidents().length:""}</button>
-    <button data-scenestab="closed"${scenesTab==="closed"?' class="on"':''}>Closed${closedIncidents().length?" · "+closedIncidents().length:""}</button></div>`;
-}
 
 /* a sketch with a case number and no incident */
 /* home: a setup checklist while the unit is still being logged */
-function setupCard(){
-  if(S.setupHide&&Date.now()-Date.parse(S.setupHide)<7*86400000)return "";
-  const cs=comps(), L=live(); if(!cs.length&&!L.length)return "";
-  const rows=[
-    [cs.filter(c=>!(c.desc||"").trim()).length,"compartment|compartments|not named","compartments"],
-    [L.filter(i=>!placed(i)).length,"item|items|not placed in a compartment","sweep"],
-    [L.filter(i=>placed(i)&&!String(i.par||"").trim()).length,"item|items|without a par level","tidy"],
-    [L.filter(i=>(i.steps||[]).length&&!i.verified).length,"instruction set|instruction sets|unverified","verify"],
-    [cs.filter(c=>!c.checked).length,"compartment|compartments|not swept","sweep"]].filter(r=>r[0]>0)
-    .map(r=>{const [one,many,rest]=r[1].split("|"); return [r[0],(r[0]===1?one:many)+" "+rest,r[2]]});
-  if(!rows.length)return "";
-  return `<div class="setupcard"><div class="sh"><b>Set up this unit</b><span>${5-rows.length} of 5 done</span>
-      <button class="lnkbtn" data-setuphide="1">Hide for a week</button></div>
-    ${rows.map(([n,l,g])=>`<button class="act" ${g==="verify"?'data-verifyrun="1"':'data-go="'+g+'"'}><span>${n} ${l}</span><span class="chev">&#8250;</span></button>`).join("")}</div>`;
-}
 
 /* the sweep: by bay, with names, and a next button */
 function nextUnchecked(after){
@@ -201,19 +181,6 @@ function lotSheet(i){
 
 /* the data view folds into sections */
 const DATA_OPEN=new Set(["Saved on this device","Back up","Case material"]);
-function foldData(){
-  const root=$("#v-data"); if(!root)return;
-  [...root.querySelectorAll(":scope > .idsect")].forEach(h=>{
-    if(h.classList.contains("dhead"))return;
-    const key=h.textContent.trim(), wrap=document.createElement("div"); wrap.className="dfold";
-    let nx=h.nextSibling; const kids=[];
-    while(nx&&!(nx.nodeType===1&&nx.classList.contains("idsect"))){kids.push(nx);nx=nx.nextSibling}
-    kids.forEach(k=>wrap.appendChild(k)); h.after(wrap);
-    const open=(S.dataOpen&&key in S.dataOpen)?!!S.dataOpen[key]:DATA_OPEN.has(key);
-    wrap.hidden=!open; h.classList.add("dhead"); h.setAttribute("role","button"); h.setAttribute("tabindex","0"); h.dataset.dfold=key;
-    h.innerHTML=`<span>${esc(key)}</span><span class="dchev">${open?"&#8722;":"+"}</span>`;
-  });
-}
 
 /* labels and deep links */
 const appUrl=()=>String(S.appUrl||"").trim()||(/^https?:/.test(location.protocol)?location.origin+location.pathname:"");

@@ -378,6 +378,11 @@ both pages. Pointing the sweep at both is the obvious next thing to do to the su
 3. **CI.** `.github/workflows/fsu.yml` runs the build check and the suite on every push.
    Pages needs no workflow: it serves the branch. Do not add a `deploy-pages` workflow unless the
    Pages source is switched to GitHub Actions in the repository settings, or every push goes red.
+   Since 2026.09.30.1 it also lints: `fsu-tests/lint.js` (`npm run lint`, and `lint.spec.js` in the
+   suite) runs ESLint over each built page's one script with `no-undef`, `no-unused-vars` and
+   `no-use-before-define` only. Because both pages are joined from shared parts, a name a shared
+   part defines for the other page, or uses behind `typeof name`, is not a finding; anything else
+   that must stay goes in `fsu-tests/lint-allow.json` with its reason.
 4. **Then** touch behaviour.
 
 **Decided against (2026-09-23), so they are not re-proposed:**

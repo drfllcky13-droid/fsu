@@ -1,0 +1,11 @@
+{
+  "_": "Findings kept on purpose. Each is reported by fsu-tests/lint.js unless listed here, and an entry nothing matches any more fails the lint. Fixing any of these would change behaviour, so they are listed in HANDOFF.md for a decision instead.",
+  "allow": [
+    {"page":"index.html","rule":"no-undef","name":"newSketch",
+     "why":"src/pages.js startSketch(): only the scene page defines newSketch, and the line before returns unless this page draws the sketch view, so the van never reaches it."},
+    {"page":"index.html","rule":"no-undef","name":"bundleIncident",
+     "why":"src/events.js [data-incbundle]: the incident view that has that button exists only on the scene page, which defines bundleIncident."},
+    {"page":"index.html","rule":"no-undef","name":"exportFill",
+     "why":"src/events.js [data-export]: the form view that has that button exists only on the scene page, which defines exportFill."}
+  ]
+}

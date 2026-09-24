@@ -44,7 +44,7 @@ function renderInventory(){
       </tbody></table></div>`;
     return;
   }
-  const kcard=i=>{const s=itemStatus(i);
+  const kcard=i=>{
     return `<button class="kcard" data-item="${esc(i.id)}"><b>${esc(i.name)}</b>
       <span>${esc(i.loc||"—")} &middot; ${esc(i.qty)} in stock</span></button>`};
   const body=invGroup==="az"
@@ -531,7 +531,6 @@ function settingsMenu(){
 }
 /* scenes: a nav column of the same sections, with the picked one open beside it */
 function settingsNav(){
-  const whoTxt=S.who?esc(S.who)+(S.whoName?" · "+esc(S.whoName):""):"Not set";
   const cur=SET_SEC||"who";
   const item=(k,name,attr)=>`<button class="${cur===k?"on":""}" ${attr||`data-setsec="${k}"`}>${name}</button>`;
   const grp=t=>`<div class="grp">${t}</div>`;
@@ -735,7 +734,6 @@ async function offlineDownload(btn){
 }
 
 /* ---------- filtered lists from the strip ---------- */
-let listKey=null;
 // what to order, and how many, for anything short or expiring
 function reorderRows(){
   return live().filter(i=>isOut(i)||isLow(i)||isExpired(i))
@@ -836,7 +834,6 @@ function renderList(key){
     gaps:["Gaps to decide",gaps()],all:["All items",L]};
   const [t,arr]=map[key]||map.all;
   $("#title").textContent=t;
-  listKey=key;
   $("#v-home").innerHTML=`<button class="back" data-navback="home">&#8249; Home</button>`
     +(key==="gaps"?`<button class="btn sec" id="addgap" style="margin:0 0 14px;max-width:none">Log something we don't carry</button>`:"")
     +(key==="low"&&reorderRows().length?`<button class="btn" id="goreorder" style="margin:0 0 14px;max-width:none">Make a reorder list</button>`:"")

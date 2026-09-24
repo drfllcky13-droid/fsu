@@ -100,8 +100,6 @@ function multiDelete(){ const sk=curSk(); if(!sk||!multi||!multi.ids.size)return
   saveLocal(); renderSketch();
   toast(gone.length+" removed"+(kept?", "+kept+" left on a locked layer":"")+" — Undo brings them back") }
 
-/* 11. a quiet tick when a save lands */
-var TICKT=null;
 /* 12. undo that survives a reload: the last few snapshots, kept apart from the main store */
 function persistUndo(sk){
   try{ const st=(UNDO[sk.id]||[]).slice(-6), s=JSON.stringify(st);
@@ -186,7 +184,7 @@ function extraPointerDown3(e,svg,p){
     e.preventDefault(); return true }
   return false;
 }
-function extraPointerMove3(e,p,o){
+function extraPointerMove3(e,p){
   if(drag.mode==="ink"){
     const pts=drag.pts, last=pts[pts.length-1];
     if(Math.hypot(p.x-last[0],p.y-last[1])>=1){ pts.push([p.x,p.y]); const el=document.getElementById("inkdraw"); if(el)el.setAttribute("d",inkPath(pts)) }
@@ -199,7 +197,7 @@ function extraPointerMove3(e,p,o){
   if(drag.mode==="laymove"&&drag.tap&&Math.hypot(p.x-drag.px,p.y-drag.py)>3)drag.moved=true;
   return false;
 }
-function extraPointerUp3(o){
+function extraPointerUp3(){
   if(drag.mode==="ink"){ const pts=drag.pts, col=drag.col; drag=null;
     const el=document.getElementById("inkdraw"); if(el)el.remove(); inkFinish(pts,col); return true }
   if(drag.mode==="marquee"){

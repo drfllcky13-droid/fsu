@@ -4,9 +4,12 @@
   "description": "Playwright checks for the FSU app: render sweep at four widths in both colour schemes, plus the sketch flows.",
   "scripts": {
     "test": "playwright test",
-    "install-browser": "playwright install chromium webkit"
+    "install-browser": "playwright install chromium webkit",
+    "lint": "node lint.js"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.1"
+    "@playwright/test": "1.62.1",
+    "eslint": "10.11.0",
+    "globals": "17.12.0"
   }
 }

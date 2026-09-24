@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-vnP+By5iQ7Wy4+xjQmXT/TET+wvD4ikYlBreGbxNfz8='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-6FZ4LrQLquB63Ziqp4zSwJ/Tq1V03BXXIy3k1IeOJIw='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FSU</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1524,7 +1524,6 @@ const STATUSES=["Stocked","Low","Out","Expired","Service due","Not carried"];
 const SIDES=["Driver side","Passenger side","Rear doors","Cab"];
 // drawn as you see it standing inside the van: facing the driver wall the cab is
 // to your right, facing the passenger wall it is to your left
-const groupOf = code => String(code).replace(/\d+$/,"");
 const bayOf   = code => String(code)[0];
 function bayBounds(bay){
   const cs=comps().filter(c=>bayOf(c.code)===bay);
@@ -1643,21 +1642,6 @@ function bayTally(bay){
           ${t?`<span class="badge b-attn">${WARN}${t} attention</span>`:""}
           ${u?`<span class="badge b-unchecked">${WARN}${u} not checked</span>`:""}
           ${!a&&!t&&!u?`<span class="badge b-good">${TICK}All good</span>`:""}`;
-}
-function groupsFor(side){
-  const cs=comps().filter(c=>c.side===side), by={};
-  cs.forEach(c=>{ const g=groupOf(c.code);
-    (by[g]=by[g]||[]).push(c); });
-  return Object.keys(by).map(g=>{
-    const m=by[g];
-    const x=Math.min(...m.map(c=>c.x)), y=Math.min(...m.map(c=>c.y));
-    const w=Math.max(...m.map(c=>c.x+c.w))-x, hh=Math.max(...m.map(c=>c.y+c.h))-y;
-    const st=m.map(c=>compState(c.code));
-    const k=st.some(s=>s.k==="action")?"action":st.some(s=>s.k==="attn")?"attn"
-           :st.every(s=>s.k==="good")?"good":"unchecked";
-    return {g,x,y,w,h:hh,n:m.length,k,bay:bayOf(g),
-            desc:(m[0].desc||"").replace(/,\s*double width$/,"")};
-  }).sort((a,b)=>a.y-b.y||a.x-b.x);
 }
 const capLeft = side => side==="Driver side" ? "Rear doors" : "Front of van";
 const capRight = side => side==="Driver side" ? "Front of van" : "Rear doors";
@@ -2815,12 +2799,6 @@ const DEMO_FORMS=[
  ["Scene entry and exit log","Scene documentation","2025-B","Everyone who crosses the tape, in and out, with times.",[["Blank PDF","https://example.com/entry-log.pdf"]],"2026-08-02"],
  ["Photography log","Photography","2022-A","Frame numbers, subject, scale used, direction of view.",[["Blank PDF","https://example.com/photo-log.pdf"]],"2024-01-10"],
  ["Consent to search","Reports and statements","2025-A","Signed before any consent search. Witnessed.",[],"2026-06-30"]];
-function seedVan(){
-  S.comps=VANCOMPS.map(r=>({code:r[0],desc:r[1],side:VANSIDES[r[2]],
-    x:r[3],y:r[4],w:r[5],h:r[6]}));
-  S.walls=JSON.parse(JSON.stringify(VANWALLS));
-  S.demo=false; save();
-}
 function loadDemo(){
   DEMO_FORMS.forEach(([name,cat,rev,desc,links,verified])=>{
     if(!S.forms.some(f=>f.name===name))
@@ -3380,16 +3358,13 @@ function renderHome(){
   const cs=comps(), gp=gaps();
   const bad=L.filter(i=>isOut(i)||isLow(i));
   const soon=L.filter(i=>isExpiring(i)||isExpired(i)||isService(i));
-  const unchk=cs.filter(c=>compState(c.code).k==="unchecked").length, checked=cs.length-unchk;
+  const unchk=cs.filter(c=>compState(c.code).k==="unchecked").length;
   const need=L.filter(i=>isOut(i)||isExpired(i)||isLow(i)||isService(i)||isExpiring(i))
     .sort((a,b)=>{const r=x=>isOut(x)||isExpired(x)?0:1;return r(a)-r(b)||a.name.localeCompare(b.name)});
   const td=tokenDays();
-  const lastMark=cs.map(c=>c.checked).filter(Boolean).sort().pop();
 
   // where am I
   const dateTxt=new Date().toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"});
-  const sweepTxt=!cs.length?"No compartments yet":unchk===0&&lastMark?"Sweep finished "+lastMark
-    :lastMark?"Sweep in progress, "+unchk+" left":"No sweep yet";
   const head=`<div class="hhead"><b>${esc(S.vanName||"Forensic Services Unit")}</b><span>${esc(dateTxt)}</span>
     <span>${S.who?"Signed in as "+esc(S.who):`<button class="lnkbtn" data-gosec="who">Set your initials</button>`}</span></div>`;
 
@@ -3466,24 +3441,6 @@ function autoPlace(side){
     if(c.x==null){c.x=0;c.y=0}});
 }
 
-function unitPanel(){
-  const cs=comps(); if(!cs.length)return "";
-  const bays=[...new Set(cs.map(c=>bayOf(c.code)))].sort();
-  return `<div class="panel"><div class="ph2">Units</div><div class="pb unitpb">
-    ${bays.map(bay=>{
-      const b=bayBounds(bay); if(!b)return "";
-      const end=b.x+b.w/2>(S.walls[b.side]||{cols:144}).cols/2
-        ?(b.side==="Driver side"?"front":"rear"):(b.side==="Driver side"?"rear":"front");
-      return `<button class="bayhead" data-bay="${esc(bay)}">
-        <div class="bayinfo">
-          <h2>${esc(BAYNAME[bay]||"Bay "+bay)}</h2>
-          <div class="sub">${esc(b.side)}, ${end}</div>
-          <div class="sub">${b.w}-inch &nbsp;|&nbsp; ${b.n} compartments</div>
-        </div>
-        ${vanKey(bay,false)}
-        <div class="cdtags">${bayTally(bay)}</div></button>`}).join("")}
-  </div></div>`;
-}
 
 function renderComps(){
   $("#title").textContent="Storage";
@@ -4096,12 +4053,6 @@ const fieldsText=f=>(f.fields||[]).map(x=>
   :x.def?x.label+" | "+x.type+" | "+x.def
   :x.type==="text"?x.label:x.label+" | "+x.type).join("\n");
 
-function fillTitle(r){
-  const f=S.forms.find(x=>x.id===r.formId);
-  const first=(f&&(f.fields||[]).find(x=>["text","number"].includes(x.type)));
-  const v=first?String(r.values[first.id]||"").trim():"";
-  return v||("Started "+r.started.slice(0,16).replace("T"," "));
-}
 
 
 
@@ -4356,7 +4307,7 @@ function renderInventory(){
       </tbody></table></div>`;
     return;
   }
-  const kcard=i=>{const s=itemStatus(i);
+  const kcard=i=>{
     return `<button class="kcard" data-item="${esc(i.id)}"><b>${esc(i.name)}</b>
       <span>${esc(i.loc||"—")} &middot; ${esc(i.qty)} in stock</span></button>`};
   const body=invGroup==="az"
@@ -4843,7 +4794,6 @@ function settingsMenu(){
 }
 /* scenes: a nav column of the same sections, with the picked one open beside it */
 function settingsNav(){
-  const whoTxt=S.who?esc(S.who)+(S.whoName?" · "+esc(S.whoName):""):"Not set";
   const cur=SET_SEC||"who";
   const item=(k,name,attr)=>`<button class="${cur===k?"on":""}" ${attr||`data-setsec="${k}"`}>${name}</button>`;
   const grp=t=>`<div class="grp">${t}</div>`;
@@ -5047,7 +4997,6 @@ async function offlineDownload(btn){
 }
 
 /* ---------- filtered lists from the strip ---------- */
-let listKey=null;
 // what to order, and how many, for anything short or expiring
 function reorderRows(){
   return live().filter(i=>isOut(i)||isLow(i)||isExpired(i))
@@ -5148,7 +5097,6 @@ function renderList(key){
     gaps:["Gaps to decide",gaps()],all:["All items",L]};
   const [t,arr]=map[key]||map.all;
   $("#title").textContent=t;
-  listKey=key;
   $("#v-home").innerHTML=`<button class="back" data-navback="home">&#8249; Home</button>`
     +(key==="gaps"?`<button class="btn sec" id="addgap" style="margin:0 0 14px;max-width:none">Log something we don't carry</button>`:"")
     +(key==="low"&&reorderRows().length?`<button class="btn" id="goreorder" style="margin:0 0 14px;max-width:none">Make a reorder list</button>`:"")
@@ -5699,7 +5647,6 @@ function refreshSweepList(){
       <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:"";
 }
 
-function placeholder(el,t,b){$(el).innerHTML=`<div class="empty"><strong>${t}</strong><p>${b}</p></div>`}
 function fitHeader(){
   const hd=document.querySelector(".hdr"); if(!hd)return;
   if(document.body.classList.contains("wide")){document.body.style.paddingTop="";return}
@@ -5841,29 +5788,9 @@ function activityHTML(){
 
 /* one Scenes list */
 let scenesTab="open";
-function scenesSeg(){
-  return `<div class="seg" style="margin-bottom:12px">
-    <button data-scenestab="open"${scenesTab==="open"?' class="on"':''}>Open${openIncidents().length?" · "+openIncidents().length:""}</button>
-    <button data-scenestab="closed"${scenesTab==="closed"?' class="on"':''}>Closed${closedIncidents().length?" · "+closedIncidents().length:""}</button></div>`;
-}
 
 /* a sketch with a case number and no incident */
 /* home: a setup checklist while the unit is still being logged */
-function setupCard(){
-  if(S.setupHide&&Date.now()-Date.parse(S.setupHide)<7*86400000)return "";
-  const cs=comps(), L=live(); if(!cs.length&&!L.length)return "";
-  const rows=[
-    [cs.filter(c=>!(c.desc||"").trim()).length,"compartment|compartments|not named","compartments"],
-    [L.filter(i=>!placed(i)).length,"item|items|not placed in a compartment","sweep"],
-    [L.filter(i=>placed(i)&&!String(i.par||"").trim()).length,"item|items|without a par level","tidy"],
-    [L.filter(i=>(i.steps||[]).length&&!i.verified).length,"instruction set|instruction sets|unverified","verify"],
-    [cs.filter(c=>!c.checked).length,"compartment|compartments|not swept","sweep"]].filter(r=>r[0]>0)
-    .map(r=>{const [one,many,rest]=r[1].split("|"); return [r[0],(r[0]===1?one:many)+" "+rest,r[2]]});
-  if(!rows.length)return "";
-  return `<div class="setupcard"><div class="sh"><b>Set up this unit</b><span>${5-rows.length} of 5 done</span>
-      <button class="lnkbtn" data-setuphide="1">Hide for a week</button></div>
-    ${rows.map(([n,l,g])=>`<button class="act" ${g==="verify"?'data-verifyrun="1"':'data-go="'+g+'"'}><span>${n} ${l}</span><span class="chev">&#8250;</span></button>`).join("")}</div>`;
-}
 
 /* the sweep: by bay, with names, and a next button */
 function nextUnchecked(after){
@@ -6018,19 +5945,6 @@ function lotSheet(i){
 
 /* the data view folds into sections */
 const DATA_OPEN=new Set(["Saved on this device","Back up","Case material"]);
-function foldData(){
-  const root=$("#v-data"); if(!root)return;
-  [...root.querySelectorAll(":scope > .idsect")].forEach(h=>{
-    if(h.classList.contains("dhead"))return;
-    const key=h.textContent.trim(), wrap=document.createElement("div"); wrap.className="dfold";
-    let nx=h.nextSibling; const kids=[];
-    while(nx&&!(nx.nodeType===1&&nx.classList.contains("idsect"))){kids.push(nx);nx=nx.nextSibling}
-    kids.forEach(k=>wrap.appendChild(k)); h.after(wrap);
-    const open=(S.dataOpen&&key in S.dataOpen)?!!S.dataOpen[key]:DATA_OPEN.has(key);
-    wrap.hidden=!open; h.classList.add("dhead"); h.setAttribute("role","button"); h.setAttribute("tabindex","0"); h.dataset.dfold=key;
-    h.innerHTML=`<span>${esc(key)}</span><span class="dchev">${open?"&#8722;":"+"}</span>`;
-  });
-}
 
 /* labels and deep links */
 const appUrl=()=>String(S.appUrl||"").trim()||(/^https?:/.test(location.protocol)?location.origin+location.pathname:"");

@@ -1,9 +1,4 @@
 /* ---------- sketch canvas ---------- */
-const GLYPH={
- alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3L1.8 20h20.4z"/><path d="M12 9v5M12 17.2v.1"/></svg>',
- clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.3l3.4 2"/></svg>',
- gap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/></svg>',
- ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.7 2.7L16 9.5"/></svg>'};
 let showSet=false, palCat=0, palQ="", skFull=false, skTools=true, skRailMin=false;
 // shrink on the way in: a reference thumbnail, never the evidential copy
 function shrinkPhoto(file,max=1400,q=0.72){
@@ -856,7 +851,7 @@ function renderSketch(){
               </svg></button>
             <button class="laybig" data-laymore="${esc(L.id)}" aria-label="Layer options">&#8943;</button>
           </div>
-          ${mine.length?mine.map(({o,i})=>
+          ${mine.length?mine.map(({o})=>
             `<div class="lay${o.id===selObj?" on":""}${L.locked?" locked":""}">
               <button class="laypick" data-osel="${esc(o.id)}">
                 <span class="lp" style="--kc:${inkUI(o.ink)}">${palPreview(o.t)}</span>
