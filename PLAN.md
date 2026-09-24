@@ -142,17 +142,17 @@ merging the two apps.
 
 ## 5. Open questions for the user
 
-Keep each until it is answered.
+Keep each until it is answered. Answered and removed: rollout (24 Sep: all devices connected and
+showing the same item count). Asked again on 24 Sep: 1–3 not checked yet.
 
 1. **iPad PDF check.** After the jsPDF 4.2.1 upgrade, export one incident bundle (or a report or a
    sketch) as PDF on the iPad and open it. Does it look right? The pixel comparison ran on a PC and
    cannot cover iPad Safari.
 2. **Offline check on the iPad.** Open both apps online, switch on airplane mode, then open each
    from its home-screen icon. Does FSU open as FSU and Scenes as Scenes?
-3. **Rollout.** Are all devices connected to sync and showing the same item count?
-4. **Old Scenes icon.** Was it replaced on the devices that had it? If not: remove it and add it again.
-5. **Field requests.** Have the technicians asked for any feature or change? That decides what
-   comes after the mutation-test pass.
+3. **Old Scenes icon.** Was it replaced on the devices that had it? If not: remove it and add it again.
+4. **Field requests.** Have the technicians asked for any feature or change? That decides what
+   comes after the mutation-test pass. *24 Sep: nothing yet.*
 
 ## Where we are
 
@@ -160,4 +160,4 @@ Keep each until it is answered.
 
 - Live: **2026.09.30.1** (`main` at fa24b79), both pages with 0 CSP violations; `main`'s CI green.
 - No open PRs. The roadmap is done; the backlog is empty.
-- Next: idle until the user answers the open questions in §5, above all question 5 (field requests).
+- Next: idle until the iPad checks (§5 questions 1–3) are done or the technicians ask for something.
