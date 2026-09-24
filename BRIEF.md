@@ -382,13 +382,20 @@ both pages. Pointing the sweep at both is the obvious next thing to do to the su
    suite) runs ESLint over each built page's one script with `no-undef`, `no-unused-vars` and
    `no-use-before-define` only. Because both pages are joined from shared parts, a name a shared
    part defines for the other page, or uses behind `typeof name`, is not a finding; anything else
-   that must stay goes in `fsu-tests/lint-allow.json` with its reason.
+   that must stay goes in `fsu-tests/lint-allow.json` with its reason, and an entry that no longer
+   matches anything fails the lint, so the list cannot go stale. Today it holds three `no-undef`
+   entries for the van page, kept by decision on 2026-09-24: shared code calls `newSketch`
+   (`src/pages.js`, behind `if(!here("sketch"))return`), `bundleIncident` and `exportFill`
+   (`src/events.js`, buttons that exist only in scene views), which only `scenes.html` defines.
+   None can run on the van. A `typeof` guard would turn a future mistake into a silent no-op, and
+   the allow list keeps any new cross-page call visible instead.
 4. **Then** touch behaviour.
 
 **Decided against (2026-09-23), so they are not re-proposed:**
 - *Linux visual baselines in CI*: the layout audit in `ui.spec.js`, the contrast and print checks already catch what has broken, and baselines would need refreshing on every intended visual change.
 - *Splitting `app.css` per page*: a few KB gzipped on a page the service worker caches, against a real risk of one page losing a style it needs.
 - *Folding the `ext-*` layers into their base parts*: no user-visible gain for a diff across most of the app; fold a layer only when a change already rewrites that area.
+- *Shrinking the pages* (`scenes.html` is about 915 KB, `index.html` about 490 KB; decided 2026-09-24): not unless technicians report slow opens. The service worker answers from the device after 3 s, so size costs only the first load and each update.
 
 ---
 
