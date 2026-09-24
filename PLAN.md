@@ -132,7 +132,7 @@ merging the two apps.
 3. ~~Mutation pass: `node fsu-tests/mutate.js 25`, a test for each real survivor.~~ Done in PR #10
    (71c14e8): 17 tests, 3 harmless survivors listed in [HANDOFF.md](HANDOFF.md).
 4. ~~Merge PR #10.~~ Done 24 Sep (fa24b79, approved by the user; 0 CSP violations, CI green).
-5. ~~Second mutation pass (`mutate.js 25 2`).~~ Started by the user on 24 Sep. Draft PR: 8 tests, 4 harmless survivors
+5. ~~Second mutation pass (`mutate.js 25 2`).~~ Done 24 Sep, PR #13 merged (9f6b9d8): 8 tests, 4 harmless survivors
    (listed in [HANDOFF.md](HANDOFF.md)); 52% of mutants caught before the tests, against 24% on the first run.
 6. Then idle: wait for the iPad checks and for requests from the field (§5) before starting new work.
 
@@ -160,8 +160,6 @@ showing the same item count). Asked again on 24 Sep: 1–3 not checked yet.
 
 *Rewritten at the end of every session. Last: 24 September 2026.*
 
-- Live: **2026.09.30.1** (`main` at d9c29b0), both pages with 0 CSP violations; `main`'s CI green.
-- Open: a draft PR with 8 more mutation tests (tests only; no app change), 319/319 locally.
-  Waiting on the user's approval to merge.
-- Next: merge it, then idle until the iPad checks (§5 questions 1–3) are done or the technicians
-  ask for something.
+- Live: **2026.09.30.1** (`main` at 9f6b9d8), both pages with 0 CSP violations; `main`'s CI green.
+- No open PRs. The roadmap is done; the backlog is empty.
+- Next: idle until the iPad checks (§5 questions 1–3) are done or the technicians ask for something.
