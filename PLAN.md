@@ -131,7 +131,7 @@ merging the two apps.
 2. ~~Record the lint decision in BRIEF.md.~~ Done in PR #10 (bb79e9b).
 3. ~~Mutation pass: `node fsu-tests/mutate.js 25`, a test for each real survivor.~~ Done in PR #10
    (71c14e8): 17 tests, 3 harmless survivors listed in [HANDOFF.md](HANDOFF.md).
-4. **Merge PR #10** once the user approves it (tests and docs only; no app change).
+4. ~~Merge PR #10.~~ Done 24 Sep (fa24b79, approved by the user; 0 CSP violations, CI green).
 5. Then idle: wait for feedback from the field (open question 5) before starting new work.
 
 **Watch items** (not work)
@@ -158,8 +158,6 @@ Keep each until it is answered.
 
 *Rewritten at the end of every session. Last: 24 September 2026.*
 
-- Live: **2026.09.30.1** (`main` at e27ae1a), both pages with 0 CSP violations; `main`'s CI green.
-- Open: draft [PR #10](https://github.com/drfllcky13-droid/fsu/pull/10), the 17 mutation tests
-  and two BRIEF.md notes. CI green on 71c14e8, 311/311 locally. Waiting on the user's approval to
-  merge.
-- Next: roadmap step 4, then idle until the open questions above get answers.
+- Live: **2026.09.30.1** (`main` at fa24b79), both pages with 0 CSP violations; `main`'s CI green.
+- No open PRs. The roadmap is done; the backlog is empty.
+- Next: idle until the user answers the open questions in §5, above all question 5 (field requests).
