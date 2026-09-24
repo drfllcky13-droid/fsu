@@ -227,3 +227,94 @@ test("exporting a form as Word redraws the open form",async({page})=>{
     await exportFillDocx((S.fills||[]).find(x=>x.id===curFill)); renderFill=real; return calls});
   expect(n).toBeGreaterThanOrEqual(1);
 });
+
+/* ---------- second run: `node fsu-tests/mutate.js 25 2` (seed 2), 24 Sep ---------- */
+
+// src/core.js, isExpired: `return i.status==="Expired"||…` survived as `return void …`, which
+// drops the first test. An item a technician marked Expired counts as expired even with no date.
+test("an item marked Expired counts as expired",async({page})=>{
+  await openVan(page);
+  expect(await page.evaluate(i=>isExpired(i),{...item("Swabs","A1",5,1),status:"Expired"})).toBe(true);
+});
+
+// src/sketch-canvas.js, the backdrop image: `x===null?d:x` survived as `!==`. The saved position,
+// size and opacity are drawn, not the defaults.
+test("a sketch backdrop is drawn where it was placed",async({page})=>{
+  await openSketch(page);
+  const a=await page.evaluate(()=>{closeSheet(); const sk=curSk();
+    sk.bg={data:"data:image/png;base64,iVBORw0KGgo=",x:100,y:200,w:300,h:400,op:0.8,br:1,sa:1,kind:"upload"}; renderSketch();
+    const im=[...document.querySelectorAll("#skcanvas image")].find(e=>(e.getAttribute("href")||"").startsWith("data:image/png"));
+    return im&&["x","y","width","height","opacity"].map(k=>im.getAttribute(k))});
+  expect(a).toEqual(["100","200","300","400","0.8"]);
+});
+
+// src/chrome.js, sheetStops: `!e.disabled&&e.offsetParent!==null` survived as `||`. A sheet puts
+// the keyboard on its first control that is both enabled and on screen.
+test("a sheet focuses its first visible, enabled control",async({page})=>{
+  await openVan(page);
+  await page.evaluate(()=>openSheet('<button id="hid" style="display:none">a</button><button id="off" disabled>b</button><button id="ok">c</button>'));
+  await expect.poll(()=>page.evaluate(()=>document.activeElement&&document.activeElement.id)).toBe("ok");
+});
+
+// src/core.js, cleanCase: `hh===null?0:hh` survived as `!==`. A photograph's height in a case
+// package survives the clean-up that every import goes through.
+test("a case package keeps its photographs' sizes",async({page})=>{
+  await openVan(page);
+  const p=await page.evaluate(()=>{const pkg={fsuCase:1,incidents:[],fills:[],sketches:[],
+    photos:{p1:{data:"data:image/jpeg;base64,/9j/4A==",w:640,hh:480}}}; cleanCase(pkg,"a test"); return pkg.photos.p1});
+  expect([p.w,p.hh]).toEqual([640,480]);
+});
+
+// src/pdf.js, bundleIncident: `inc.caseNo||"NOCASE"` survived as `&&`. The bundle's reference
+// carries the case number.
+test("an incident bundle's reference carries the case number",async({page})=>{
+  await page.setViewportSize({width:1400,height:1000});
+  await page.goto("/scenes.html");
+  await page.waitForFunction(()=>typeof bundleIncident==="function");
+  await page.evaluate(()=>{const inc=newIncident(); inc.caseNo="FS-77"; save(); curInc=inc.id; go("incident");
+    document.querySelector("[data-plan=report]").click();
+    Object.defineProperty(navigator,"canShare",{value:undefined,configurable:true})});
+  const [dl]=await Promise.all([page.waitForEvent("download"),page.evaluate(()=>bundleIncident(incidentOf(curInc)))]);
+  const text=require("fs").readFileSync(await dl.path(),"latin1");
+  expect(text).toContain("B-FS77-");
+});
+
+// src/case-package.js, clashLabel: `c.key==="incidents"` survived as `!==`. When an imported
+// incident differs from the one here, the sheet names it as that incident.
+test("an import clash names the incident by its case number",async({page})=>{
+  await page.setViewportSize({width:1400,height:1000});
+  await page.goto("/scenes.html");
+  await page.waitForFunction(()=>typeof importCasePackage==="function");
+  const text=await page.evaluate(async()=>{
+    const inc=newIncident(); inc.caseNo="C-9"; save();
+    const pkg=JSON.stringify(await casePackage({incidentId:inc.id}));   // as it is now, before the change
+    inc.offence="Changed here after the package was made"; save();
+    await importCasePackage(pkg);
+    return document.querySelector("#sheet").textContent});
+  expect(text).toContain("Incident C-9");
+});
+
+// src/events.js, visibilitychange: `dirty||syncErr` survived as `&&`. Coming back to the app with
+// unsent changes sends them, instead of only fetching.
+test("returning to the app with unsent changes sends them",async({page})=>{
+  await openVan(page);
+  const r=await page.evaluate(()=>{
+    S.gh={...S.gh,owner:"o",repo:"r",token:"t"}; const calls=[];
+    ghPush=()=>{calls.push("push")}; ghPull=()=>{calls.push("pull");return Promise.resolve()};
+    dirty=true; syncErr="";
+    Object.defineProperty(document,"visibilityState",{value:"visible",configurable:true});
+    document.dispatchEvent(new Event("visibilitychange")); return calls});
+  expect(r).toEqual(["push"]);
+});
+
+// src/map.js, renderMap: `mapView||mapBusy` survived as `&&`. While the map is still loading,
+// drawing the view again leaves it alone instead of starting a second map.
+test("the map view is not rebuilt while the map is still loading",async({page})=>{
+  await page.setViewportSize({width:1400,height:1000});
+  await page.goto("/scenes.html");
+  await page.waitForFunction(()=>typeof renderMap==="function");
+  const kept=await page.evaluate(()=>{const v=document.getElementById("v-map");
+    v.innerHTML='<div id="mapbox" data-mark="first"></div>'; mapView=null; mapBusy=true;
+    renderMap(); const b=document.getElementById("mapbox"); return !!(b&&b.dataset.mark==="first")});
+  expect(kept).toBe(true);
+});
