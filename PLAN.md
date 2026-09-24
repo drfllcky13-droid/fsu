@@ -34,6 +34,9 @@ merging the two apps.
   with a recommended option, as you go.
 - The user is often on a phone and is not a developer. Say what changes for a technician, not the
   internals. Keep reports short and lead with the decision needed.
+- **No chat replies** (the user's instruction, 24 Sep). Do not write responses, progress notes or
+  summaries in chat. Say only one line when ready for the next phase, or ask the one decision that
+  blocks work. Everything else goes in HANDOFF.md, PLAN.md and the PR.
 - Never touch `drfllcky13-droid/van-data` (the real data) without approval of the exact change.
 - Keep the two apps separate: no button, tab or link from one into the other (`pages.spec.js`).
 

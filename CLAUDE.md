@@ -16,7 +16,11 @@ Start of every session and every scheduled check-in: read PLAN.md, then HANDOFF.
 Do it yourself, no handoff: bug fixes, red CI, refactors, dependency bumps, and anything already on the roadmap in PLAN.md.
 Hand to ME (the user): the end of a roadmap item, a design decision, unclear or conflicting requirements, being stuck after two attempts, and anything only the user can do: merges, approvals, credentials, real-device or real-world checks. One decision at a time, with a recommended option.
 
-End of every task: overwrite HANDOFF.md with the footer below plus a "## Report" section (what changed, commit hashes, test results, decisions needed with options), and rewrite "Where we are" in PLAN.md. Commit and push them with the work. End your reply with the footer:
+**Chat replies: none.** Do not write responses, progress notes or summaries in chat. The only
+chat message is one line saying you are ready for the next phase, or the one question that blocks
+work (see PLAN.md §2).
+
+End of every task: overwrite HANDOFF.md with the footer below plus a "## Report" section (what changed, commit hashes, test results, decisions needed with options), and rewrite "Where we are" in PLAN.md. Commit and push them with the work. The footer, in HANDOFF.md:
 
 PROJECT: <name>
 BATON → CODE / ME / IDLE
