@@ -25,6 +25,8 @@ Tools beside the suite: `sample.js` builds a complete sample case and saves ever
 `../sample-2026-0912/`; `pdf2png.js <file.pdf>` renders a PDF's pages to PNG with the pdf.js in
 `vendor/pdfjs/` (no network); `mutate.js [n] [seed]` breaks one line in a `src/*.js` part at a
 time, rebuilds, runs the suite and lists the breaks nothing caught (one suite run per mutant).
+A test written to catch one of those breaks goes in `tests/mutants.spec.js`, with the line it
+guards and the mutation that survived before it.
 
 `serve.js` serves the folder above, so a spec opens a page by name: `/index.html` is the van,
 `/scenes.html` is the scene. They are the same app and the same `localStorage`, so a spec that
