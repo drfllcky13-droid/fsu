@@ -1,43 +1,55 @@
 PROJECT: FSU (drfllcky13-droid/fsu)
 BATON → CHAT
-Carry: Chat picks which backlog items below to approve (recommended: 1 and 2 now); Code builds them.
-Status: Backend-review follow-ups done: PR #7 merged, 2026.09.29.1 live with 0 CSP violations; PR #8 (this protocol) merged right after this commit.
+Carry: Chat reviews draft PR #9 (backlog items 1–3) and answers decision 1 below; the user merges.
+Status: Backlog items 1–3 built in PR #9 (tooling, debounced saves 2026.09.30.1, ESLint); CI green; 2026.09.29.1 still live.
 Blocked on: nothing
 
 ## Report for Chat
 
-**2026-09-23.** Live `APP_VERSION`: **2026.09.29.1**. index.html and scenes.html were checked in a browser against the live site:
-- 0 CSP violations and no page errors.
-- jsPDF 4.2.1, svg2pdf and the QR encoder load from `lib/`, and a PDF gets made.
-- main's CI is green on the PR #7 merge (de1f5d9), and Pages deployed it.
+**2026-09-24.** Live `APP_VERSION`: **2026.09.29.1** (main at b8ebd38). PR #9 carries 2026.09.30.1 and is not merged.
 
 ### Open PRs
 | PR | Head | CI | Local suite |
 |---|---|---|---|
-| [#8](https://github.com/drfllcky13-droid/fsu/pull/8) Handoff protocol: CLAUDE.md, BRIEF.md, HANDOFF.md as the mailbox | this commit (after aba3689) | green on 9a2d0ff; merged by Code once green on this head | 287/287 in Chromium, visual.spec.js excluded |
-
-None remain open once PR #8 is merged.
+| [#9](https://github.com/drfllcky13-droid/fsu/pull/9) test tooling, debounced saves, ESLint (draft) | f793ca7 (code); this report is the next commit | green on f793ca7 (push and pull_request runs) | 294/294 in Chromium, visual.spec.js excluded |
 
 ### What changed since the last report
-- `de1f5d9` PR #7 merged: jsPDF 4.2.1, svg2pdf 2.8.1, checksums for `lib/`, Playwright pinned to 1.62.1. Version 2026.09.29.1.
-- `aba3689` main merged into PR #8. PR #7's edits to the old brief (the `lib/` checksum paragraph and the `npm ci` line) are carried into `BRIEF.md`. Its "Report for Chat" moves here.
-- This commit: this report, rewritten.
+- `5cfe135` BRIEF.md: backlog items 4–6 (Linux visual baselines, per-page CSS, folding `ext-*`) dropped, with one line each on why.
+- `a939d51` Test tooling:
+  - `sample.js` runs on `scenes.html` and starts its own server.
+  - `mutate.js` mutates the `src/*.js` parts.
+  - `pdf2png.js` uses vendored pdf.js, so it needs no network.
+  - `failures-reporter.js` names every failed or flaky test at the end of a run and in `fsu-tests/last-run.txt`, which CI prints.
+- `642e283` Typing saves after a 500 ms pause:
+  - Covers form fields, sketch object names and the backdrop sliders.
+  - The pending save is written at once on hidden or `pagehide`.
+  - A save the other page makes mid-pause keeps both changes.
+  - 6 new tests. Version 2026.09.30.1, changelog entry and in-app line.
+- `f793ca7` ESLint (`no-undef`, `no-unused-vars`, `no-use-before-define`) over each built page's script:
+  - Runs from `npm run lint`, from the suite, and in CI.
+  - 37 findings fixed without changing behaviour, which removed 103 lines of dead code from `src/`.
+  - 3 findings kept in `fsu-tests/lint-allow.json` (decision 1).
+- This commit: this report.
 
 ### Decisions needed from the user
-1. Which backlog items to approve, from the list below. Recommended: 1 and 2 now, 3 after them, and 4–6 not at all.
+1. **Three unguarded calls on the van page** (lint `no-undef`, kept in `lint-allow.json`). Shared code on `index.html` calls functions only `scenes.html` defines:
+   - `newSketch` in `src/pages.js:66`, already behind `if(!here("sketch"))return`;
+   - `bundleIncident` in `src/events.js:91`, from the incident view's bundle button;
+   - `exportFill` in `src/events.js:196`, from the form view's Export PDF button.
+
+   The van page has none of those views, so none of these can run there today. They would throw only if a future change put one of those buttons on the van. Options:
+   - (a) Leave them as they are, allow-listed with reasons. **Recommended.** Nothing reaches them, and the allow list makes a new one visible.
+   - (b) Add `typeof x==="function"&&` guards. That turns a would-be error into a silent no-op, which is a behaviour change.
+   - (c) Move those handlers out of the shared `events.js` into scene-only parts. That's cleaner, but it's a structural change to shared code.
 
 ### Noticed but not acted on
-- On the merge of PR #7 into PR #8, the first local suite run had 1 failure. The output didn't name it, and two full reruns passed 287/287. It is most likely the render-time budget in `bulk.spec.js`, but that is not established. If it recurs, it gets a root cause, not a retry.
-- svg2pdf 2.8.1 throws if it is loaded before jsPDF. The app only loads it from the vector sketch export, after `loadPDF()`, so nothing reaches this today. A future caller must keep that order.
-- The label QR codes encode the page's own address, so a preview server on another port prints different codes. That is expected.
+- **Mutation survivor.** `mutate.js` found a mutation at `src/sketch-canvas.js:631` that nothing catches: the aerial backdrop's `place` label was dropped (`||` to `&&`) and no test failed. That is the next test to write if more coverage is wanted. `node fsu-tests/mutate.js 25` gives the fuller picture, at about 45 minutes.
+- **The unexplained one-off failure** on the PR #8 branch did not recur in 6 full runs. If it happens again, `last-run.txt` and the end of the log now name it.
+- **svg2pdf 2.8.1 throws if it is loaded before jsPDF.** Only the vector sketch export loads it, after `loadPDF()`. A future caller must keep that order.
 
 ### Remaining backlog, in recommended order
-
-| # | Item | Payoff | Effort | Worth it? |
-|---|---|---|---|---|
-| 1 | Fix the stale test scripts. `sample.js` builds its sketch on `index.html`, which lost the sketch at the split. `mutate.js` breaks `src/app.js`, which no longer exists. `pdf2png.js` loads pdf.js from cdnjs on every run. | Brings back the two tools used to check exports and grade the suite. `mutate.js` is the only check on whether the tests would catch a real break. | S (half a day) | Yes |
-| 2 | Debounce form saves (`src/nav.js:51` saves the whole record on every keystroke), flushing on `pagehide`/`visibilitychange` so nothing typed is lost. | Typing in a long report stays smooth on an iPad once the record is a few MB, and the other open page stops reparsing and redrawing on every key. | S | Yes |
-| 3 | Lint. A minimal ESLint (`no-undef`, `no-unused-vars`, `no-use-before-define`) over the concatenated parts in build order, run in CI. | Catches typos, stray globals and use-before-definition, like the `view` TDZ slip in PR #6, before a test has to. | S–M (the first run will need a globals list and some cleanup) | Yes, with only those rules. A style ruleset would be churn. |
-| 4 | Linux visual baselines, generated in CI's container so `visual.spec.js` stops being skipped there. | Pixel-level layout regressions caught in CI. | M, plus every intended visual change then needs its baselines refreshed. | **Probably not.** The layout audit in `ui.spec.js`, `contrast.spec.js` and the print checks already catch what has actually broken. Revisit if a visual regression slips through. |
-| 5 | Split CSS per page, so the van page doesn't carry sketch and scene styles. | A smaller van page. `app.css` is 95 KB for both; the saving is unmeasured, likely tens of KB (a few KB gzipped). The page is cached by the service worker after the first load. | M, with a real risk of dropping a style one page needs. | **No.** |
-| 6 | Fold the `ext-*` layers (2,088 lines in 6 files) into the parts they extend. | Easier reading: each feature in one place, not base plus patch. No user-visible gain. | L. The diff touches most of the app, and every flow would need to be rechecked. | **No, as a project.** Fold a layer only when a change already has to rewrite that area. |
+| # | Item | Payoff | Effort |
+|---|---|---|---|
+| 1 | Decision 1 above | Settles the only lint exceptions | S whichever option |
+| 2 | A 25-mutant `mutate.js` run, then tests for what survives | Finds the behaviour nothing guards, starting with `sketch-canvas.js:631` | S to run, then S per test |
+| 3 | Page size (review finding 17): measure a cold and a warm open of `scenes.html` on an iPad before changing anything | Tells whether the 915 KB page is a real problem now that the service worker answers after 3 s | S to measure; any fix is M |
