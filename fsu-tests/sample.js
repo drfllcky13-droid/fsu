@@ -1,14 +1,22 @@
 // Builds a realistic sample incident in a fresh browser profile and saves what the app exports:
-// the incident bundle PDF, the report as Word, the sketch as DXF. Run from fsu-tests: node sample.js
+// the incident bundle PDF, the report as Word, the sketch as DXF and as a vector PDF.
+// Run from fsu-tests: node sample.js (it starts serve.js on 8766 itself if nothing is there)
 const {chromium}=require("@playwright/test");
-const path=require("path"), fs=require("fs");
+const path=require("path"), fs=require("fs"), http=require("http"), {spawn}=require("child_process");
 const OUT=path.join(__dirname,"..","sample-2026-0912");
+const up=()=>new Promise(res=>http.get("http://127.0.0.1:8766/index.html",r=>{r.resume();res(r.statusCode===200)}).on("error",()=>res(false)));
+let server=null;
 (async()=>{
+  if(!await up()){
+    server=spawn(process.execPath,[path.join(__dirname,"serve.js"),"8766"],{stdio:"ignore"});
+    for(let i=0;i<50&&!await up();i++)await new Promise(r=>setTimeout(r,100));
+  }
   fs.mkdirSync(OUT,{recursive:true});
   const b=await chromium.launch(); const ctx=await b.newContext({acceptDownloads:true,viewport:{width:1400,height:1000}});
   const page=await ctx.newPage();
   page.on("pageerror",e=>console.error("page error:",e.message));
-  await page.goto("http://127.0.0.1:8766/index.html");
+  // the incident, its documents and the sketch are all on the scene page since the split
+  await page.goto("http://127.0.0.1:8766/scenes.html");
   await page.waitForFunction(()=>typeof render==="function");
 
   await page.evaluate(async()=>{
@@ -114,5 +122,6 @@ const OUT=path.join(__dirname,"..","sample-2026-0912");
   await page.waitForTimeout(400);
   await page.screenshot({path:path.join(OUT,"sketch-on-screen.png"),fullPage:false});
   await b.close();
+  if(server)server.kill();
   console.log("done → "+OUT);
-})().catch(e=>{console.error("FAIL",e);process.exit(1)});
+})().catch(e=>{console.error("FAIL",e);if(server)server.kill();process.exit(1)});

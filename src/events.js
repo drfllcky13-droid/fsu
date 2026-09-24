@@ -429,7 +429,6 @@ function refreshSweepList(){
       <span class="rt"><span class="chev">&#8250;</span></span></button>`).join("")+`</div>`:"";
 }
 
-function placeholder(el,t,b){$(el).innerHTML=`<div class="empty"><strong>${t}</strong><p>${b}</p></div>`}
 function fitHeader(){
   const hd=document.querySelector(".hdr"); if(!hd)return;
   if(document.body.classList.contains("wide")){document.body.style.paddingTop="";return}

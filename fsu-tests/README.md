@@ -12,6 +12,20 @@ committed. `npm ci` installs exactly that, and `npm run install-browser` then fe
 builds that version expects; CI does the same. To move to a newer Playwright, change the version in
 `package.json`, run `npm install` to rewrite the lockfile, and commit both.
 
+The run ends with every failed test, and every test that passed only on a retry, named again
+under "failures", and the same list goes to `last-run.txt` (`failures-reporter.js`), so a one-off
+failure can be traced even when the output was cut short. CI prints that file as its last step.
+
+`npm run lint` runs ESLint over each built page's script (`lint.js`; three rules: `no-undef`,
+`no-unused-vars`, `no-use-before-define`). Findings name the `src/` part and line. The suite runs
+it too (`lint.spec.js`), and CI runs it as its own step. Deliberate exceptions live in
+`lint-allow.json`, each with its reason; an entry that no longer matches anything fails the lint.
+
+Tools beside the suite: `sample.js` builds a complete sample case and saves every export to
+`../sample-2026-0912/`; `pdf2png.js <file.pdf>` renders a PDF's pages to PNG with the pdf.js in
+`vendor/pdfjs/` (no network); `mutate.js [n] [seed]` breaks one line in a `src/*.js` part at a
+time, rebuilds, runs the suite and lists the breaks nothing caught (one suite run per mutant).
+
 `serve.js` serves the folder above, so a spec opens a page by name: `/index.html` is the van,
 `/scenes.html` is the scene. They are the same app and the same `localStorage`, so a spec that
 seeds a record on one page can open the other and find it there; `/scenes.html#v=sketch&ref=new`

@@ -1,8 +1,9 @@
 /* ---------- reports and upkeep, round ten ----------
    report wording, auto-fill, photograph log, Word export, vector PDF, version stamp,
    vehicle check, part numbers, shift handover, service and calibration, help and change log. */
-const APP_VERSION="2026.09.29.1";
+const APP_VERSION="2026.09.30.1";
 const CHANGELOG=[
+  ["2026-09-30","Typing in a form or naming something on a sketch saves when you pause, not after every letter, so long reports stay quick on an iPad. What you typed is saved the moment you switch apps, lock the screen or close the page."],
   ["2026-09-29","The PDF tool is updated to the current release, which fixes the security problems published against the old one. PDFs look the same as before."],
   ["2026-09-28","Deletions are remembered for a year; a device away longer rejoins as new and holds back what only it has, under Settings › Automatic saving. A case package names any photograph it could not read, and Settings › This device checks photographs. A saved record that cannot be read is kept, not replaced, and can be downloaded."],
   ["2026-09-27","On a weak signal the app opens from the copy on the device after about three seconds and fetches the newer one behind; when a new version arrives that way, a note offers a Reload. With no connection, Scenes always opens as Scenes."],

@@ -294,7 +294,7 @@ function extraPointerDown2(e,svg,p){
     e.preventDefault(); return true }
   return false;
 }
-function extraPointerMove2(e,p,o){
+function extraPointerMove2(e,p){
   if(drag.mode==="pan"){
     const dx=e.clientX-drag.sx, dy=e.clientY-drag.sy;
     if(Math.hypot(dx,dy)>4)drag.moved=true;

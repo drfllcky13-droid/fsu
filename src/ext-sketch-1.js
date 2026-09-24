@@ -557,7 +557,6 @@ const LINETYPES=new Set(["guardrail","railroad","skidmark","centreline","doublel
   "chainlink","hedge","treeline","stream","powerline","propline","tape","footpath","bloodtrail","travel","hidden","ditch","stonewall","handrail","parkline"]);
 
 /* ---- templates ---- */
-const TPL_PPU=10;   // page units per foot when a template sets the scale
 function tplScale(sk){ if(!scaleOf(sk)){sk.scale={px:100,real:10,unit:"ft"}} return realPx(sk,1) }
 function tplBuiltin(){
   const W=sk=>pageW(sk), H=sk=>pageH(sk), top=sk=>hasHeader(sk)?HEADER_H+2:0;
@@ -586,7 +585,7 @@ function tplBuiltin(){
         for(let i=0;i<=n;i++)o.push({t:"parkline",x:x0+i*sw-len/2,y:y0+len/2-8,w:len,h:16,r:90});
         return o.concat([north(sk)])}},
     {id:"tpl-stop",name:"Vehicle stop",desc:"Two vehicles on a two-lane road",
-      build:sk=>{const p=tplScale(sk), h=24*p, y=cy(sk);
+      build:sk=>{const p=tplScale(sk), y=cy(sk);
         return [road(sk,24),{t:"car",x:W(sk)*.35,y:y+2*p,w:15*p,h:6.5*p,r:0},{t:"car",x:W(sk)*.35+19*p,y:y+2*p,w:15*p,h:6.5*p,r:0},north(sk),legend(sk)]}},
     {id:"tpl-xproj",name:"Cross-projection room",desc:"Floor with the four walls folded out flat",
       build:sk=>{const p=tplScale(sk), w=14*p, d=10*p, hgt=6*p, x0=W(sk)/2-w/2, y0=cy(sk)-d/2;

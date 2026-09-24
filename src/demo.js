@@ -103,12 +103,6 @@ const DEMO_FORMS=[
  ["Scene entry and exit log","Scene documentation","2025-B","Everyone who crosses the tape, in and out, with times.",[["Blank PDF","https://example.com/entry-log.pdf"]],"2026-08-02"],
  ["Photography log","Photography","2022-A","Frame numbers, subject, scale used, direction of view.",[["Blank PDF","https://example.com/photo-log.pdf"]],"2024-01-10"],
  ["Consent to search","Reports and statements","2025-A","Signed before any consent search. Witnessed.",[],"2026-06-30"]];
-function seedVan(){
-  S.comps=VANCOMPS.map(r=>({code:r[0],desc:r[1],side:VANSIDES[r[2]],
-    x:r[3],y:r[4],w:r[5],h:r[6]}));
-  S.walls=JSON.parse(JSON.stringify(VANWALLS));
-  S.demo=false; save();
-}
 function loadDemo(){
   DEMO_FORMS.forEach(([name,cat,rev,desc,links,verified])=>{
     if(!S.forms.some(f=>f.name===name))

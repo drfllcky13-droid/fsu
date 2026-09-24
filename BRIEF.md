@@ -77,7 +77,12 @@ Each page has its own manifest (`manifest.webmanifest`, `scenes.webmanifest`) an
 pages. The two share every part of the shell — header, side nav, tab bar, sheets, toast, the
 rotation gate — because they are literally the same source parts.
 
-**State.** One object `S`, persisted to `localStorage` on every change via `save()`.
+**State.** One object `S`, persisted to `localStorage` on every change via `save()` (or
+`saveLocal()`, which does not queue a sync). Since 2026.09.30.1 typing is the exception: form fields,
+sketch object names and the backdrop sliders call `saveSoon(patch)` in `src/core.js`, which writes
+500 ms after the last keystroke, at once on `visibilitychange`→hidden and `pagehide`, and with any
+other save. `patch` re-applies the edit to a record the other page saved in the meantime (the
+`storage` listener applies pending patches and writes); `fsu-tests/tests/formsave.spec.js` covers it.
 Contains `items`, `comps`, `forms`, `fills`, `sketches`, `incidents`, `walls`, plus settings.
 `live()` filters `S.items` to those not marked "Not carried".
 
@@ -373,7 +378,17 @@ both pages. Pointing the sweep at both is the obvious next thing to do to the su
 3. **CI.** `.github/workflows/fsu.yml` runs the build check and the suite on every push.
    Pages needs no workflow: it serves the branch. Do not add a `deploy-pages` workflow unless the
    Pages source is switched to GitHub Actions in the repository settings, or every push goes red.
+   Since 2026.09.30.1 it also lints: `fsu-tests/lint.js` (`npm run lint`, and `lint.spec.js` in the
+   suite) runs ESLint over each built page's one script with `no-undef`, `no-unused-vars` and
+   `no-use-before-define` only. Because both pages are joined from shared parts, a name a shared
+   part defines for the other page, or uses behind `typeof name`, is not a finding; anything else
+   that must stay goes in `fsu-tests/lint-allow.json` with its reason.
 4. **Then** touch behaviour.
+
+**Decided against (2026-09-23), so they are not re-proposed:**
+- *Linux visual baselines in CI*: the layout audit in `ui.spec.js`, the contrast and print checks already catch what has broken, and baselines would need refreshing on every intended visual change.
+- *Splitting `app.css` per page*: a few KB gzipped on a page the service worker caches, against a real risk of one page losing a style it needs.
+- *Folding the `ext-*` layers into their base parts*: no user-visible gain for a diff across most of the app; fold a layer only when a change already rewrites that area.
 
 ---
 
@@ -499,8 +514,9 @@ Be sceptical of all of this — it is one sweep old.
   The Word file was checked for a valid zip and structure, not opened in Word; open one.
 - **Sample case.** `fsu-tests/sample.js` builds a complete incident (entry log, evidence log, photo
   log with placeholder photographs, sketch with measurements and photo points, report) in a fresh
-  browser and saves every export to `sample-2026-0912/`; `fsu-tests/pdf2png.js` renders any PDF
-  to page images through pdf.js. Use them to eyeball output after a change. Fixes found this way:
+  browser and saves every export to `sample-2026-0912/` (it runs on `scenes.html` and starts
+  `serve.js` itself if nothing is on 8766); `fsu-tests/pdf2png.js` renders any PDF to page images
+  through pdf.js, which is kept in `fsu-tests/vendor/pdfjs/` so it needs no network. Use them to eyeball output after a change. Fixes found this way:
   measurement table rows no longer overlap or split across pages, captions stay upright on rotated
   photo points, long fields keep their line breaks in the PDF, the photo log is in the bundle order.
 - **Bundle order** is report, entry log, evidence log, sketch, photo log. The photograph index page

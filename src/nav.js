@@ -48,12 +48,15 @@ document.addEventListener("click",e=>{const b=e.target.closest("#tabs button,#si
 document.addEventListener("input",e=>{
   const r=S.fills.find(x=>x.id===curFill); if(!r)return;
   const fv=e.target.closest("[data-fv]");
-  if(fv){r.values[fv.dataset.fv]=fv.value;return saveLocal()}
+  const rid=r.id, fillIn=st=>{const x=(st.fills||[]).find(f=>f.id===rid); if(x&&!x.values)x.values={}; return x};
+  if(fv){const k=fv.dataset.fv, v=fv.value; r.values[k]=v;
+    return saveSoon(st=>{const x=fillIn(st); if(x)x.values[k]=v})}
   const tb=e.target.closest("[data-ftab]");
-  if(tb){const k=tb.dataset.ftab,ri=+tb.dataset.tr;
-    if(!Array.isArray(r.values[k]))r.values[k]=[];
-    if(!r.values[k][ri])r.values[k][ri]={};
-    r.values[k][ri][tb.dataset.tc]=tb.value;saveLocal()}
+  if(tb){const k=tb.dataset.ftab,ri=+tb.dataset.tr,c=tb.dataset.tc,v=tb.value;
+    const put=x=>{ if(!Array.isArray(x.values[k]))x.values[k]=[];
+      if(!x.values[k][ri])x.values[k][ri]={};
+      x.values[k][ri][c]=v };
+    put(r); saveSoon(st=>{const x=fillIn(st); if(x)put(x)})}
 });
 let searchFrom="home";
 function applyQuery(){

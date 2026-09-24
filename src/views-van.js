@@ -11,16 +11,13 @@ function renderHome(){
   const cs=comps(), gp=gaps();
   const bad=L.filter(i=>isOut(i)||isLow(i));
   const soon=L.filter(i=>isExpiring(i)||isExpired(i)||isService(i));
-  const unchk=cs.filter(c=>compState(c.code).k==="unchecked").length, checked=cs.length-unchk;
+  const unchk=cs.filter(c=>compState(c.code).k==="unchecked").length;
   const need=L.filter(i=>isOut(i)||isExpired(i)||isLow(i)||isService(i)||isExpiring(i))
     .sort((a,b)=>{const r=x=>isOut(x)||isExpired(x)?0:1;return r(a)-r(b)||a.name.localeCompare(b.name)});
   const td=tokenDays();
-  const lastMark=cs.map(c=>c.checked).filter(Boolean).sort().pop();
 
   // where am I
   const dateTxt=new Date().toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"});
-  const sweepTxt=!cs.length?"No compartments yet":unchk===0&&lastMark?"Sweep finished "+lastMark
-    :lastMark?"Sweep in progress, "+unchk+" left":"No sweep yet";
   const head=`<div class="hhead"><b>${esc(S.vanName||"Forensic Services Unit")}</b><span>${esc(dateTxt)}</span>
     <span>${S.who?"Signed in as "+esc(S.who):`<button class="lnkbtn" data-gosec="who">Set your initials</button>`}</span></div>`;
 
@@ -97,24 +94,6 @@ function autoPlace(side){
     if(c.x==null){c.x=0;c.y=0}});
 }
 
-function unitPanel(){
-  const cs=comps(); if(!cs.length)return "";
-  const bays=[...new Set(cs.map(c=>bayOf(c.code)))].sort();
-  return `<div class="panel"><div class="ph2">Units</div><div class="pb unitpb">
-    ${bays.map(bay=>{
-      const b=bayBounds(bay); if(!b)return "";
-      const end=b.x+b.w/2>(S.walls[b.side]||{cols:144}).cols/2
-        ?(b.side==="Driver side"?"front":"rear"):(b.side==="Driver side"?"rear":"front");
-      return `<button class="bayhead" data-bay="${esc(bay)}">
-        <div class="bayinfo">
-          <h2>${esc(BAYNAME[bay]||"Bay "+bay)}</h2>
-          <div class="sub">${esc(b.side)}, ${end}</div>
-          <div class="sub">${b.w}-inch &nbsp;|&nbsp; ${b.n} compartments</div>
-        </div>
-        ${vanKey(bay,false)}
-        <div class="cdtags">${bayTally(bay)}</div></button>`}).join("")}
-  </div></div>`;
-}
 
 function renderComps(){
   $("#title").textContent="Storage";
@@ -727,12 +706,6 @@ const fieldsText=f=>(f.fields||[]).map(x=>
   :x.def?x.label+" | "+x.type+" | "+x.def
   :x.type==="text"?x.label:x.label+" | "+x.type).join("\n");
 
-function fillTitle(r){
-  const f=S.forms.find(x=>x.id===r.formId);
-  const first=(f&&(f.fields||[]).find(x=>["text","number"].includes(x.type)));
-  const v=first?String(r.values[first.id]||"").trim():"";
-  return v||("Started "+r.started.slice(0,16).replace("T"," "));
-}
 
 
 

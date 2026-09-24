@@ -25,6 +25,15 @@ jobs:
       - name: Playwright version
         working-directory: fsu-tests
         run: npx playwright --version
+      # ESLint over each built page's script: no-undef, no-unused-vars, no-use-before-define
+      - name: Lint
+        working-directory: fsu-tests
+        run: npm run lint
       - name: Sweep and flows
         working-directory: fsu-tests
         run: npx playwright test
+      # the failed and flaky tests by name, even if the log above was cut short
+      - name: Failures, if any
+        if: always()
+        working-directory: fsu-tests
+        run: cat last-run.txt || true

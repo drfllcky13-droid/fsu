@@ -7,7 +7,6 @@ const STATUSES=["Stocked","Low","Out","Expired","Service due","Not carried"];
 const SIDES=["Driver side","Passenger side","Rear doors","Cab"];
 // drawn as you see it standing inside the van: facing the driver wall the cab is
 // to your right, facing the passenger wall it is to your left
-const groupOf = code => String(code).replace(/\d+$/,"");
 const bayOf   = code => String(code)[0];
 function bayBounds(bay){
   const cs=comps().filter(c=>bayOf(c.code)===bay);
@@ -126,21 +125,6 @@ function bayTally(bay){
           ${t?`<span class="badge b-attn">${WARN}${t} attention</span>`:""}
           ${u?`<span class="badge b-unchecked">${WARN}${u} not checked</span>`:""}
           ${!a&&!t&&!u?`<span class="badge b-good">${TICK}All good</span>`:""}`;
-}
-function groupsFor(side){
-  const cs=comps().filter(c=>c.side===side), by={};
-  cs.forEach(c=>{ const g=groupOf(c.code);
-    (by[g]=by[g]||[]).push(c); });
-  return Object.keys(by).map(g=>{
-    const m=by[g];
-    const x=Math.min(...m.map(c=>c.x)), y=Math.min(...m.map(c=>c.y));
-    const w=Math.max(...m.map(c=>c.x+c.w))-x, hh=Math.max(...m.map(c=>c.y+c.h))-y;
-    const st=m.map(c=>compState(c.code));
-    const k=st.some(s=>s.k==="action")?"action":st.some(s=>s.k==="attn")?"attn"
-           :st.every(s=>s.k==="good")?"good":"unchecked";
-    return {g,x,y,w,h:hh,n:m.length,k,bay:bayOf(g),
-            desc:(m[0].desc||"").replace(/,\s*double width$/,"")};
-  }).sort((a,b)=>a.y-b.y||a.x-b.x);
 }
 const capLeft = side => side==="Driver side" ? "Rear doors" : "Front of van";
 const capRight = side => side==="Driver side" ? "Front of van" : "Rear doors";

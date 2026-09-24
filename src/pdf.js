@@ -63,7 +63,6 @@ async function bundleIncident(inc){
     const cw=(PW-2*PM-16)/2;
     let col=0, rowTop=py;
     for(const s of shots){
-      const x=PM+col*(cw+16);
       if(rowTop+cw*0.80>PH-PM-20){ doc.addPage("letter","portrait"); rowTop=PM; col=0 }
       const ix=PM+col*(cw+16);
       let bottom=rowTop;
