@@ -1,17 +1,30 @@
 PROJECT: FSU (drfllcky13-droid/fsu)
-BATON → IDLE
-Carry: The user answers the open questions in PLAN.md §5; Code then plans the next phase.
-Status: Roadmap done: PR #10 merged, 2026.09.30.1 live with 0 CSP violations, main CI green.
-Blocked on: nothing (next work waits on field feedback)
+BATON → ME
+Carry: The user approves the second mutation-tests PR; Code merges it.
+Status: Second mutation pass done: 8 new tests, each shown to fail on its mutant; 319/319 locally.
+Blocked on: approval to merge
 
 ## Report
 
-**2026-09-24.** PR #10 merged with a merge commit (fa24b79) after the user's approval. It added
-17 mutation tests, the BRIEF.md notes, PLAN.md, and the no-chat-replies rule. No app code changed.
+**2026-09-24.** `node fsu-tests/mutate.js 25 2` (seed 2): 25 mutants built, 13 caught, 12 survived
+(52% caught, up from 24% on the first run).
 
-- CI green on the PR head (7b6da91) and on `main` (fa24b79).
-- Live: index.html and scenes.html are identical to `main` and serve 2026.09.30.1. Checked in a
-  browser: 0 CSP violations and no page errors on either.
-- PLAN.md roadmap step 4 marked done; "Where we are" rewritten.
+### New tests (tests/mutants.spec.js; each fails on its mutant)
+- An item marked Expired counts as expired (`src/core.js` isExpired).
+- A sketch backdrop is drawn where it was placed (`src/sketch-canvas.js`).
+- A sheet focuses its first visible, enabled control (`src/chrome.js` sheetStops).
+- A case package keeps its photographs' sizes (`src/core.js` cleanCase).
+- An incident bundle's reference carries the case number (`src/pdf.js`).
+- An import clash names the incident by its case number (`src/case-package.js`).
+- Returning to the app with unsent changes sends them (`src/events.js` visibilitychange).
+- The map view is not rebuilt while the map is still loading (`src/map.js`).
 
-Decisions needed: none. Open questions for the user are in PLAN.md §5.
+### Survivors with no test (equivalent or harmless)
+- `src/events.js:6`, `src/ext-reports.js:55`, `src/sketch-canvas.js:405`: `return f()` → `return void f()`; the value is never used.
+- `src/views-van.js:258`: `pop&&pop.scrollIntoView` → `||`. `#baypop` is always drawn before that line runs.
+
+### Tests
+- `node build.js --check` passes; full suite minus `visual.spec.js`: 319/319 in Chromium.
+
+### Decisions needed
+1. Approve the PR for merge (tests only; nothing a technician sees changes). Recommended: yes.
