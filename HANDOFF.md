@@ -1,44 +1,30 @@
 PROJECT: FSU (drfllcky13-droid/fsu)
-BATON → CHAT
-Carry: Chat reviews draft PR #10 (17 mutation tests and BRIEF notes); the user merges. The backlog is then empty.
-Status: PR #9 merged, 2026.09.30.1 live with 0 CSP violations, main CI green; PR #10 green (311/311).
-Blocked on: nothing
+BATON → ME
+Carry: The user approves draft PR #10 (mutation tests, BRIEF notes, PLAN.md); Code merges it and confirms live.
+Status: 2026.09.30.1 live; PR #10 green; PLAN.md written; Code now plans and builds.
+Blocked on: approval of PR #10, and the five open questions in PLAN.md §5
 
-## Report for Chat
+## Report
 
-**2026-09-24.** Live `APP_VERSION`: **2026.09.30.1**. main is at e27ae1a (the PR #9 merge), and main's CI is green on it.
-- Both live pages were checked in a browser: 0 CSP violations and no page errors.
-- jsPDF 4.2.1 and the QR library load from `lib/`.
+**2026-09-24.** Live `APP_VERSION` 2026.09.30.1 (`main` e27ae1a). The plan, rules, decisions and
+open questions are in [PLAN.md](PLAN.md).
 
-### Open PRs
-| PR | Head | CI | Local suite |
-|---|---|---|---|
-| [#10](https://github.com/drfllcky13-droid/fsu/pull/10) mutation tests and BRIEF notes (draft) | 71c14e8 (tests); this report is the next commit | green on 71c14e8 | 311/311 in Chromium, visual.spec.js excluded |
-
-### What changed since the last report
-- `e27ae1a` PR #9 merged: test tooling, debounced saves (2026.09.30.1), ESLint.
-- `bb79e9b` BRIEF.md:
-  - The three lint allow-list entries are kept (decision 1 = a), with the reason.
-  - Shrinking the pages is dropped unless technicians report slow opens.
-- `71c14e8` `fsu-tests/tests/mutants.spec.js`: 17 tests, one per real gap found by `mutate.js 25`. Each was shown to fail on its mutant.
+### What changed this session (all on draft [PR #10](https://github.com/drfllcky13-droid/fsu/pull/10))
+- `bb79e9b` BRIEF.md: why the three lint exceptions stay; page size dropped unless opens are slow.
+- `71c14e8` `fsu-tests/tests/mutants.spec.js`: 17 tests for the gaps `mutate.js 25` found. Each
+  fails on its mutant.
+- `a61f03e` the previous report.
+- `4a0c98f` PLAN.md (new), CLAUDE.md (read PLAN.md first; hand to the user, not Chat), README.md.
 - This commit: this report.
 
-### Mutation run (`node fsu-tests/mutate.js 25`, seed 1)
-- 25 mutants built. 6 were caught and 19 survived.
-- Adding `src/sketch-canvas.js:631` from the trial run gives 20 survivors.
-- 17 of those are real gaps, all now killed; the table in PR #10 lists them.
-- 3 are equivalent or harmless, with no test:
-  - `src/events.js:25` `return renderList()` → `return void renderList()`: the return value is never used.
-  - `src/chrome.js:44` `navigator.storage&&estimate` → `||`: inside `try{}catch(e){}`, so a browser without `navigator.storage` skips the estimate either way.
-  - `src/sketch-controls.js:47` `sk&&o` → `sk||o`: it differs only if the Renumber button names an object that doesn't exist, and that button is drawn only for the selected object.
+### Tests
+- Full suite minus `visual.spec.js`: 311/311 in Chromium; `node build.js --check` passes.
+- CI green on 71c14e8.
 
-### Decisions needed from the user
-None.
+### Mutation survivors with no test (equivalent or harmless)
+- `src/events.js:25`: `return renderList()` → `return void renderList()`. The value is unused.
+- `src/chrome.js:44`: `navigator.storage&&estimate` → `||`. Inside `try{}catch(e){}`, so the outcome is the same.
+- `src/sketch-controls.js:47`: `sk&&o` → `sk||o`. It only differs for a Renumber button naming a missing object, which is never drawn.
 
-### Noticed but not acted on
-- **Weak spots in the suite before this PR.** The run caught only 24% of mutants. Most survivors were in text and count rendering on the van page, and in sketch geometry. Another `mutate.js` run with a different seed (`node fsu-tests/mutate.js 25 2`) would show how much of that is left. It takes about 45 minutes.
-- **The wide-screen item list is a table** that does not use the list code (`renderInventory`'s `body`). Tests of that list have to run at iPad-portrait width or narrower. The first run of the A to Z test hit exactly that race, when I resized the window after the page loaded.
-- **The first draft of the locked-layer drag test passed only because the new-sketch sheet's scrim covered the canvas.** Any mouse test on a new sketch must close that sheet first.
-
-### Remaining backlog
-Empty. The items still open from the review were decided against in BRIEF.md: Linux visual baselines, a per-page CSS split, folding `ext-*`, and page size unless opens are slow. A second mutation run (above) is optional.
+### Decisions needed
+1. Approve PR #10 for merge (tests and docs only; nothing a technician sees changes). Recommended: yes.
