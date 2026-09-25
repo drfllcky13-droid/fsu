@@ -158,8 +158,8 @@ showing the same item count). Asked again on 24 Sep: 1–3 not checked yet.
 
 ## Where we are
 
-*Rewritten at the end of every session. Last: 24 September 2026.*
+*Rewritten at the end of every session. Last: 25 September 2026.*
 
-- Live: **2026.09.30.1** (`main` at 9f6b9d8), both pages with 0 CSP violations; `main`'s CI green.
-- No open PRs. The roadmap is done; the backlog is empty.
-- Next: idle until the iPad checks (§5 questions 1–3) are done or the technicians ask for something.
+- Live: **2026.09.30.1** (`main` at df10779). PR from `claude/a11y-fixes` (2026.10.01.1, seven WCAG AA fixes) is waiting for the user's merge.
+- The win32 screenshot baselines in fsu-tests are stale (they fail on plain `main`); CI on Linux is unaffected.
+- Next: after the merge, idle until the iPad checks (§5 questions 1–3) are done or the technicians ask for something.

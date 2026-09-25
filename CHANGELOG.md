@@ -1,5 +1,14 @@
 # FSU change log
 
+## 2026.10.01.1
+Accessibility fixes from a WCAG 2.1 AA audit.
+
+The count on the selected search filter was blue on blue and could not be seen; it now takes the
+button's text colour. The search box has an accessible name ("Search") and shows a focus ring. Small
+text on the amber Sweep tile and the amber status chips is solid, not 82% opacity, so it passes 4.5:1
+in dark mode. The Scenes "+ New" button is 44 px tall. The sheet is announced as a modal dialog and
+hands focus back to the control that opened it when it closes.
+
 ## 2026.09.30.1
 Typing stays quick in long reports.
 

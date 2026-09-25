@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-gBuAZDgtJirK5Ia/jibc8y4BJl2sgUJO9/cqoPvMWAk='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-kxXwHNHUN57XFfaufqtWdlG1Bd5O0YrJrOSnotTx7xQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://imagery.pasda.psu.edu; connect-src 'self' https://api.github.com https://imagery.pasda.psu.edu; font-src 'self' data:; worker-src 'self' blob:; media-src 'self' blob: mediastream:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FSU Scenes</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1422,7 +1422,7 @@ body.wide.sidemin .side button{position:relative}
 .schip{display:inline-flex;align-items:center;gap:8px;min-height:var(--tap);padding:0 14px;border-radius:999px;
   font-size:var(--f2);border:1px solid var(--line);background:var(--card);color:var(--ink2);text-align:left}
 .schip b{font-weight:700;color:var(--ink)}
-.schip.hot{background:var(--ambersolid);border-color:transparent;color:rgba(18,16,10,.82);cursor:pointer}
+.schip.hot{background:var(--ambersolid);border-color:transparent;color:var(--onamber);cursor:pointer}
 .schip.hot b{color:var(--onamber)}
 .schip.calm{border-style:dashed}
 @media (hover:hover) and (pointer:fine){.schip.hot:hover{filter:brightness(1.08)}}
@@ -1453,7 +1453,7 @@ body.nonav.wide .hdr,body.nonav.wide .main{grid-column:1}
 body.nonav .hicon{display:inline-flex}
 body.nonav .hdr h1{flex:0 1 auto}
 body.nonav .savedtick{margin-right:auto}
-.hnew{min-height:40px;padding:0 16px;border-radius:999px;border:0;background:var(--blue);color:var(--onblue);
+.hnew{min-height:44px;padding:0 16px;border-radius:999px;border:0;background:var(--blue);color:var(--onblue);
   font-weight:700;font-size:var(--f2);flex:0 0 auto}
 .stile.sel{outline:2px solid var(--blue);outline-offset:-2px}
 .savedtick .sts{display:none}
@@ -6172,8 +6172,9 @@ function appExtraClick9(e){
 /* ---------- reports and upkeep, round ten ----------
    report wording, auto-fill, photograph log, Word export, vector PDF, version stamp,
    vehicle check, part numbers, shift handover, service and calibration, help and change log. */
-const APP_VERSION="2026.09.30.1";
+const APP_VERSION="2026.10.01.1";
 const CHANGELOG=[
+  ["2026-10-01","Easier to use with a screen reader, a keyboard or low vision. The search count on the selected filter shows again, the search box has a name and a focus ring, the amber tiles and chips are easier to read, the Scenes New button is a full-size target, and closing a sheet puts you back where you were."],
   ["2026-09-30","Typing in a form or naming something on a sketch saves when you pause, not after every letter, so long reports stay quick on an iPad. What you typed is saved the moment you switch apps, lock the screen or close the page."],
   ["2026-09-29","The PDF tool is updated to the current release, which fixes the security problems published against the old one. PDFs look the same as before."],
   ["2026-09-28","Deletions are remembered for a year; a device away longer rejoins as new and holds back what only it has, under Settings › Automatic saving. A case package names any photograph it could not read, and Settings › This device checks photographs. A saved record that cannot be read is kept, not replaced, and can be downloaded."],
