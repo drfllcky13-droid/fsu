@@ -100,6 +100,7 @@ input,select,textarea{font-size:16px}
 .sbox{display:flex;align-items:center;gap:8px;background:var(--card2);
   border:.5px solid var(--line2);border-radius:10px;padding:9px 12px}
 .sbox input{border:0;background:none;outline:none;flex:1;padding:0;font-size:16px}
+.sbox:focus-within{outline:2.5px solid var(--blue);outline-offset:2px}
 .sbox input::placeholder{color:var(--ink3)}
 .sbox svg{width:17px;height:17px;color:var(--ink3);flex:0 0 auto}
 .sbox button{background:none;border:0;color:var(--blue);font-size:15px;padding:0 2px}
@@ -547,7 +548,7 @@ body.skfull .skgrid.full.notools{grid-template-columns:minmax(0,1fr);grid-templa
   padding:var(--s2) var(--s3);font-size:var(--f2);color:var(--ink2);font-weight:500}
 .searchrail button.sel{background:var(--bluebg);color:var(--blue);font-weight:600}
 .searchrail button .n{color:var(--ink3);font-weight:400}
-.searchrail button.sel .n{color:var(--blue)}
+.searchrail button.sel .n{color:inherit}
 @media (max-width:720px){.searchsplit{grid-template-columns:minmax(0,1fr)}.searchrail{position:static;flex-direction:row;overflow-x:auto}}
 .ph.ok{background:var(--greenbg);color:var(--green)}
 .ph{background:var(--bluebg);color:var(--blue);border-radius:var(--r1);padding:var(--s3) var(--s4);
@@ -1343,7 +1344,7 @@ body.wide.sidemin .side button{position:relative}
 .stile.t-amber{background:var(--ambersolid);border-color:transparent;color:var(--onamber)}
 .stile.t-dark{background:var(--dark);border-color:transparent;color:var(--darkink)}
 .stile.t-red .sk,.stile.t-red .ss{color:rgba(255,255,255,.88)}
-.stile.t-amber .sk,.stile.t-amber .ss{color:rgba(18,16,10,.82)}
+.stile.t-amber .sk,.stile.t-amber .ss{color:var(--onamber)}
 .stile.t-dark .sk,.stile.t-dark .ss{color:inherit;opacity:.8}
 /* scenes home, iPad: one card for the incident you were last in */
 .hero2{background:var(--blue);color:var(--onblue);border-radius:var(--r3);padding:var(--s5) var(--s4);
@@ -1482,7 +1483,7 @@ html.theme-dark body.pg-scenes{--blue:#B39BFF;--bluebg:#2B2248;--onblue:#12100A}
     <button id="gear" class="hicon" aria-label="Settings" type="button"></button></div>
   <div class="sbox">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-    <input type="text" id="q" placeholder="Search items, compartments, guides" autocomplete="off">
+    <input type="text" id="q" aria-label="Search" placeholder="Search items, compartments, guides" autocomplete="off">
     <button id="qclear" style="display:none">Clear</button>
   </div>
 </header>
@@ -1509,7 +1510,7 @@ html.theme-dark body.pg-scenes{--blue:#B39BFF;--bluebg:#2B2248;--onblue:#12100A}
 
 <nav class="tabs" id="tabs"></nav>
 <div class="scrim" id="scrim"></div>
-<div class="sheet" id="sheet"><div class="grab"></div><div id="sheetbody"></div></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="grab"></div><div id="sheetbody"></div></div>
 <div class="toast" id="toast"></div>
 <div class="rotgate" id="rotgate"><div class="rg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M12 2v2M12 20v2"/></svg><b>Turn the iPad sideways</b><span>FSU runs in landscape so the storage wall has room.</span><button class="lnkbtn" data-rotlock="0">Allow portrait on this device</button></div></div>
 
@@ -2108,7 +2109,8 @@ function renderKeepBar(){
 
 const SHEETABLE='button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
 const sheetStops=()=>[...$("#sheet").querySelectorAll(SHEETABLE)].filter(e=>!e.disabled&&e.offsetParent!==null);
-function openSheet(html){$("#sheetbody").innerHTML=html;$("#scrim").classList.add("on");
+let sheetOpener=null; // the control that opened the sheet gets focus back when it closes
+function openSheet(html){if(!$("#sheet").classList.contains("on"))sheetOpener=document.activeElement;$("#sheetbody").innerHTML=html;$("#scrim").classList.add("on");
   const f=()=>{if($("#scrim").classList.contains("on")){$("#sheet").classList.add("on");
     const st=sheetStops(); if(st.length&&!$("#sheet").contains(document.activeElement))st[0].focus()}};
   typeof requestAnimationFrame==="function"?requestAnimationFrame(f):setTimeout(f,16)}
@@ -2130,7 +2132,8 @@ function askConfirm(title,body,label,danger,fn){
   $("#cfno").onclick=closeSheet;
   $("#cfyes").onclick=()=>{closeSheet();fn()};
 }
-function closeSheet(){$("#sheet").classList.remove("on");$("#scrim").classList.remove("on")}
+function closeSheet(){$("#sheet").classList.remove("on");$("#scrim").classList.remove("on");
+  if(sheetOpener&&sheetOpener.isConnected&&sheetOpener.focus)sheetOpener.focus();sheetOpener=null}
 $("#scrim").onclick=closeSheet;
 
 /* ---- landscape only on a tablet ---- */

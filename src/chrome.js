@@ -111,7 +111,8 @@ function renderKeepBar(){
 
 const SHEETABLE='button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])';
 const sheetStops=()=>[...$("#sheet").querySelectorAll(SHEETABLE)].filter(e=>!e.disabled&&e.offsetParent!==null);
-function openSheet(html){$("#sheetbody").innerHTML=html;$("#scrim").classList.add("on");
+let sheetOpener=null; // the control that opened the sheet gets focus back when it closes
+function openSheet(html){if(!$("#sheet").classList.contains("on"))sheetOpener=document.activeElement;$("#sheetbody").innerHTML=html;$("#scrim").classList.add("on");
   const f=()=>{if($("#scrim").classList.contains("on")){$("#sheet").classList.add("on");
     const st=sheetStops(); if(st.length&&!$("#sheet").contains(document.activeElement))st[0].focus()}};
   typeof requestAnimationFrame==="function"?requestAnimationFrame(f):setTimeout(f,16)}
@@ -133,7 +134,8 @@ function askConfirm(title,body,label,danger,fn){
   $("#cfno").onclick=closeSheet;
   $("#cfyes").onclick=()=>{closeSheet();fn()};
 }
-function closeSheet(){$("#sheet").classList.remove("on");$("#scrim").classList.remove("on")}
+function closeSheet(){$("#sheet").classList.remove("on");$("#scrim").classList.remove("on");
+  if(sheetOpener&&sheetOpener.isConnected&&sheetOpener.focus)sheetOpener.focus();sheetOpener=null}
 $("#scrim").onclick=closeSheet;
 
 /* ---- landscape only on a tablet ---- */
