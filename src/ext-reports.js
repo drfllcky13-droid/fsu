@@ -3,7 +3,7 @@
    vehicle check, part numbers, shift handover, service and calibration, help and change log. */
 const APP_VERSION="2026.10.01.1";
 const CHANGELOG=[
-  ["2026-10-01","Easier to use with a screen reader, a keyboard or low vision. The search count on the selected filter shows again, the search box has a name and a focus ring, the amber tiles and chips are easier to read, the Scenes New button is a full-size target, and closing a sheet puts you back where you were."],
+  ["2026-10-01","Easier to use with a screen reader, a keyboard or low vision. The search count on the selected filter shows again, the search box has a name and a focus ring, the amber tiles and chips are easier to read, the Scenes New button is a full-size target, and closing a sheet puts you back where you were. On a phone the tab bar is lighter and easier to read, four buttons sit two by two, and Delete incident is red."],
   ["2026-09-30","Typing in a form or naming something on a sketch saves when you pause, not after every letter, so long reports stay quick on an iPad. What you typed is saved the moment you switch apps, lock the screen or close the page."],
   ["2026-09-29","The PDF tool is updated to the current release, which fixes the security problems published against the old one. PDFs look the same as before."],
   ["2026-09-28","Deletions are remembered for a year; a device away longer rejoins as new and holds back what only it has, under Settings › Automatic saving. A case package names any photograph it could not read, and Settings › This device checks photographs. A saved record that cannot be read is kept, not replaced, and can be downloaded."],

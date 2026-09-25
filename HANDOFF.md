@@ -1,7 +1,7 @@
 PROJECT: FSU (drfllcky13-droid/fsu)
 BATON → ME
 Carry: The user merges PR "Accessibility fixes (2026.10.01.1)"; that puts it live.
-Status: WCAG 2.1 AA audit done; 7 fixes on branch claude/a11y-fixes; lint clean, 339 functional tests pass.
+Status: WCAG 2.1 AA audit done and a polish pass; 7 fixes plus tab bar and layout polish on branch claude/a11y-fixes; lint clean, 339 functional tests pass.
 Blocked on: the merge (the user's call)
 
 ## Report
@@ -19,6 +19,13 @@ these, and the branch fixes them all:
 6. The Scenes `.hnew` "+ New" button was 40 px tall. Now `min-height:44px`.
 7. `#sheet` now has `role="dialog" aria-modal="true"`, and `closeSheet()` returns focus to the
    control that opened the sheet (`sheetOpener`, only when it is still in the DOM).
+
+**Polish pass (same branch, impeccable `polish`):** the phone tab bar is an iOS-style bar (no box
+per tab, 11 px labels, a tinted pill behind the current icon, a solid amber count badge); four-button
+`.editbar` rows are 2x2 under 520 px; `.editbar button.danger` is red; `.qf` is auto-fill 150 px;
+`.dt th` nowrap; tabular numerals; themed `::selection`, caret and accent colour. The detector's one
+finding (`.justrow.dup` 3 px inset stripe) was already there and was left alone. Before and after
+screenshots were taken at 1194x834 and 390x844 in both themes.
 
 Version 2026.10.01.1, with entries in CHANGELOG.md and the in-app change log.
 

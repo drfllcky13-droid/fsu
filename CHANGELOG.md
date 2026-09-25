@@ -9,6 +9,13 @@ text on the amber Sweep tile and the amber status chips is solid, not 82% opacit
 in dark mode. The Scenes "+ New" button is 44 px tall. The sheet is announced as a modal dialog and
 hands focus back to the control that opened it when it closes.
 
+A polish pass on the same version. The phone and portrait-iPad tab bar drops the box around each
+tab: the current tab is a tinted icon and label with a soft pill behind the icon, labels are 11 px,
+not 9.5, and the count badge is solid amber. A row of four buttons (Storage, an incident) sits two
+by two on a phone instead of three and one. Delete incident is red. Quick find tiles no longer
+squeeze to three narrow columns beside Handover. Table headers stay on one line, numbers line up,
+and selection, caret and checkbox colours follow the app's accent.
+
 ## 2026.09.30.1
 Typing stays quick in long reports.
 

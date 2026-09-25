@@ -88,23 +88,25 @@ input,select,textarea{font-size:16px}
 .sbox svg{width:17px;height:17px;color:var(--ink3);flex:0 0 auto}
 .sbox button{background:none;border:0;color:var(--blue);font-size:15px;padding:0 2px}
 
-.tabs{position:fixed;bottom:0;left:0;right:0;z-index:40;background:var(--bg);
+.tabs{position:fixed;bottom:0;left:0;right:0;z-index:40;background:var(--card);
   border-top:.5px solid var(--line);display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);
-  gap:5px;padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
-/* each tab reads as a button, like everything else in the app */
-.tabs button{background:var(--card);border:.5px solid var(--line);border-radius:11px;
-  padding:7px 2px 6px;color:var(--ink3);
-  font-size:9.5px;display:flex;flex-direction:column;align-items:center;gap:3px;
-  min-width:0;overflow:hidden;min-height:50px;justify-content:center;position:relative}
-.tabs button:active{background:var(--card2)}
-.tdot{position:absolute;top:3px;left:50%;margin-left:5px;min-width:15px;height:15px;
-  border-radius:8px;background:var(--amber);color:#1a1200;font-size:9.5px;font-weight:800;
-  font-style:normal;display:flex;align-items:center;justify-content:center;padding:0 3px}
+  gap:4px;padding:4px 8px calc(4px + env(safe-area-inset-bottom))}
+/* an iOS tab bar: no box per tab; the current tab is a tinted icon and label with a soft pill behind the icon */
+.tabs button{background:none;border:0;border-radius:var(--r1);
+  padding:6px 2px 5px;color:var(--ink2);
+  font-size:11px;font-weight:500;letter-spacing:.01em;display:flex;flex-direction:column;align-items:center;gap:3px;
+  min-width:0;overflow:hidden;min-height:52px;justify-content:center;position:relative}
+.tabs .g{padding:3px 14px;box-sizing:content-box;border-radius:999px;transition:background-color .2s ease-out}
+.tabs button:active .g{background:var(--card2)}
+.tdot{position:absolute;top:2px;left:50%;margin-left:8px;min-width:16px;height:16px;
+  border-radius:8px;background:var(--ambersolid);color:var(--onamber);font-size:10px;font-weight:700;
+  font-style:normal;display:flex;align-items:center;justify-content:center;padding:0 4px;
+  font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px var(--card)}
 .tabs button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media (max-width:360px){ .tabs{gap:4px;padding:5px 4px calc(5px + env(safe-area-inset-bottom))}
-  .tabs button{font-size:8.5px;border-radius:9px} .tabs .g{width:19px;height:19px} }
-.tabs button[aria-current=true]{color:var(--blue);background:var(--bluebg);
-  border-color:var(--blue)}
+@media (max-width:360px){ .tabs{padding:4px 4px calc(4px + env(safe-area-inset-bottom))}
+  .tabs button{font-size:10px} .tabs .g{width:19px;height:19px;padding:3px 10px} }
+.tabs button[aria-current=true]{color:var(--blue);font-weight:600}
+.tabs button[aria-current=true] .g{background:var(--bluebg)}
 .g{width:22px;height:22px;display:block}
 
 .side{display:none}
@@ -1454,3 +1456,14 @@ html.theme-dark body.pg-scenes{--blue:#B39BFF;--bluebg:#2B2248;--onblue:#12100A}
 .inccard .ic1{display:flex;flex-direction:column;gap:3px;min-width:0}
 .inccard .ic2{color:var(--ink2);font-size:var(--f2)}
 .inccard .ic3{color:var(--ink2);font-size:var(--f1);display:flex;align-items:center;gap:6px}
+
+/* polish, 2026-09-25 */
+::selection{background:var(--bluebg);color:var(--ink)}
+input,textarea,select{caret-color:var(--blue);accent-color:var(--blue)}
+.dt td.num,.datatable td,.qn,.n{font-variant-numeric:tabular-nums}
+.dt th{white-space:nowrap}
+.editbar button.danger{color:var(--red)}
+.qf{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+/* four actions on a phone sit two by two, not three and a straggler */
+@media (max-width:520px){ .editbar:has(> button:nth-child(4):last-child){display:grid;grid-template-columns:1fr 1fr}
+  .editbar:has(> button:nth-child(4):last-child) button{min-width:0} }
